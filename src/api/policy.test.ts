@@ -10,7 +10,6 @@ import {
   attGateReason,
   attReliability,
   fetchCountryPolicyImpact,
-  fetchPolicyImpacts,
   fetchPolicyIndex,
   resetPolicyIndexCache,
   __test,
@@ -144,26 +143,22 @@ describe('fetchCountryPolicyImpact', () => {
   })
 
   it('returns null for a country with no published file', async () => {
+    // Arrange — a 404 is the pipeline saying "this country has no impact file".
     mockFetch({ 'policy-impact/index.json': INDEX })
+    // Act / Assert
     await expect(fetchCountryPolicyImpact('ZZ')).resolves.toBeNull()
   })
-})
 
-describe('fetchPolicyImpacts', () => {
-  it('drops index countries that have no published impact file', async () => {
-    // Arrange — KR is estimated, JP is only in the index.
-    mockFetch({ 'policy-impact/index.json': INDEX, 'policy-impact/KR.json': impactBody() })
-    // Act
-    const impacts = await fetchPolicyImpacts()
-    // Assert — an empty card for JP would claim an analysis that never ran.
-    expect(impacts.map((i) => i.id)).toEqual(['KR'])
+  it('THROWS on a server error instead of reporting the country as unanalysed', async () => {
+    // Arrange — a 503 says nothing about whether an estimate exists.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503 }) as Response))
+    // Act / Assert — null here would render as "never analysed" on an outage.
+    await expect(fetchCountryPolicyImpact('KR')).rejects.toThrow(/503/)
   })
 
-  it('honours the limit', async () => {
-    const spy = mockFetch({ 'policy-impact/index.json': INDEX, 'policy-impact/KR.json': impactBody() })
-    await fetchPolicyImpacts(1)
-    const impactCalls = spy.mock.calls.filter(([u]) => !String(u).includes('index.json'))
-    expect(impactCalls).toHaveLength(1)
+  it('THROWS when the network call itself fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+    await expect(fetchCountryPolicyImpact('KR')).rejects.toThrow(/offline/)
   })
 })
 

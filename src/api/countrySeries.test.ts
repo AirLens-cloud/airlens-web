@@ -104,8 +104,22 @@ describe('fetchCountrySeries', () => {
   })
 
   it('returns null for a country with no published panel', async () => {
+    // Arrange — 404 is the feed saying this country has no panel.
     mockFetch({})
+    // Act / Assert
     await expect(fetchCountrySeries('ZZ')).resolves.toBeNull()
+  })
+
+  it('THROWS on a server error instead of reporting the panel as absent', async () => {
+    // Arrange — a 502 says nothing about whether a panel exists.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 502 }) as Response))
+    // Act / Assert — null here would draw an empty chart for a country that has data.
+    await expect(fetchCountrySeries('KR')).rejects.toThrow(/502/)
+  })
+
+  it('THROWS when the network call itself fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+    await expect(fetchCountrySeries('KR')).rejects.toThrow(/offline/)
   })
 
   it('rejects a malformed country code without fetching', async () => {

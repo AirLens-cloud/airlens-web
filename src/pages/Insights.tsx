@@ -113,15 +113,17 @@ export default function Insights() {
     )
   }
 
+  // A failed read and a successfully-read empty set are different facts, and
+  // the copy has to say which one happened.
   if (catalogue.status === 'error' || !selected) {
     return (
       <main className="ins-page obs-surface">
         <div className="ins-shell">
           <h1 className="ins-headline-title">Insights</h1>
           <p className="ins-empty">
-            The policy-impact result set could not be read. This is a failure to
-            load it, not a statement that no analysis exists — nothing is being
-            substituted in its place.
+            {catalogue.status === 'error'
+              ? 'The policy-impact result set could not be read. This is a failure to load it, not a statement that no analysis exists — nothing is being substituted in its place.'
+              : 'The policy-impact result set loaded, and it is empty: no country has a published SDID estimate right now.'}
           </p>
         </div>
       </main>
@@ -156,6 +158,7 @@ export default function Insights() {
         <AttHeadline
           countryName={selected.name}
           flag={selected.flag}
+          summary={selected.summary}
           impact={detail.impact}
           estimatedCount={estimatedCount}
           totalCount={catalogue.countries.length}
@@ -180,6 +183,9 @@ export default function Insights() {
           <WfPlaceholder height={360} label="Loading the regional panel…" />
         ) : mapAnchor ? (
           <PolicyMap
+            // Remount on country change: the map owns a `pickedYear`, and a year
+            // picked for the previous country is not a year this one observed.
+            key={selected.countryCode}
             panels={detail.peerPanels}
             selectedCode={selected.countryCode}
             selectedName={selected.name}

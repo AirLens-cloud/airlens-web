@@ -87,7 +87,6 @@ export interface PolicyImpact {
   significant: boolean | null
   /** SDID panel-fit grade — see `policyDataQualityToGrade`. Not sensor DQSS. */
   dqss?: 'A' | 'B' | 'C' | 'D' | 'F'
-  year_range?: string
   sdid_series?: SdidPoint[]
   /**
    * Honesty-gate status. Carries WHY no estimate exists ('insufficient_controls'

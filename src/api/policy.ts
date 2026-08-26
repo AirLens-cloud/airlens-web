@@ -134,10 +134,7 @@ function mapCrossCheck(raw: Record<string, RawCrossCheckLane> | undefined): Lane
 }
 
 function mapRawPolicyData(raw: RawPolicyImpactData, index: PolicyIndexEntry | undefined): PolicyImpact {
-  const treatmentYear = raw.treatment_year
   const sc = Array.isArray(raw.synthetic_control) ? raw.synthetic_control : []
-  const before = sc.filter((p) => parseInt(p.date) < treatmentYear)
-  const after = sc.filter((p) => parseInt(p.date) >= treatmentYear)
   const eventName = sc.find((p) => p.event)?.event
   const ci = Array.isArray(raw.ci_95) ? raw.ci_95 : null
 
@@ -153,9 +150,6 @@ function mapRawPolicyData(raw: RawPolicyImpactData, index: PolicyIndexEntry | un
     p_value: raw.p_value,
     significant: raw.significant ?? null,
     dqss: policyFitToGrade(raw.data_quality?.dqss_score),
-    year_range: before[0] || after[after.length - 1]
-      ? `${before[0]?.date ?? ''}–${after[after.length - 1]?.date ?? ''}`
-      : undefined,
     sdid_series: mapSyntheticControl(raw.synthetic_control),
     status: raw.status,
     panelSource: raw.panel_source ?? null,
@@ -222,8 +216,14 @@ export async function fetchPolicyIndex(): Promise<PolicyIndexEntry[]> {
 }
 
 /**
- * One country's SDID impact. Returns null (never throws) so callers render an
- * honest empty state.
+ * One country's SDID impact.
+ *
+ * `null` means ABSENT: no file is published for this country (404). Anything
+ * else — a 5xx, a network error, unparseable JSON — THROWS, because "we could
+ * not read it" and "there is nothing to read" are different facts and the
+ * caller has different copy for each. Collapsing them, which an earlier version
+ * of this function did, made a transient outage render as "this country was
+ * never analysed".
  *
  * Glass-box: att / ci / p_value stay null for honesty-gated countries — the
  * caller surfaces the reason via `attGateReason`, never a substitute number.
@@ -231,44 +231,13 @@ export async function fetchPolicyIndex(): Promise<PolicyIndexEntry[]> {
 export async function fetchCountryPolicyImpact(countryCode: string): Promise<PolicyImpact | null> {
   const cc = (countryCode ?? '').toUpperCase()
   if (!/^[A-Z]{2,3}$/.test(cc)) return null
-  try {
-    const res = await fetch(`${POLICY_BASE}/${cc}.json`)
-    if (!res.ok) return null
-    const raw = (await res.json()) as RawPolicyImpactData
-    const index = await fetchPolicyIndex()
-    const entry = index.find((e) => e.countryCode.toUpperCase() === cc)
-    return mapRawPolicyData(raw, entry)
-  } catch (err) {
-    logger.warn('fetchCountryPolicyImpact threw:', err)
-    return null
-  }
-}
-
-/**
- * The index's countries, resolved to impact records.
- *
- * A country in the index with no published impact file resolves to null and is
- * dropped — the index is broader than the estimated set (it also labels
- * countries the SDID batch never covered), and inventing a row for one would
- * put an empty card where there is no analysis at all.
- */
-export async function fetchPolicyImpacts(limit = 12): Promise<PolicyImpact[]> {
+  const res = await fetch(`${POLICY_BASE}/${cc}.json`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`policy-impact/${cc}.json: HTTP ${res.status}`)
+  const raw = (await res.json()) as RawPolicyImpactData
   const index = await fetchPolicyIndex()
-  if (index.length === 0) return []
-
-  const results = await Promise.allSettled(
-    index.slice(0, limit).map(async (entry) => {
-      const res = await fetch(`${POLICY_BASE}/${entry.countryCode}.json`)
-      if (!res.ok) return null
-      const raw = (await res.json()) as RawPolicyImpactData
-      return mapRawPolicyData(raw, entry)
-    }),
-  )
-
-  return results
-    .filter((r): r is PromiseFulfilledResult<PolicyImpact | null> => r.status === 'fulfilled')
-    .map((r) => r.value)
-    .filter((v): v is PolicyImpact => v !== null)
+  const entry = index.find((e) => e.countryCode.toUpperCase() === cc)
+  return mapRawPolicyData(raw, entry)
 }
 
 export type AttReliability = 'reliable' | 'insignificant' | 'unstable' | 'no_data'

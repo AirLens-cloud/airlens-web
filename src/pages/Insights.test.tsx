@@ -8,7 +8,7 @@
  * failure rather than as an empty result set.
  */
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react'
 import type { PolicyImpact, PolicyIndexEntry, PolicySummary } from '../types/policy'
 
 vi.mock('../components/insights/PolicyMap', () => ({
@@ -89,6 +89,30 @@ function mockFetch(available: Record<string, unknown>) {
   })
   vi.stubGlobal('fetch', spy)
   return spy
+}
+
+/**
+ * Like `mockFetch`, but any URL matching `slowPaths` parks until `release()` is
+ * called — the shape of a reader clicking through countries faster than the
+ * network answers.
+ */
+function deferredFetch(available: Record<string, unknown>, slowPaths: string[]) {
+  const gates: Array<() => void> = []
+  const spy = vi.fn(async (url: string) => {
+    const hit = Object.entries(available).find(([path]) => url.includes(path))
+    if (!hit) return { ok: false, status: 404 } as Response
+    if (slowPaths.some((p) => url.includes(p))) {
+      await new Promise<void>((resolve) => gates.push(resolve))
+    }
+    return { ok: true, status: 200, json: async () => hit[1] } as unknown as Response
+  })
+  vi.stubGlobal('fetch', spy)
+  return { spy, release: () => { gates.splice(0).forEach((g) => g()) } }
+}
+
+/** The TREATMENT readout — the one headline field that differs per country here. */
+function treatmentText(): string | undefined {
+  return document.querySelectorAll('.ins-headline-stats dd')[2]?.textContent ?? undefined
 }
 
 const FULL_FEED = {
@@ -204,16 +228,83 @@ describe('Insights — failure states', () => {
     )
   })
 
-  it('still shows the summary verdict when the detail feeds fail', async () => {
-    // Arrange — catalogue loads, per-country files do not.
+  it('distinguishes a catalogue that loaded empty from one that failed to load', async () => {
+    // Arrange — the request succeeded and the batch estimated nothing.
+    mockFetch({
+      'policy-impact/summary.json': { generatedAt: null, count: 0, countries: [] },
+      'policy-impact/index.json': [],
+    })
+    // Act
+    await renderPage()
+    // Assert — "we could not read it" would be a different, false claim.
+    await waitFor(() => expect(screen.getByText(/loaded, and it is empty/i)).toBeTruthy())
+  })
+
+  it('keeps the summary verdict when the per-country files are absent', async () => {
+    // Arrange — catalogue loads, per-country files 404.
     mockFetch({ 'policy-impact/summary.json': SUMMARY, 'policy-impact/index.json': INDEX })
     // Act
     await renderPage()
-    // Assert — the headline degrades to the gate copy, and the page says why the
-    // charts are missing instead of implying the data does not exist.
+    // Assert — the estimate rides on the catalogue, so a thin page is not an
+    // unanalysed country.
     await waitFor(() =>
       expect(document.getElementById('ins-headline-title')?.textContent).toContain('South Korea'),
     )
-    expect(document.querySelector('.ins-headline-gate')?.textContent).toMatch(/counterfactual/i)
+    expect(document.querySelector('.ins-headline-att')?.textContent).toBe('-1.87')
+    expect(document.querySelector('.ins-headline-gate')).toBeNull()
+  })
+
+  it('says the detail feeds could not be read, without disowning the estimate', async () => {
+    // Arrange — catalogue serves; every per-country request 503s.
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('summary.json')) {
+        return { ok: true, status: 200, json: async () => SUMMARY } as unknown as Response
+      }
+      if (url.includes('policy-impact/index.json')) {
+        return { ok: true, status: 200, json: async () => INDEX } as unknown as Response
+      }
+      return { ok: false, status: 503 } as Response
+    }))
+    // Act
+    await renderPage()
+    // Assert — an outage is named as one, and the number above it still stands.
+    await waitFor(() => expect(screen.getByText(/could not be read/i)).toBeTruthy())
+    expect(document.querySelector('.ins-headline-att')?.textContent).toBe('-1.87')
+  })
+})
+
+describe('Insights — switching country faster than the network answers', () => {
+  it('does not let the country the reader left overwrite the one they returned to', async () => {
+    // Arrange — JP's impact file never answers until released.
+    const { spy, release } = deferredFetch(
+      {
+        ...FULL_FEED,
+        'policy-impact/JP.json': {
+          ...IMPACT,
+          country: 'JP',
+          att: -0.4,
+          synthetic_control: [
+            { date: '2016', event: 'Clean Air Program', pm25: 12, synthetic_pm25: 12 },
+            { date: '2019', event: '', pm25: 10, synthetic_pm25: 11 },
+          ],
+        },
+      },
+      ['policy-impact/JP.json'],
+    )
+    const { container } = await renderPage()
+    await waitFor(() => expect(treatmentText()).toBe('Fine Dust Act'))
+    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
+
+    // Act — away to JP while it hangs, then straight back to KR, then JP lands.
+    fireEvent.change(select, { target: { value: 'JP' } })
+    fireEvent.change(select, { target: { value: 'KR' } })
+    // The in-flight request has to be real, or this test asserts nothing.
+    expect(spy.mock.calls.some(([u]) => String(u).includes('policy-impact/JP.json'))).toBe(true)
+    release()
+
+    // Assert — the late JP payload is keyed to a request nobody is looking at.
+    await waitFor(() => expect(select.value).toBe('KR'))
+    expect(treatmentText()).toBe('Fine Dust Act')
+    expect(document.getElementById('ins-headline-title')?.textContent).toContain('South Korea')
   })
 })

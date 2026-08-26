@@ -72,9 +72,13 @@ function mapPoints(raw: RawSeriesPoint[] | undefined): CountryPanelPoint[] {
 }
 
 /**
- * One country's observed panel. Returns null (never throws) so callers render
- * an honest empty state; a country with a published file but no usable years
- * also returns null rather than an empty chart claiming a flat series.
+ * One country's observed panel.
+ *
+ * `null` means ABSENT: no panel is published (404), or the published file has
+ * no usable year — an empty chart would otherwise claim a flat series that was
+ * measured. Anything else — a 5xx, a network error, unparseable JSON — THROWS,
+ * so the caller can say "could not be read" instead of "there is no data",
+ * which are different facts about the world.
  */
 export async function fetchCountrySeries(
   countryCode: string,
@@ -82,26 +86,22 @@ export async function fetchCountrySeries(
 ): Promise<CountryPanel | null> {
   const cc = (countryCode ?? '').toUpperCase()
   if (!/^[A-Z]{2,3}$/.test(cc)) return null
-  try {
-    const res = await fetch(`${SERIES_BASE}/${cc}.json`)
-    if (!res.ok) return null
-    const raw = (await res.json()) as RawCountrySeries
-    const points = mapPoints(raw.series)
-    if (points.length === 0) return null
-    return {
-      countryCode: cc,
-      countryName: meta?.countryName ?? null,
-      flag: meta?.flag ?? null,
-      points,
-      sourcesUsed: Array.isArray(raw.sourcesUsed) ? raw.sourcesUsed : [],
-      totalStations: finite(raw.totalStations) ? raw.totalStations : null,
-      treatmentYear: finite(raw.policy?.treatment_year) ? raw.policy.treatment_year : null,
-      policyName: raw.policy?.policy_name || null,
-      generatedAt: raw.generatedAt ?? null,
-    }
-  } catch (err) {
-    logger.warn('fetchCountrySeries threw:', err)
-    return null
+  const res = await fetch(`${SERIES_BASE}/${cc}.json`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`by_country/${cc}.json: HTTP ${res.status}`)
+  const raw = (await res.json()) as RawCountrySeries
+  const points = mapPoints(raw.series)
+  if (points.length === 0) return null
+  return {
+    countryCode: cc,
+    countryName: meta?.countryName ?? null,
+    flag: meta?.flag ?? null,
+    points,
+    sourcesUsed: Array.isArray(raw.sourcesUsed) ? raw.sourcesUsed : [],
+    totalStations: finite(raw.totalStations) ? raw.totalStations : null,
+    treatmentYear: finite(raw.policy?.treatment_year) ? raw.policy.treatment_year : null,
+    policyName: raw.policy?.policy_name || null,
+    generatedAt: raw.generatedAt ?? null,
   }
 }
 

@@ -77,6 +77,20 @@ describe('PolicyTrendLines — the spread band', () => {
     expect(bands(container)).toHaveLength(2)
   })
 
+  it('breaks the band across a year that is missing from the panel entirely', () => {
+    // Arrange — 2019 published no usable mean, so `mapPoints` dropped it and the
+    // year never appears here at all. Only a year-contiguity check catches this;
+    // without one, 2018 and 2020 join into one polygon whose straight edge
+    // asserts a spread across a year nobody measured.
+    const panels = [
+      panel('KR', [pt(2017, 26, 14, 42), pt(2018, 24, 12, 40), pt(2020, 19, 9, 34), pt(2021, 18, 8, 32)]),
+    ]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert
+    expect(bands(container)).toHaveLength(2)
+  })
+
   it('counts the years the band covers against the years in the series', () => {
     const panels = [panel('KR', [pt(2018, 24, 12, 40), pt(2019, 22, 11, 38), pt(2020, 19)])]
     render(<PolicyTrendLines panels={panels} selectedCode="KR" />)

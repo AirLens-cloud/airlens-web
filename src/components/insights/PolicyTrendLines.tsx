@@ -77,9 +77,16 @@ export default function PolicyTrendLines({
       }
     })
 
-    // Contiguous runs of years that published a non-degenerate spread. A gap in
-    // the middle breaks the polygon rather than bridging across a year that has
-    // no band — bridging would draw a spread nobody measured.
+    // Contiguous runs of years that published a non-degenerate spread. A gap
+    // breaks the polygon rather than bridging across a year that has no band —
+    // bridging would draw a spread nobody measured.
+    //
+    // TWO kinds of gap have to break it. A year present in the panel with no
+    // usable spread trips the `else`; a year MISSING from the panel entirely
+    // (dropped by `mapPoints` because it published no usable mean) never
+    // appears in this loop at all, so the run has to check year contiguity too.
+    // Without that check, 2017 and 2019 with 2018 absent join into one polygon
+    // whose straight edge asserts a spread across 2018.
     const bandRuns: string[] = []
     let run: CountryPanelPoint[] = []
     const flush = (): void => {
@@ -93,12 +100,15 @@ export default function PolicyTrendLines({
     let bandYears = 0
     if (primary) {
       for (const pt of primary.points) {
-        if (pt.p10 !== null && pt.p90 !== null && pt.p90 > pt.p10) {
-          run.push(pt)
-          bandYears += 1
-        } else {
+        const hasSpread = pt.p10 !== null && pt.p90 !== null && pt.p90 > pt.p10
+        if (!hasSpread) {
           flush()
+          continue
         }
+        const prev = run[run.length - 1]
+        if (prev && pt.year !== prev.year + 1) flush()
+        run.push(pt)
+        bandYears += 1
       }
       flush()
     }

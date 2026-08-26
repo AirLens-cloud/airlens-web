@@ -169,7 +169,9 @@ export function useInsightsDetail(
     Promise.all([
       fetchCountryPolicyImpact(selected.countryCode),
       fetchCountrySeries(selected.countryCode, meta),
-      Promise.all(codes.map((cc) => fetchCountrySeries(cc))),
+      // Peers are settled, not all-or-nothing: one neighbour that fails to load
+      // should thin the comparison, not fail the country the reader asked for.
+      Promise.allSettled(codes.map((cc) => fetchCountrySeries(cc))),
     ])
       .then(([impact, panel, peers]) => {
         if (cancelled) return
@@ -179,7 +181,10 @@ export function useInsightsDetail(
             status: 'ready',
             impact,
             panel,
-            peerPanels: peers.filter((p): p is CountryPanel => p !== null),
+            peerPanels: peers
+              .filter((r): r is PromiseFulfilledResult<CountryPanel | null> => r.status === 'fulfilled')
+              .map((r) => r.value)
+              .filter((p): p is CountryPanel => p !== null),
             peersWithoutAnchor: unanchored,
             peersOmitted: Math.max(0, anchored.length - codes.length),
           },
