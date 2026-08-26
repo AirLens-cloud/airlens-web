@@ -2,6 +2,7 @@ import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
 import LandingFlight from './pages/LandingFlight'
 import GlobePlaceholder from './pages/GlobePlaceholder'
+import FluidChrome from './app/FluidChrome'
 
 /**
  * Plain pathname branching — no react-router-dom dependency (not installed
@@ -12,12 +13,20 @@ function App() {
     return <DesignGallery />
   }
   if (typeof window !== 'undefined' && window.location.pathname === '/landing') {
-    return <LandingFlight />
+    return (
+      <FluidChrome>
+        <LandingFlight />
+      </FluidChrome>
+    )
   }
   // Wave L4: Chapter 5's CTA links here — a real, honest landing spot
   // (GlobeFallback + snapshot caveat) rather than a dead href.
   if (typeof window !== 'undefined' && window.location.pathname === '/globe') {
-    return <GlobePlaceholder />
+    return (
+      <FluidChrome>
+        <GlobePlaceholder />
+      </FluidChrome>
+    )
   }
   return <DataProbe />
 }

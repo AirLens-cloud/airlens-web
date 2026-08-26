@@ -1,0 +1,64 @@
+// Route-level check: FluidChrome (and the AQI capsule it mounts) wraps only
+// /landing and /globe, never /design or the default DataProbe. Heavy page
+// internals (LandingFlight's chapter scenes, AqiCapsule's own data/motion
+// wiring) are stubbed out here — they have their own dedicated coverage —
+// so this test stays scoped to App.tsx's routing decision.
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
+
+vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-data-probe" /> }))
+vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
+vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
+vi.mock('./pages/GlobePlaceholder', () => ({ default: () => <div data-testid="page-globe" /> }))
+vi.mock('./components/fluid/capsule/AqiCapsule', () => ({ default: () => <div data-testid="mock-capsule" /> }))
+
+import App from './App'
+
+function setPath(path: string): void {
+  window.history.pushState({}, '', path)
+}
+
+afterEach(() => {
+  cleanup()
+  setPath('/')
+})
+
+describe('App — FluidChrome routing', () => {
+  it('does not mount the fluid chrome overlay on /design', () => {
+    // Arrange
+    setPath('/design')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+  })
+
+  it('does not mount the fluid chrome overlay on the default DataProbe route', () => {
+    // Arrange
+    setPath('/')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+  })
+
+  it('mounts the fluid chrome overlay on /landing', () => {
+    // Arrange
+    setPath('/landing')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('page-landing')).not.toBeNull()
+  })
+
+  it('mounts the fluid chrome overlay on /globe', () => {
+    // Arrange
+    setPath('/globe')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('page-globe')).not.toBeNull()
+  })
+})
