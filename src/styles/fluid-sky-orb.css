@@ -1,0 +1,15 @@
+/* fluid-sky-orb.css — SkyOrb ambient canvas. Sizing comes from the
+ * consumer's layout (this file just fills whatever box it's given). */
+.fluid-sky-orb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.fluid-sky-orb__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
