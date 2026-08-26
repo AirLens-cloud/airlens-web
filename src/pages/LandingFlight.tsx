@@ -4,6 +4,8 @@ import { ChapterCanvasSlot } from '../landing/ChapterCanvasSlot'
 import { Ch1AtmosCanvasSlot } from '../landing/ch1-atmos/Ch1AtmosCanvasSlot'
 import { Ch2ParticulateCanvasSlot } from '../landing/ch2-particulate/Ch2ParticulateCanvasSlot'
 import { Ch3AirshedCanvasSlot } from '../landing/ch3-airshed/Ch3AirshedCanvasSlot'
+import Ch4BriefingRoom from '../landing/ch4-briefing/Ch4BriefingRoom'
+import Ch5CtaLanding from '../landing/ch5-cta/Ch5CtaLanding'
 import { QualityProvider } from '../landing/shared/perf/QualityProvider'
 import '../styles/landing.css'
 
@@ -12,7 +14,7 @@ interface ChapterDef {
   label: string
   /** Section height in viewport-height units — the scroll travel budget for this chapter. */
   vh: number
-  /** Ch1-3 reserve a 3D scene slot (Wave L1-L3); Ch4-5 do not (per the approved storyboard). */
+  /** Ch1-3 reserve a 3D (`three`) scene slot (Wave L1-L3); Ch4-5 are Canvas 2D/SVG/DOM only (Wave L4, no `three`). */
   hasCanvasSlot: boolean
 }
 
@@ -55,6 +57,10 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
         ) : (
           <ChapterCanvasSlot chapterLabel={label} />
         )
+      ) : id === 'ch4' ? (
+        <Ch4BriefingRoom progress={progress} />
+      ) : id === 'ch5' ? (
+        <Ch5CtaLanding />
       ) : null}
     </section>
   )
@@ -67,8 +73,10 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
  * chapter scenes land in Wave L1-L5, each behind its own `React.lazy()`
  * boundary (Chapter 1's is `Ch1AtmosCanvasSlot`, Wave L1; Chapter 2's is
  * `Ch2ParticulateCanvasSlot`, Wave L2; Chapter 3's is `Ch3AirshedCanvasSlot`,
- * Wave L3; Chapters 4-5 still render `ChapterCanvasSlot`'s static placeholder
- * until their own waves land).
+ * Wave L3). Chapters 4-5 (Wave L4) are deliberately `three`-free — the dawn
+ * wipe into the briefing room (`Ch4BriefingRoom`) and the flight's final CTA
+ * (`Ch5CtaLanding`) are Canvas 2D/SVG/DOM content, mounted directly (no lazy
+ * boundary — there is no `three` bundle here to defer loading of).
  *
  * `QualityProvider` wraps the whole flight (not per-chapter) so every chapter
  * scene shares one render-quality tier decision instead of re-probing FPS
