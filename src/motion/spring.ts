@@ -11,6 +11,9 @@ export interface SpringConfig {
 const SETTLE_VELOCITY_EPS = 0.02
 const SETTLE_POSITION_EPS = 0.02
 const MAX_DT_SEC = 0.064
+// 250Hz — unconditionally stable for semi-implicit Euler across the full
+// response range (>=0.05s per the clamp in setConfig/constructor).
+const MAX_SUBSTEP_SEC = 0.004
 
 export class Spring {
   private p: number
@@ -52,10 +55,18 @@ export class Spring {
   }
 
   step(dtSec: number): boolean {
-    const dt = Math.min(dtSec, MAX_DT_SEC)
-    const a = -(this.omega * this.omega) * (this.p - this.target) - 2 * this.damping * this.omega * this.v
-    this.v += a * dt
-    this.p += this.v * dt
+    // Substep the integration — at the clamped MAX_DT_SEC, a single
+    // semi-implicit Euler step can diverge for stiff configs (high omega /
+    // low damping), overshooting to amplitudes orders of magnitude past the
+    // target. Fixed 250Hz substeps keep every config in this system stable.
+    let remaining = Math.min(dtSec, MAX_DT_SEC)
+    while (remaining > 0) {
+      const dt = Math.min(remaining, MAX_SUBSTEP_SEC)
+      remaining -= dt
+      const a = -(this.omega * this.omega) * (this.p - this.target) - 2 * this.damping * this.omega * this.v
+      this.v += a * dt
+      this.p += this.v * dt
+    }
 
     if (this.isSettled()) {
       this.p = this.target

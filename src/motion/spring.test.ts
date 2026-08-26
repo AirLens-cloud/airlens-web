@@ -59,6 +59,25 @@ describe('Spring — setTarget velocity inheritance', () => {
   })
 })
 
+describe('Spring — stability at clamped dt (DRAG_SPRING config)', () => {
+  it('never diverges and converges to target when driven at the max clamped dt', () => {
+    // Arrange — matches CapsulePanel's DRAG_SPRING (damping 0.72, response 0.32),
+    // the config that diverged under single-step semi-implicit Euler at dt=0.064.
+    const spring = new Spring(0, { damping: 0.72, response: 0.32 })
+    spring.setTarget(-280)
+    // Act
+    let done = false
+    for (let i = 0; i < 200 && !done; i++) {
+      done = spring.step(0.064)
+      // Assert — no divergence at any point along the way.
+      expect(Math.abs(spring.get())).toBeLessThanOrEqual(280 * 1.5)
+    }
+    // Assert — converges to target.
+    expect(done).toBe(true)
+    expect(spring.get()).toBeCloseTo(-280, 0)
+  })
+})
+
 describe('projectMomentum / rubberband', () => {
   it('projects a fling distance from velocity', () => {
     expect(projectMomentum(1000)).toBeCloseTo(499, 0)
