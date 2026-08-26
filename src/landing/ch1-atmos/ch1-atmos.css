@@ -66,23 +66,31 @@
 }
 
 /* ── HUD frame ─────────────────────────────────────────────────────────────── */
+/* Wave 4 P2: `.ch1-hud` is now a pure positioning context (unstyled,
+   inset:0) — the four corner readouts are individually wrapped in
+   `<LiquidGlass variant="night">` (see Sections.tsx), rendered as small
+   glass chips instead of bare mono text. `.liquid-glass`'s own
+   `position: relative` is overridden per-chip below via the two-class
+   compound selector (`.ch1-hud .ch1-hud__chip`), independent of whichever
+   CSS file happens to load last. */
 .ch1-hud {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 3;
+}
+.ch1-hud .ch1-hud__chip {
+  position: absolute;
+  padding: 0.35rem 0.6rem;
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.2em;
   color: #5a6a85;
-  z-index: 3;
-}
-.ch1-hud > span {
-  position: absolute;
 }
 .ch1-hud__tl { top: 4.6rem; left: 1.5rem; }
 .ch1-hud__tr { top: 4.6rem; right: 1.5rem; }
 .ch1-hud__bl { bottom: 1.3rem; left: 1.5rem; }
-.ch1-hud__br { bottom: 1.3rem; right: 1.5rem; color: #25e2f4; }
+.ch1-hud__br--accent { color: #25e2f4; }
 
 /* ── Narrative sections ────────────────────────────────────────────────────── */
 .ch1-sec {
@@ -251,14 +259,17 @@
   background: linear-gradient(90deg, #25e2f4, #f5a524);
 }
 
-/* Forecast sparklines */
-.ch1-sparks { display: flex; flex-direction: column; gap: 0.9rem; }
+/* Forecast sparklines — Wave 4 P2: `.ch1-sparks` is now the LiquidGlass
+   surface itself (glass wraps the whole group, see Sections.tsx), so the
+   per-card background/blur that used to fake a glass look is dropped —
+   double-glassing (an outer real refraction surface plus an inner
+   semi-opaque card) read muddier than either alone. */
+.ch1-sparks-wrap { display: block; }
+.ch1-sparks { display: flex; flex-direction: column; gap: 0.9rem; padding: 0.9rem; }
 .ch1-spark {
   width: min(300px, 70vw);
   border: 1px solid #1b2233;
   padding: 0.6rem 0.75rem;
-  background: rgba(8, 11, 20, 0.55);
-  backdrop-filter: blur(4px);
 }
 .ch1-spark__head { display: flex; justify-content: space-between; align-items: baseline; }
 .ch1-spark__city { font-family: var(--serif); font-weight: 700; font-size: 0.95rem; }
@@ -291,8 +302,8 @@
 
 /* Phones: drop the two top HUD ticks so they never collide with wrapped chrome. */
 @media (max-width: 640px) {
-  .ch1-hud__tl,
-  .ch1-hud__tr { display: none; }
+  .ch1-hud .ch1-hud__tl,
+  .ch1-hud .ch1-hud__tr { display: none; }
   .ch1-sec { padding: 0 1.25rem; }
   /* On phones the globe fills the screen, so projected leaders collide with the
      section heading — drop them; the in-canvas markers + clusters still show. */

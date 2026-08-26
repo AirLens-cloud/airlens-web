@@ -30,6 +30,16 @@
   padding: 0 var(--pad-x);
 }
 
+/* Wave 4 P3 — the tagline and its SkyOrb accent sit in one row; the row
+   (not `.ch5-tagline` itself) is the flex container so the orb can be
+   omitted (missing reading — see Ch5CtaLanding.tsx) without leaving a
+   stray empty flex item. */
+.ch5-tagline-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+}
 .ch5-tagline {
   display: flex;
   flex-direction: column;
@@ -47,6 +57,11 @@
   font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   letter-spacing: 0;
   color: var(--obs-hud);
+}
+.ch5-tagline__orb {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
 }
 
 .ch5-cta-btn {
@@ -67,5 +82,11 @@
 @media (max-width: 640px) {
   .ch5-provenance {
     padding: 0 var(--pad-x);
+  }
+  /* The orb reads as a foreground accent beside a one-line tagline; on
+     narrow viewports the tagline wraps to two lines and a same-row orb
+     crowds it, so it drops rather than shrinking further. */
+  .ch5-tagline__orb {
+    display: none;
   }
 }

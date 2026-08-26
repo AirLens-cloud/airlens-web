@@ -30,6 +30,7 @@ import DawnReport from '../../components/home/observatory/DawnReport'
 import InkInstrument from '../../components/home/observatory/InkInstrument'
 import WfPlaceholder from '../../components/wireframe/WfPlaceholder'
 import WfDataState from '../../components/wireframe/WfDataState'
+import Materialize from '../../components/fluid/Materialize'
 import { dataState } from '../../types/dataState'
 import { useReducedMotion } from '../shared/perf/useReducedMotion'
 import { useDawnBriefingData } from './useDawnBriefingData'
@@ -119,21 +120,26 @@ export default function Ch4BriefingRoom({ progress }: Ch4BriefingRoomProps) {
       <div className="ch4-paper" style={{ opacity: wipeT }} aria-hidden={wipeT <= 0.05}>
         <div className="ch4-paper__head">
           <span className="ch4-paper__eyebrow m-b">AFTER THE FLIGHT — THE BRIEFING ROOM</span>
-          <h2 className="ch4-paper__heading">How we see</h2>
-          <p className="ch4-paper__sub">Three instruments. The method is the brand.</p>
+          <h2 className="ch4-paper__heading fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+            How we see
+          </h2>
+          <p className="ch4-paper__sub fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+            Three instruments. The method is the brand.
+          </p>
         </div>
 
-        <DawnReport gridCells={gridCells} peak={peak} firesTotal={firesTotal} forecast={forecast} />
+        {/* Wave 4 P1 — the field report "opens" as the reader scrolls past
+            the wipe, instead of simply being present the whole time. */}
+        <Materialize show={cardsP > 0.05} origin="top center">
+          <DawnReport gridCells={gridCells} peak={peak} firesTotal={firesTotal} forecast={forecast} />
+        </Materialize>
 
         <div className="ch4-cards">
           {INSTRUMENTS.map((inst, i) => (
             <article
               key={inst.idx}
               className="ch4-card"
-              style={{
-                opacity: cardReveal[i],
-                transform: reduced ? 'none' : `translateY(${((1 - (cardReveal[i] ?? 0)) * 16).toFixed(1)}px)`,
-              }}
+              style={{ '--reveal': cardReveal[i] } as CSSProperties}
             >
               <InkInstrument kind={inst.kind} />
               <div className="ch4-card__idx m-b">INSTRUMENT {inst.idx}</div>

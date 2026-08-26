@@ -3,10 +3,23 @@
  * inline style.width/height directly); this file owns everything else. */
 .fluid-chrome__overlay {
   position: fixed;
-  top: var(--sp-5);
+  /* Anchor as a custom property, not a bare value: `.ch5-content` (the
+     landing flight's final CTA, Wave 4 P3) is vertically centered in its
+     stage, and on a short viewport that centered content can reach close
+     enough to the top for an *expanded* capsule panel to overlap it — the
+     media query below pulls the anchor in for exactly that case, without
+     Ch5 needing to know anything about the capsule. */
+  --fluid-chrome-top: var(--sp-5);
+  top: var(--fluid-chrome-top);
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-fab);
+}
+
+@media (max-height: 560px) {
+  .fluid-chrome__overlay {
+    --fluid-chrome-top: var(--sp-3);
+  }
 }
 
 .aq-capsule {

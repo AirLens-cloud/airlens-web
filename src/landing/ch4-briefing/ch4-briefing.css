@@ -91,6 +91,7 @@
   text-align: center;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--sp-2);
 }
 .ch4-paper__eyebrow {
@@ -111,6 +112,16 @@
   margin: 0;
 }
 
+/* Wave 4 P1 — DawnReport is now wrapped in <Materialize>; give the wrapper
+   itself the full flex-item width so the child's own `width: min(100%,
+   640px)` resolves against `.ch4-paper`'s content width (not an
+   indeterminate auto-sized wrapper), and center the report the same way the
+   unwrapped element used to be centered by `.ch4-paper`'s align-items. */
+.ch4-paper > .fluid-materialize {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .ch4-stage .dawn-report {
   width: min(100%, 640px);
 }
@@ -125,6 +136,10 @@
 }
 
 .ch4-card {
+  /* Wave 4 P1 — `--reveal` (0..1, set inline from `cardReveal[i]`) drives
+     opacity/translateY as before, plus a new blur channel: the card
+     de-focuses as it de-reveals instead of just fading/sliding. */
+  --reveal: 1;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -132,7 +147,10 @@
   background: var(--obs-paper);
   border: 1px solid var(--obs-hairline);
   color: var(--obs-paper-ink);
-  transition: opacity 260ms var(--obs-ez), transform 260ms var(--obs-ez);
+  opacity: var(--reveal);
+  transform: translateY(calc((1 - var(--reveal)) * 16px));
+  filter: blur(calc((1 - var(--reveal)) * 6px));
+  transition: opacity 260ms var(--obs-ez), transform 260ms var(--obs-ez), filter 260ms var(--obs-ez);
 }
 .ch4-card__idx {
   color: var(--obs-paper-mut);
