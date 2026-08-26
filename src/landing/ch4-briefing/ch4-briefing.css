@@ -94,6 +94,12 @@
   align-items: center;
   gap: var(--sp-2);
 }
+/* Wave 4 P3 — eyebrow band glass chip. A small pill, not the full head
+   block: "eyebrow band" names the kicker label itself. */
+.ch4-paper__eyebrow-glass {
+  display: inline-flex;
+  padding: 0.4rem 0.9rem;
+}
 .ch4-paper__eyebrow {
   color: var(--obs-paper-mut);
 }

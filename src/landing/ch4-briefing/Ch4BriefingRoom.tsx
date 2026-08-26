@@ -30,6 +30,7 @@ import DawnReport from '../../components/home/observatory/DawnReport'
 import InkInstrument from '../../components/home/observatory/InkInstrument'
 import WfPlaceholder from '../../components/wireframe/WfPlaceholder'
 import WfDataState from '../../components/wireframe/WfDataState'
+import LiquidGlass from '../../components/fluid/LiquidGlass'
 import Materialize from '../../components/fluid/Materialize'
 import { dataState } from '../../types/dataState'
 import { useReducedMotion } from '../shared/perf/useReducedMotion'
@@ -119,7 +120,12 @@ export default function Ch4BriefingRoom({ progress }: Ch4BriefingRoomProps) {
 
       <div className="ch4-paper" style={{ opacity: wipeT }} aria-hidden={wipeT <= 0.05}>
         <div className="ch4-paper__head">
-          <span className="ch4-paper__eyebrow m-b">AFTER THE FLIGHT — THE BRIEFING ROOM</span>
+          {/* Wave 4 P3 — eyebrow band glass. Separate commit from the rest of
+              this wave's changes so a visual regression here can be reverted
+              alone. */}
+          <LiquidGlass as="div" variant="day" radius={12} bezel={16} className="ch4-paper__eyebrow-glass">
+            <span className="ch4-paper__eyebrow m-b">AFTER THE FLIGHT — THE BRIEFING ROOM</span>
+          </LiquidGlass>
           <h2 className="ch4-paper__heading fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
             How we see
           </h2>
