@@ -23,3 +23,12 @@ export const SNAPSHOT_CDN_BASE: string =
 
 export const HF_LIVE_BASE: string =
   import.meta.env.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
+
+/**
+ * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
+ * the Weather page's `/api/proxy/open-meteo-weather` and
+ * `/api/proxy/open-meteo-aq` routes live here. An empty string (unset) is an
+ * honest "not configured" state: callers must skip the fetch entirely
+ * rather than attempt a request against an empty base URL.
+ */
+export const COMMUNITY_API_BASE: string = import.meta.env.VITE_COMMUNITY_API_BASE ?? '';
