@@ -1,0 +1,26 @@
+/* fluid-materialize.css — open/close transition for the Materialize wrapper.
+ * Duration + transform-origin are set inline per-instance (durMs/origin
+ * props); this file owns only the property list and easing. */
+.fluid-materialize {
+  opacity: 0;
+  transform: scale(0.96);
+  filter: blur(12px);
+  transition-property: opacity, transform, filter;
+  transition-timing-function: var(--ease-fluid);
+}
+
+.fluid-materialize--entered {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.fluid-materialize--reduced,
+.fluid-materialize--reduced.fluid-materialize--entered {
+  transform: none;
+  filter: none;
+}
+
+.fluid-materialize--reduced {
+  transition-property: opacity;
+}
