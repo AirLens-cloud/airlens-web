@@ -31,7 +31,7 @@ function App() {
   }
   if (typeof window !== 'undefined' && window.location.pathname === '/weather') {
     return (
-      <FluidChrome>
+      <FluidChrome capsuleVariant="day">
         <Weather />
       </FluidChrome>
     )

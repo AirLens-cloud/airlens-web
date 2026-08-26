@@ -11,7 +11,11 @@ vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/GlobePlaceholder', () => ({ default: () => <div data-testid="page-globe" /> }))
 vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
-vi.mock('./components/fluid/capsule/AqiCapsule', () => ({ default: () => <div data-testid="mock-capsule" /> }))
+vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
+  default: ({ variant }: { variant?: string }) => (
+    <div data-testid="mock-capsule" data-variant={variant ?? 'night'} />
+  ),
+}))
 
 import App from './App'
 
@@ -73,5 +77,24 @@ describe('App — FluidChrome routing', () => {
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
     expect(queryByTestId('page-weather')).not.toBeNull()
+  })
+
+  it('renders the capsule in its day variant on /weather, night everywhere else', () => {
+    // Arrange / Act — /weather's light sky-glass hero needs the day glass
+    // tint; /landing and /globe keep the default night variant unchanged.
+    // render() queries default to document.body, so each render must be
+    // cleaned up before the next to avoid picking up both mock capsules.
+    setPath('/weather')
+    const weather = render(<App />)
+    const weatherVariant = weather.getByTestId('mock-capsule').getAttribute('data-variant')
+    cleanup()
+
+    setPath('/landing')
+    const landing = render(<App />)
+    const landingVariant = landing.getByTestId('mock-capsule').getAttribute('data-variant')
+
+    // Assert
+    expect(weatherVariant).toBe('day')
+    expect(landingVariant).toBe('night')
   })
 })
