@@ -9,7 +9,7 @@ import { render, cleanup } from '@testing-library/react'
 vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-data-probe" /> }))
 vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
-vi.mock('./pages/GlobePlaceholder', () => ({ default: () => <div data-testid="page-globe" /> }))
+vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /> }))
 vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
   default: ({ variant }: { variant?: string }) => (

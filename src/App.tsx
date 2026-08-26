@@ -1,7 +1,7 @@
 import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
 import LandingFlight from './pages/LandingFlight'
-import GlobePlaceholder from './pages/GlobePlaceholder'
+import Globe from './pages/Globe'
 import Weather from './pages/Weather'
 import FluidChrome from './app/FluidChrome'
 
@@ -20,12 +20,14 @@ function App() {
       </FluidChrome>
     )
   }
-  // Wave L4: Chapter 5's CTA links here — a real, honest landing spot
-  // (GlobeFallback + snapshot caveat) rather than a dead href.
+  // G2: Chapter 5's CTA now lands on the real observation deck (the WebGL
+  // globe + its observatory chrome). GlobePlaceholder, which stood in while
+  // the engine was unported, is retired — Globe falls back to GlobeFallback
+  // itself when WebGL is unavailable.
   if (typeof window !== 'undefined' && window.location.pathname === '/globe') {
     return (
       <FluidChrome>
-        <GlobePlaceholder />
+        <Globe />
       </FluidChrome>
     )
   }

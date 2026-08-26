@@ -6,8 +6,15 @@
  * fields as props instead, so it renders with no Globe engine/store present.
  * react-i18next stripped — plain-English default props.
  */
+import type { AtmosphericMode } from '../../../types/globe'
+
 export type GlobeObsHudStatus = 'ready' | 'stale' | 'unavailable' | 'loading'
-export type GlobeObsHudMode = 'live' | 'forecast' | 'transport' | 'events' | 'field'
+/**
+ * The domain union, not a local copy: the deck's fifth lens is POLICY, and an
+ * invented `'field'` member let a caller pass a mode the rest of the surface
+ * cannot produce.
+ */
+export type GlobeObsHudMode = AtmosphericMode
 
 export interface GlobeObsHudProps {
   status: GlobeObsHudStatus

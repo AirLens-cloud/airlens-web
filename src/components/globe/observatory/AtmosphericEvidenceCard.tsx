@@ -11,6 +11,8 @@
  * states are honest-empty, never fabricated, and this port keeps that branch
  * structure exactly.
  */
+import type { AtmosphericMode } from '../../../types/globe'
+
 export interface AtmosphericEvidenceFocus {
   label: string
   value: number | null
@@ -46,7 +48,8 @@ export interface AtmosphericEvidenceCardProps {
   range?: [number, number] | null
   band?: AtmosphericEvidenceBand | null
   dqssGrade?: string | null
-  mode: 'live' | 'forecast' | 'transport' | 'events' | 'field'
+  /** The domain union — see the note on `GlobeObsHudMode`. */
+  mode: AtmosphericMode
   uncertaintyMode?: 'none' | 'band' | 'unavailable'
   eventCoverage?: AtmosphericEvidenceEventCoverage | null
   source?: string | null
