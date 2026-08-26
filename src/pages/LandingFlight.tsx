@@ -41,12 +41,6 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
       style={{ minHeight: `${vh}vh` }}
       data-testid={`landing-chapter-${id}`}
     >
-      <div className="landing-chapter-hud">
-        <span className="landing-chapter-label">{label}</span>
-        <span className="landing-chapter-progress" data-testid={`landing-chapter-progress-${id}`}>
-          {progress.toFixed(2)}
-        </span>
-      </div>
       {hasCanvasSlot ? (
         id === 'ch1' ? (
           <Ch1AtmosCanvasSlot progress={progress} progressRef={progressRef} />

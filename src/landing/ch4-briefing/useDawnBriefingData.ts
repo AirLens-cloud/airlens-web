@@ -9,9 +9,16 @@ import { loadFires, loadPm25, loadTft } from '../shared/data/loaders'
 import { findPeakCell } from './projection'
 import type { DawnBriefingState, DawnForecastRow } from './types'
 
-/** +48H mark into a city's hourly series, clamped to its last available hour. */
+/** +48H mark into a city's hourly series, clamped to its last available hour.
+ * The featured city is the one with the highest first-hour p50 — the same
+ * "thickest air first" selection Chapter 2 uses, not an arbitrary index. */
 function forecastRowAt48h(tft: Awaited<ReturnType<typeof loadTft>>): DawnForecastRow | null {
-  const city = tft.cities[0]
+  let city: (typeof tft.cities)[number] | null = null
+  for (const c of tft.cities) {
+    const now = c.hourly[0]
+    if (!now) continue
+    if (city === null || now.pm25 > (city.hourly[0]?.pm25 ?? -Infinity)) city = c
+  }
   if (!city || city.hourly.length === 0) return null
   const idx = Math.min(47, city.hourly.length - 1)
   const hour = city.hourly[idx]

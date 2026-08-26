@@ -13,31 +13,6 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid var(--rule);
-}
-
-.landing-chapter-hud {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sp-3) var(--pad-x);
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--ink-2);
-  background: var(--bg-0);
-  border-bottom: 1px solid var(--rule);
-}
-
-.landing-chapter-label {
-  text-transform: uppercase;
-}
-
-.landing-chapter-progress {
-  font-variant-numeric: tabular-nums;
 }
 
 /*
