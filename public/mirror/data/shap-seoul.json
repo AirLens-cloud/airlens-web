@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-04-25T01:08:47.185569+00:00",
+  "city": "Seoul",
+  "lat": 37.5665,
+  "lon": 126.978,
+  "base_value": 0.0,
+  "features": [
+    {
+      "name": "pm25_lag_1h",
+      "importance": 0.1926,
+      "direction": "positive"
+    },
+    {
+      "name": "pm25_rmean_6h",
+      "importance": 0.0891,
+      "direction": "positive"
+    },
+    {
+      "name": "pm25_rmean_12h",
+      "importance": 0.0801,
+      "direction": "positive"
+    },
+    {
+      "name": "pm25_diff_1h",
+      "importance": 0.0579,
+      "direction": "positive"
+    },
+    {
+      "name": "pm25_rstd_12h",
+      "importance": 0.0556,
+      "direction": "positive"
+    }
+  ],
+  "sample_shap": []
+}

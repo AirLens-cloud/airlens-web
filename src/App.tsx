@@ -1,5 +1,6 @@
 import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
+import LandingFlight from './pages/LandingFlight'
 
 /**
  * Plain pathname branching — no react-router-dom dependency (not installed
@@ -8,6 +9,9 @@ import DesignGallery from './pages/DesignGallery'
 function App() {
   if (typeof window !== 'undefined' && window.location.pathname === '/design') {
     return <DesignGallery />
+  }
+  if (typeof window !== 'undefined' && window.location.pathname === '/landing') {
+    return <LandingFlight />
   }
   return <DataProbe />
 }
