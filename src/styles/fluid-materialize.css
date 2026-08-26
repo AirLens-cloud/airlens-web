@@ -3,7 +3,7 @@
  * props); this file owns only the property list and easing. */
 .fluid-materialize {
   opacity: 0;
-  transform: scale(0.94);
+  transform: scale(0.96);
   filter: blur(12px);
   transition-property: opacity, transform, filter;
   transition-timing-function: var(--ease-fluid);

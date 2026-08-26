@@ -10,7 +10,7 @@ export interface MaterializeProps {
   children?: ReactNode
 }
 
-const DEFAULT_DUR_MS = 340
+const DEFAULT_DUR_MS = 300
 /** Grace period past the transition duration before the safety-timeout unmount fires. */
 const UNMOUNT_GRACE_MS = 50
 
