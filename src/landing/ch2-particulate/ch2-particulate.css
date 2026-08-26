@@ -1,0 +1,294 @@
+/**
+ * ch2-particulate.css — Wave L2 chapter styles for the PARTICULATE city-descent
+ * flow-field scene.
+ *
+ * Ported from AirLens-platform apps/landing-lab
+ * `src/concepts/particulate/particulate.css` (was a standalone page's
+ * `.pt`/`position:fixed` full-viewport stage with its own nav/scrim/city-chip
+ * strip). This chapter instead mounts inside `.landing-canvas-slot`, which
+ * `landing.css` already makes `position: sticky; height: 100vh` — so `.ch2-pt`
+ * is `position: relative; width/height: 100%` instead of `fixed`, the same
+ * adjustment Ch1's `ch1-atmos.css` made for `.ch1-atmos-stage`. All classnames
+ * are prefixed `ch2-pt` (was bare `.pt`/`.pt__*`) so this chapter's CSS can't
+ * collide with a sibling chapter's.
+ *
+ * Deviations from the source:
+ *  - `.pt .site-nav` (nav-chrome shadow) dropped — this chapter has no nav,
+ *    same call Ch1 made.
+ *  - The clickable `.pt__strip`/`.pt__chip` city list is dropped (city
+ *    switching is scroll-driven here, not click-driven — see
+ *    `Ch2ParticulateScene.tsx`'s header comment) and replaced by
+ *    `.ch2-pt__hud`, a single-line corner readout in the same spirit as Ch1's
+ *    `.ch1-hud`.
+ *
+ * Token remapping (this repo's token names differ from landing-lab's):
+ *   --font-sans    -> var(--sans)
+ *   --font-display -> var(--serif)   (this repo's heading font, see typography.css)
+ *   --font-mono    -> var(--mono)
+ * PARTICULATE/SKY_RAMPS hex literals come from ../theme (chapter-scoped, not
+ * theme-reactive — same "permanently its own scene regardless of site
+ * light/dark toggle" treatment Ch1's stage uses).
+ */
+
+.ch2-pt {
+  --bg: #06070b;
+  --ink: #e8ecf4;
+  --dim: #9aa3b4;
+  --dim-strong: #c3c9d4; /* keep in sync with PARTICULATE.dimStrong */
+  --accent: #f0b890;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ch2-pt--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.ch2-pt__canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Corner HUD readout — replaces the source's clickable city-chip strip
+   (there is nothing to click inside a scroll-locked chapter). */
+.ch2-pt__hud {
+  position: absolute;
+  inset: var(--sp-3) var(--pad-x) auto;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--dim-strong);
+  text-shadow: 0 1px 3px rgba(6, 7, 11, 0.85);
+  pointer-events: none;
+}
+
+/* The field runs bright at the top of the dusk ramp and brighter still as haze
+   builds, so the type sits on its own guaranteed contrast floor rather than
+   hoping the sky stays dark. */
+.ch2-pt__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(6, 7, 11, 0.86) 0%, rgba(6, 7, 11, 0.62) 26%, rgba(6, 7, 11, 0) 58%),
+    linear-gradient(to right, rgba(6, 7, 11, 0.5) 0%, rgba(6, 7, 11, 0) 46%),
+    /* the top of the dusk ramp is its brightest band — the HUD needs its own floor */
+      linear-gradient(to bottom, rgba(6, 7, 11, 0.55) 0%, rgba(6, 7, 11, 0) 12%);
+}
+
+/* ── geography: the two hairlines that place the field ────────────────────── */
+.ch2-pt__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ch2-pt__geo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ch2-pt__coast {
+  fill: none;
+  stroke: rgba(232, 236, 244, 0.42); /* --ink @ 42% */
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ch2-pt__marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.ch2-pt__marker-ring {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #f0b890; /* --accent */
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(240, 184, 144, 0.14);
+  flex: none;
+}
+.ch2-pt__marker-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgba(6, 7, 11, 0.8);
+  white-space: nowrap;
+}
+.ch2-pt__wind {
+  position: absolute;
+  right: clamp(1.1rem, 4vw, 3.2rem);
+  top: 5.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* Its own contrast floor: this corner is the brightest part of the ramp. */
+  background: rgba(6, 7, 11, 0.55);
+  padding: 0.35rem 0.6rem;
+}
+.ch2-pt__wind-arrow {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.ch2-pt__wind-arrow path {
+  fill: none;
+  stroke: #f0b890; /* --accent */
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.ch2-pt__wind-txt {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgba(6, 7, 11, 0.8);
+}
+
+.ch2-pt__ui {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 clamp(1.1rem, 4vw, 3.2rem) clamp(1.1rem, 3vh, 2rem);
+  pointer-events: none;
+}
+.ch2-pt__ui > * {
+  pointer-events: auto;
+}
+
+/* ── readout ──────────────────────────────────────────────────────────────── */
+.ch2-pt__readout {
+  max-width: 40rem;
+}
+.ch2-pt__eyebrow,
+.ch2-pt__forecast-h {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  margin: 0 0 0.4rem;
+}
+/* The eyebrow rides higher than the rest of the readout, above the scrim's floor —
+   it needs the lifted grey to clear AA over the field. */
+.ch2-pt__eyebrow {
+  color: var(--dim-strong);
+}
+.ch2-pt__city {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 7vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.6rem;
+  text-wrap: balance;
+}
+.ch2-pt__figures {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.ch2-pt__value {
+  font-family: var(--mono);
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.ch2-pt__unit,
+.ch2-pt__mult {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+.ch2-pt__mult {
+  margin-left: 0.6rem;
+}
+
+.ch2-pt__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.6rem;
+  margin: 0 0 1.1rem;
+}
+.ch2-pt__meta dt {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  margin-bottom: 0.2rem;
+}
+.ch2-pt__meta dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink);
+}
+
+/* ── forecast band (Glass-box: the band is the disclosure) ────────────────── */
+.ch2-pt__forecast {
+  max-width: 32rem;
+}
+.ch2-pt__band {
+  width: 100%;
+  height: 54px;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.ch2-pt__band-fill {
+  fill: rgba(240, 184, 144, 0.22); /* --accent @ 22% */
+  stroke: none;
+}
+.ch2-pt__band-line {
+  fill: none;
+  stroke: #f0b890; /* --accent */
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.ch2-pt__caveat,
+.ch2-pt__nodata {
+  font-family: var(--sans);
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--dim);
+  margin: 0;
+  border-left: 2px solid rgba(240, 184, 144, 0.5);
+  padding-left: 0.7rem;
+  max-width: 46ch;
+}
+
+@media (max-width: 640px) {
+  .ch2-pt__wind {
+    display: none; /* the HUD and the readout own the small screen */
+  }
+  .ch2-pt__meta {
+    gap: 1rem;
+  }
+  .ch2-pt__forecast {
+    max-width: none;
+  }
+  .ch2-pt__caveat {
+    font-size: 0.76rem;
+  }
+}
