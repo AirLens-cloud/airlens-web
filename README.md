@@ -50,6 +50,10 @@ rule ported from the source repo: never fabricate a "now" timestamp when the
 source payload doesn't carry one, and return `null`/throw rather than
 substitute fake data when every source in a fallback chain fails.
 
+## Docs
+
+- [`docs/FLUID.md`](docs/FLUID.md) — fluid interface spec (springs, glass tiers, `Materialize`, capsule, orb) for porting into Today/Globe/Insights.
+
 ## Ported modules
 
 | Module | Source (AirLens-platform apps/web) | Notes |
