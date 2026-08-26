@@ -7,10 +7,16 @@
 // Deliberately ref-based, not state-based: this hook must not trigger a
 // re-render of the chapter tree on every animation frame (same "no React
 // re-render" contract `useSpring`/`useChapterProgress.progressRef` already
-// keep). A `requestAnimationFrame` loop reads the input ref every frame and
-// feeds it to the spring as a moving target — the spring's own settle
-// detection (see `SpringEngine`) means the engine goes idle once scrolling
-// stops and the smoothed value has caught up.
+// keep). A `requestAnimationFrame` loop reads the input ref every frame; it
+// only forwards the value to the spring as a new target when it has actually
+// changed since the last forwarded value — `useSpring.set()` re-adds its
+// tickable to `SpringEngine` on every call, so calling it unconditionally
+// every frame would keep the engine's rAF loop alive forever, even once the
+// spring has settled. With the change check, the spring (and the engine's
+// rAF loop) goes idle once scrolling stops and the smoothed value has caught
+// up — the rAF poll loop here keeps running (it has to, to notice the next
+// scroll), but it is a single ref comparison per frame, not a spring engine
+// tick.
 import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react'
 import { useSpring } from '../../motion/useSpring'
 import type { SpringConfig } from '../../motion/spring'
@@ -55,8 +61,13 @@ export function useSmoothedProgress(
       return
     }
     let raf = 0
+    let lastTarget = progressRef.current
     const loop = () => {
-      spring.set(progressRef.current)
+      const current = progressRef.current
+      if (current !== lastTarget) {
+        lastTarget = current
+        spring.set(current)
+      }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)

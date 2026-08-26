@@ -121,6 +121,28 @@ describe('useSmoothedProgress — motion enabled', () => {
     expect(result.current.current).toBeCloseTo(1, 1)
   })
 
+  it('idles once the target stops changing — no re-activation after settling', () => {
+    // Arrange
+    const progressRef: MutableRefObject<number> = { current: 0 }
+    const { result } = renderHook(() => useSmoothedProgress(progressRef))
+    // Act — converge to the target, then keep the raw ref pinned and run
+    // many more frames. Before the fix, the poll loop called spring.set()
+    // every frame regardless of whether the target had changed, which
+    // re-added the settled spring to `SpringEngine` and perturbed it again.
+    progressRef.current = 1
+    act(() => {
+      frames.flush(120)
+    })
+    const settledValue = result.current.current
+    act(() => {
+      frames.flush(50)
+    })
+    // Assert — value is bit-for-bit unchanged (a settled spring snaps
+    // exactly to its target, so any re-activation would be observable).
+    expect(result.current.current).toBe(settledValue)
+    expect(result.current.current).toBe(1)
+  })
+
   it('returns a different ref object than the raw input (smoothed, not passthrough)', () => {
     // Arrange / Act
     const progressRef: MutableRefObject<number> = { current: 0 }
