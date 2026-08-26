@@ -14,6 +14,7 @@
  */
 import { lazy, Suspense, type MutableRefObject } from 'react'
 import WfPlaceholder from '../../components/wireframe/WfPlaceholder'
+import { useSmoothedProgress } from '../shared/useSmoothedProgress'
 
 const Ch2ParticulateScene = lazy(() => import('./Ch2ParticulateScene'))
 
@@ -22,7 +23,17 @@ export interface Ch2ParticulateCanvasSlotProps {
   progressRef: MutableRefObject<number>
 }
 
+/**
+ * Wave 4 P2 — "descent scrub inertia": the raw `progressRef` this slot
+ * receives is swapped for a spring-smoothed one before it reaches the scene,
+ * so a per-frame reader gets a value that settles into scroll position
+ * rather than snapping to it. `Ch2ParticulateScene` itself is untouched
+ * (accepts `progressRef` in its prop shape already, but its city-switching
+ * logic reads the rAF-throttled `progress` state instead — see that file's
+ * own prop-shape comment) — this is purely a wiring swap at the slot layer.
+ */
 export function Ch2ParticulateCanvasSlot({ progress, progressRef }: Ch2ParticulateCanvasSlotProps) {
+  const smoothedRef = useSmoothedProgress(progressRef)
   return (
     <div className="landing-canvas-slot">
       <Suspense
@@ -32,7 +43,7 @@ export function Ch2ParticulateCanvasSlot({ progress, progressRef }: Ch2Particula
           </div>
         }
       >
-        <Ch2ParticulateScene progress={progress} progressRef={progressRef} />
+        <Ch2ParticulateScene progress={progress} progressRef={smoothedRef} />
       </Suspense>
     </div>
   )

@@ -21,6 +21,7 @@ import type { QualityTier } from '../../shared/perf/types'
 import { useReducedMotion } from '../../shared/perf/useReducedMotion'
 import { AQI_GRADE_HEX } from '../../shared/theme/config'
 import { ATMOS } from '../theme'
+import LiquidGlass from '../../../components/fluid/LiquidGlass'
 import Sparkline from './Sparkline'
 
 const SECTION_NAMES = ['HERO', 'THE INVISIBLE LAYER', 'FIRE & WIND', 'FORECAST', 'ENTER']
@@ -73,14 +74,30 @@ export default function Sections({
 
   return (
     <>
-      {/* HUD frame — cinematic instrument readouts */}
+      {/* HUD frame — cinematic instrument readouts, Wave 4 P2: each corner
+          readout is its own small refraction-glass chip (the HUD frame itself
+          stays an unstyled inset:0 positioning context — wrapping it as one
+          glass surface would blur/tint the whole globe viewport, not just
+          the four corners). */}
       <div className="ch1-hud">
-        <span className="ch1-hud__tl">AIRLENS · ATMOS</span>
-        <span className="ch1-hud__tr">
+        <LiquidGlass as="div" variant="night" radius={8} bezel={14} className="ch1-hud__chip ch1-hud__tl">
+          AIRLENS · ATMOS
+        </LiquidGlass>
+        <LiquidGlass as="div" variant="night" radius={8} bezel={14} className="ch1-hud__chip ch1-hud__tr">
           {tier.toUpperCase()} · {data.points.count.toLocaleString()} pts
-        </span>
-        <span className="ch1-hud__bl">GEFS-AEROSOLS · PM2.5 {pmTime}</span>
-        <span className="ch1-hud__br">{SECTION_NAMES[sectionIdx]}</span>
+        </LiquidGlass>
+        <LiquidGlass as="div" variant="night" radius={8} bezel={14} className="ch1-hud__chip ch1-hud__bl">
+          GEFS-AEROSOLS · PM2.5 {pmTime}
+        </LiquidGlass>
+        <LiquidGlass
+          as="div"
+          variant="night"
+          radius={8}
+          bezel={14}
+          className="ch1-hud__chip ch1-hud__br ch1-hud__br--accent"
+        >
+          {SECTION_NAMES[sectionIdx]}
+        </LiquidGlass>
       </div>
 
       {/* S0 HERO */}
@@ -131,10 +148,16 @@ export default function Sections({
       <section className="ch1-sec ch1-sec--right" style={layer(op3)}>
         <span className="ch1-sec__kicker" style={enter(op3, 0)}>03 · FORECAST</span>
         <h2 className="ch1-sec__head" style={enter(op3, 1)}>Tomorrow, with its doubt.</h2>
-        <div className="ch1-sparks" style={enter(op3, 2)}>
-          {data.tft.cities.slice(0, 3).map((c) => (
-            <Sparkline key={c.name} city={c} />
-          ))}
+        {/* Wave 4 P2: the forecast group is one refraction-glass panel — the
+            scroll-driven reveal (opacity/translateY from `enter()`) stays on
+            a plain wrapper div, since LiquidGlass doesn't accept a `style`
+            prop, and the glass surface itself is the inner `.ch1-sparks`. */}
+        <div className="ch1-sparks-wrap" style={enter(op3, 2)}>
+          <LiquidGlass as="div" variant="night" className="ch1-sparks">
+            {data.tft.cities.slice(0, 3).map((c) => (
+              <Sparkline key={c.name} city={c} />
+            ))}
+          </LiquidGlass>
         </div>
         <p className="ch1-sec__caveat" style={enter(op3, 3)}>
           AirLens TFT forecast · every line carries its p10–p90 band, and the band's width is
