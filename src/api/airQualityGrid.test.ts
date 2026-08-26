@@ -50,8 +50,8 @@ describe('fetchAQGrid — chain order (HF storage → CDN → static)', () => {
   it('tries the CDN when the HF storage fetch misses', async () => {
     // Arrange
     fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes('mac-data/data/web/v1')) return okResponse(CDN_GRID)
       if (String(url).includes('huggingface.co/datasets/Robeedau/airlens-live')) return notFoundResponse()
-      if (String(url).includes('joymin5655.github.io')) return okResponse(CDN_GRID)
       return notFoundResponse()
     })
     const { fetchAQGrid } = await import('./airQualityGrid')
@@ -63,15 +63,15 @@ describe('fetchAQGrid — chain order (HF storage → CDN → static)', () => {
     expect(result).not.toBeNull()
     expect(result!.nLat).toBe(2)
     const calledUrls = fetchMock.mock.calls.map((c: unknown[]) => String(c[0]))
-    expect(calledUrls.some((u) => u.includes('huggingface.co/datasets/Robeedau/airlens-live'))).toBe(true)
-    expect(calledUrls.some((u) => u.includes('joymin5655.github.io/AirLens/data/web/v1/current-pm25-grid.json'))).toBe(true)
+    expect(calledUrls.some((u) => u.includes('aq-data/current-pm25-grid.json'))).toBe(true)
+    expect(calledUrls.some((u) => u.includes('mac-data/data/web/v1/current-pm25-grid.json'))).toBe(true)
   });
 
   it('falls through to static when HF storage and CDN both fail', async () => {
     // Arrange
     fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes('mac-data/data/web/v1')) return notFoundResponse()
       if (String(url).includes('huggingface.co/datasets/Robeedau/airlens-live')) return notFoundResponse()
-      if (String(url).includes('joymin5655.github.io')) return notFoundResponse()
       if (String(url).includes('/data/current-pm25-grid.json')) return okResponse(CDN_GRID)
       return notFoundResponse()
     })
@@ -83,15 +83,15 @@ describe('fetchAQGrid — chain order (HF storage → CDN → static)', () => {
     // Assert
     expect(result).not.toBeNull()
     const calledUrls = fetchMock.mock.calls.map((c: unknown[]) => String(c[0]))
-    expect(calledUrls.some((u) => u.includes('joymin5655.github.io'))).toBe(true)
+    expect(calledUrls.some((u) => u.includes('mac-data/data/web/v1'))).toBe(true)
     expect(calledUrls.some((u) => u.includes('/data/current-pm25-grid.json'))).toBe(true)
   });
 
   it('preserves the CDN payload timestamp exactly — never substitutes "now"', async () => {
     // Arrange
     fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes('mac-data/data/web/v1')) return okResponse(CDN_GRID)
       if (String(url).includes('huggingface.co/datasets/Robeedau/airlens-live')) return notFoundResponse()
-      if (String(url).includes('joymin5655.github.io')) return okResponse(CDN_GRID)
       return notFoundResponse()
     })
     const { fetchAQGrid } = await import('./airQualityGrid')
@@ -120,7 +120,7 @@ describe('fetchAQGrid — chain order (HF storage → CDN → static)', () => {
     // Assert
     expect(result).not.toBeNull()
     const calledUrls = fetchMock.mock.calls.map((c: unknown[]) => String(c[0]))
-    expect(calledUrls.some((u) => u.includes('joymin5655.github.io'))).toBe(false)
+    expect(calledUrls.some((u) => u.includes('mac-data/data/web/v1'))).toBe(false)
   });
 
   it('returns null when every source in the chain fails', async () => {
