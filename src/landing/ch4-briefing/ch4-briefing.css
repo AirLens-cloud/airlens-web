@@ -29,6 +29,17 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
+  /* The chapter section is a min-height:120vh flex column; without flex-grow
+   * the stage stops at its own content height and the leftover section space
+   * shows the page background as a white band before Chapter 5 (visible on
+   * viewports taller than the briefing content). Grow to fill the section so
+   * the paper runs edge-to-edge into the next chapter. */
+  flex: 1;
+  /* Center the paper within whatever height the section grants, so the grown
+   * space reads as balanced letterhead margins instead of a bottom-only tail. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   overflow: hidden;
   --ch4-wipe: 0;
   background: color-mix(in oklab, var(--obs-void) calc((1 - var(--ch4-wipe)) * 100%), var(--obs-paper) calc(var(--ch4-wipe) * 100%));
