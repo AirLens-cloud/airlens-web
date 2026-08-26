@@ -156,6 +156,9 @@
   --dur-fast: 200ms;
   --dur-base: 280ms;
   --dur-slow: 480ms;
+  --ease-fluid: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-enter: 300ms;
+  --stagger: 60ms;
 
   /* ---- z-index ---- */
   --z-content: 5;

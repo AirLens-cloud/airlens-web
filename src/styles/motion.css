@@ -1,0 +1,22 @@
+/* motion.css — fluid entry discipline (Wave 1). Consumers set --enter-i (0-based
+ * index) per element for staggered reveal; scale floor is 0.96, not 0 — a
+ * from-nothing scale reads as a pop rather than a settle. */
+.fluid-enter {
+  transition:
+    opacity var(--dur-enter) var(--ease-fluid),
+    transform var(--dur-enter) var(--ease-fluid);
+  transition-delay: calc(var(--enter-i, 0) * var(--stagger));
+}
+
+@starting-style {
+  .fluid-enter {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fluid-enter {
+    transition: none;
+  }
+}
