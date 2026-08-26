@@ -1,8 +1,9 @@
-/* Minimal reset — no design system yet (DataProbe is intentionally unstyled). */
-:root {
-  color-scheme: light dark;
-}
-
-body {
-  margin: 0;
-}
+/* Design system entry point — ported from AirLens-platform apps/web (Wave A,
+ * feat/design-system). Import order matters: tokens before everything else,
+ * obs.css before surfaces.css (surfaces does not currently depend on obs, but
+ * keeping the observatory world grouped with its own tokens avoids drift). */
+@import './styles/tokens.css';
+@import './styles/typography.css';
+@import './styles/obs.css';
+@import './styles/surfaces.css';
+/* @import './styles/wireframe.css'; -- added in Wave B */

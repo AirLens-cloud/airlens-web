@@ -1,0 +1,143 @@
+/**
+ * typography.css — 13-class semantic typography vehicle.
+ *
+ * Ported from AirLens-platform apps/web/src/reado.css:307-424. Class names and
+ * roles are preserved 1:1 so components/copy that reference `.h-hero`, `.t-data`,
+ * etc. behave identically to the source app. Three classes are redefined per the
+ * porting brief (Crimson Pro is not bundled — decision #2):
+ *
+ *   - .t-lede  : was Crimson Pro 18px  -> Inter 400 18px/1.6
+ *   - .t-quote : was Crimson Pro italic -> Inter italic (ital axis loaded in index.html)
+ *   - .t-caveat: was Crimson Pro italic -> JetBrains Mono regular 12px (no italic —
+ *                mono italic is not part of the loaded weight set) + ink-1. The
+ *                signature left 2px border is preserved so the caveat pattern is
+ *                still recognizable at a glance.
+ */
+
+.h-hero {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(56px, 7vw, 96px);
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--ink-0);
+}
+.h-2 {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(24px, 6vw, 32px);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--ink-0);
+}
+.h-3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(20px, 5vw, 24px);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--ink-0);
+}
+.t-body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-1);
+}
+/* was Crimson Pro 18px — Inter fallback (decision #2) */
+.t-lede {
+  font-family: var(--sans);
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink-1);
+}
+/* was Crimson Pro italic — Inter italic (ital axis loaded, decision #2) */
+.t-quote {
+  font-family: var(--sans);
+  font-style: italic;
+  font-size: clamp(20px, 2.4vw, 28px);
+  line-height: 1.55;
+  color: var(--ink-0);
+}
+/* was Crimson Pro italic — mono regular, no italic (decision #2). Left border
+   signature preserved so the caveat pattern reads the same at a glance. */
+.t-caveat {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-1);
+  border-left: 2px solid var(--ink-0);
+  padding-left: 12px;
+}
+.t-data {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-0);
+  font-variant-numeric: tabular-nums;
+}
+.t-numeric {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(80px, 11vw, 144px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: var(--ink-0);
+  font-variant-numeric: tabular-nums;
+}
+.t-micro {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.t-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+}
+.t-caption {
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.t-bi-ko {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink-0);
+}
+.t-bi-en {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+}
+
+/* Visually hidden, still announced by screen readers. */
+.a11y-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
