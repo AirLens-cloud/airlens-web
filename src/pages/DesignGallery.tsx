@@ -7,7 +7,7 @@
  * reading) — Glass-box doctrine: a gallery demo must not read as live
  * telemetry (flagged by globe-specialist during the port).
  */
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import WfButton from '../components/wireframe/WfButton'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfTabs from '../components/wireframe/WfTabs'
@@ -71,6 +71,19 @@ const SAMPLE_NOTIFICATIONS: AppNotification[] = [
 
 export default function DesignGallery() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  // tokens.css dark chain is keyed on `:root[data-theme]` — an attribute on
+  // this component's own div never matches it, so the toggle must write to
+  // <html> and restore the pre-mount value on unmount.
+  useEffect(() => {
+    const root = document.documentElement
+    const previous = root.getAttribute('data-theme')
+    root.setAttribute('data-theme', theme)
+    return () => {
+      if (previous === null) root.removeAttribute('data-theme')
+      else root.setAttribute('data-theme', previous)
+    }
+  }, [theme])
   const [segment, setSegment] = useState('a')
   const [tab, setTab] = useState('x')
   const [dialogOpen, setDialogOpen] = useState(false)
