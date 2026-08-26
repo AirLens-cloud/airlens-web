@@ -10,7 +10,12 @@ vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-da
 vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/GlobePlaceholder', () => ({ default: () => <div data-testid="page-globe" /> }))
-vi.mock('./components/fluid/capsule/AqiCapsule', () => ({ default: () => <div data-testid="mock-capsule" /> }))
+vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
+vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
+  default: ({ variant }: { variant?: string }) => (
+    <div data-testid="mock-capsule" data-variant={variant ?? 'night'} />
+  ),
+}))
 
 import App from './App'
 
@@ -60,5 +65,36 @@ describe('App — FluidChrome routing', () => {
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
     expect(queryByTestId('page-globe')).not.toBeNull()
+  })
+
+  it('mounts the fluid chrome overlay on /weather', () => {
+    // Arrange — /weather gets the same site-nav-return capsule as /landing
+    // and /globe (weather-review finding); the hero no longer embeds its
+    // own AqiCapsule instance, so there is exactly one per page.
+    setPath('/weather')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('page-weather')).not.toBeNull()
+  })
+
+  it('renders the capsule in its day variant on /weather, night everywhere else', () => {
+    // Arrange / Act — /weather's light sky-glass hero needs the day glass
+    // tint; /landing and /globe keep the default night variant unchanged.
+    // render() queries default to document.body, so each render must be
+    // cleaned up before the next to avoid picking up both mock capsules.
+    setPath('/weather')
+    const weather = render(<App />)
+    const weatherVariant = weather.getByTestId('mock-capsule').getAttribute('data-variant')
+    cleanup()
+
+    setPath('/landing')
+    const landing = render(<App />)
+    const landingVariant = landing.getByTestId('mock-capsule').getAttribute('data-variant')
+
+    // Assert
+    expect(weatherVariant).toBe('day')
+    expect(landingVariant).toBe('night')
   })
 })
