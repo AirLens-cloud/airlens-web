@@ -2,6 +2,7 @@ import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
 import LandingFlight from './pages/LandingFlight'
 import GlobePlaceholder from './pages/GlobePlaceholder'
+import Weather from './pages/Weather'
 import FluidChrome from './app/FluidChrome'
 
 /**
@@ -27,6 +28,9 @@ function App() {
         <GlobePlaceholder />
       </FluidChrome>
     )
+  }
+  if (typeof window !== 'undefined' && window.location.pathname === '/weather') {
+    return <Weather />
   }
   return <DataProbe />
 }

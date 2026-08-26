@@ -1,0 +1,445 @@
+/**
+ * weather.css — /weather page (Wave W2, W0 mockup v3 approved).
+ *
+ * Space classification (design-taxonomy.md §0): the page is `hybrid` — a
+ * fluid `PublicPageContainer`-style hub with a fixed content cap (mirrors
+ * this repo's other pages, no PublicPageContainer component ported here yet
+ * — see App.tsx's plain pathname branching).
+ *
+ * Surface-material classification (§"표면 재질 축"): the hero (S1) is the
+ * one `glass` surface on this page — it renders live weather over a real
+ * sky backdrop. Everything else (rail/grid/AQ line/footer) is paper.
+ *
+ * `.wx-sky`'s 11-phase gradient tokens + phase-aware ink inversion are a
+ * verbatim value-port of AirLens-platform's `.sky-surface` (reado.css) —
+ * decision #3 in tokens.css opted out of porting sky-glass gradients
+ * globally; this is the scoped exception (F2) for this one page. Renamed
+ * `.wx-sky` (not `.sky-surface`) so a future full port of the monorepo's
+ * class doesn't collide with this one.
+ */
+
+:root {
+  /* S5 wind-minimap canvas colors — read via getComputedStyle in
+     WindMinimap.tsx rather than hardcoded in JS (see SkyOrb.tsx's
+     `readCssColor` for the same pattern). */
+  --wx-wind-bg: rgba(12, 16, 24, 0.94);
+  --wx-wind-line: rgba(240, 244, 250, 0.7);
+  --wx-wind-marker: var(--orange);
+
+  --sky-grad-dawn: linear-gradient(180deg, #2a3a6a 0%, #7a5a8a 38%, #e0a0a0 72%, #f4d4b4 100%);
+  --sky-grad-morning: linear-gradient(180deg, #4a7ab0 0%, #8ab4d8 38%, #c0dcef 72%, #eaf4fb 100%);
+  --sky-grad-noon: linear-gradient(180deg, #4f93d4 0%, #74b0e2 38%, #a6d0ef 72%, #dcecfb 100%);
+  --sky-grad-dusk: linear-gradient(180deg, #3a558a 0%, #6a5e98 38%, #c07e8e 72%, #f0b890 100%);
+  --sky-grad-night: linear-gradient(180deg, #0c1430 0%, #1a2450 38%, #2a3868 72%, #3a4a80 100%);
+  --sky-grad-cloudy: linear-gradient(180deg, #6b7a8f 0%, #8a98a8 38%, #aab4c0 72%, #cdd4dc 100%);
+  --sky-grad-fog: linear-gradient(180deg, #8a9098 0%, #a6abb2 38%, #c2c6cc 72%, #dde0e4 100%);
+  --sky-grad-drizzle: linear-gradient(180deg, #5a6b7d 0%, #79899a 38%, #9aa8b6 72%, #c0cad4 100%);
+  --sky-grad-rain: linear-gradient(180deg, #3f4d5e 0%, #566576 38%, #71808f 72%, #94a1ae 100%);
+  --sky-grad-snow: linear-gradient(180deg, #9aa6b6 0%, #b8c2cf 38%, #d2dae3 72%, #eef1f5 100%);
+  --sky-grad-thunder: linear-gradient(180deg, #23262e 0%, #363a47 38%, #4a4f60 72%, #5e6478 100%);
+}
+
+.wx-page {
+  min-height: 100vh;
+  padding-bottom: var(--sp-8);
+}
+
+/* ---- Shared shell — hybrid: fluid width, --shell cap ---- */
+.wx-shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 0 var(--pad-x);
+}
+
+/* ============================== S1 — hero ============================== */
+
+.wx-sky {
+  position: relative;
+  isolation: isolate;
+  color: var(--wx-ink-1);
+  --wx-ink-1: #0b1a2e;
+  --wx-ink-2: rgba(11, 26, 46, 0.85);
+  --wx-ink-3: rgba(11, 26, 46, 0.68);
+  border-radius: var(--r-0);
+  overflow: hidden;
+  padding: var(--sp-6) var(--pad-x) var(--sp-7);
+}
+.wx-sky[data-sky-phase='night'],
+.wx-sky[data-sky-phase='rain'],
+.wx-sky[data-sky-phase='thunder'] {
+  --wx-ink-1: #ffffff;
+  --wx-ink-2: rgba(255, 255, 255, 0.85);
+  --wx-ink-3: rgba(255, 255, 255, 0.68);
+}
+.wx-sky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.18) 100%);
+}
+.wx-sky[data-sky-phase='night']::before,
+.wx-sky[data-sky-phase='rain']::before,
+.wx-sky[data-sky-phase='thunder']::before {
+  background: linear-gradient(165deg, rgba(8, 12, 30, 0.30) 0%, rgba(8, 12, 30, 0.10) 55%, rgba(8, 12, 30, 0.22) 100%);
+}
+.wx-sky[data-sky-phase='dawn'] { background: var(--sky-grad-dawn); }
+.wx-sky[data-sky-phase='morning'] { background: var(--sky-grad-morning); }
+.wx-sky[data-sky-phase='noon'] { background: var(--sky-grad-noon); }
+.wx-sky[data-sky-phase='dusk'] { background: var(--sky-grad-dusk); }
+.wx-sky[data-sky-phase='night'] { background: var(--sky-grad-night); }
+.wx-sky[data-sky-phase='cloudy'] { background: var(--sky-grad-cloudy); }
+.wx-sky[data-sky-phase='fog'] { background: var(--sky-grad-fog); }
+.wx-sky[data-sky-phase='drizzle'] { background: var(--sky-grad-drizzle); }
+.wx-sky[data-sky-phase='rain'] { background: var(--sky-grad-rain); }
+.wx-sky[data-sky-phase='snow'] { background: var(--sky-grad-snow); }
+.wx-sky[data-sky-phase='thunder'] { background: var(--sky-grad-thunder); }
+
+.wx-hero__inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--shell);
+  margin: 0 auto;
+}
+
+.wx-hero__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.wx-hero__place {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.wx-hero__place-name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(18px, 2.4vw, 22px);
+  color: var(--wx-ink-1);
+}
+.wx-hero__place-source {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wx-ink-3);
+}
+.wx-hero__actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.wx-hero__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-fill);
+  color: var(--wx-ink-1);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.wx-hero__action-btn:hover:not(:disabled) {
+  background: var(--glass-fill-lift);
+}
+.wx-hero__action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wx-hero__reading {
+  margin-top: var(--sp-6);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+.wx-hero__temp {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(64px, 10vw, 128px);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--wx-ink-1);
+  font-variant-numeric: tabular-nums;
+}
+.wx-hero__temp-unit {
+  font-size: 0.4em;
+  vertical-align: super;
+  font-weight: 600;
+}
+.wx-hero__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--sp-2);
+}
+.wx-hero__condition {
+  font-family: var(--sans);
+  font-size: 18px;
+  color: var(--wx-ink-1);
+}
+.wx-hero__range {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--wx-ink-2);
+}
+
+.wx-hero__capsule-anchor {
+  position: absolute;
+  right: var(--pad-x);
+  bottom: var(--sp-6);
+  z-index: 2;
+}
+
+@media (max-width: 640px) {
+  .wx-hero__capsule-anchor {
+    position: static;
+    margin-top: var(--sp-5);
+    display: flex;
+    justify-content: flex-start;
+  }
+}
+
+/* ---- City search panel ---- */
+.wx-search-panel {
+  margin-top: var(--sp-4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-4);
+  background: var(--glass-fill);
+  padding: var(--sp-3);
+  max-width: 360px;
+}
+.wx-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-0);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--tint-ink-dark);
+  font-family: var(--sans);
+  font-size: 14px;
+}
+.wx-search-list {
+  margin-top: var(--sp-2);
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.wx-search-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 8px 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--wx-ink-1);
+  font-family: var(--sans);
+  font-size: 13px;
+  text-align: left;
+}
+.wx-search-item:hover {
+  background: var(--glass-fill-lift);
+}
+.wx-search-empty {
+  padding: 8px 6px;
+  color: var(--wx-ink-3);
+  font-size: 12px;
+}
+
+/* ========================== S2 — hourly rail =========================== */
+
+.wx-section {
+  margin-top: var(--sp-7);
+}
+.wx-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.wx-rail {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  padding-bottom: var(--sp-2);
+  scrollbar-width: thin;
+}
+.wx-rail__item {
+  flex: 0 0 auto;
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-0);
+}
+.wx-rail__time {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.wx-rail__icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wx-rail__temp {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-0);
+  font-variant-numeric: tabular-nums;
+}
+.wx-rail__precip {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--semantic-warn);
+}
+
+/* =========================== S3 — instrument grid ======================= */
+
+.wx-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+@media (max-width: 640px) {
+  .wx-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.wx-tile {
+  border: 1px solid var(--rule);
+  border-radius: var(--r-0);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 92px;
+}
+.wx-tile__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.wx-tile__value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink-0);
+  font-variant-numeric: tabular-nums;
+}
+.wx-tile__sub {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+/* ============================ S4 — AQ line ============================== */
+
+.wx-aq-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-4);
+  border: 1px solid var(--rule);
+}
+.wx-aq-line__value {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink-0);
+}
+.wx-aq-line__grade {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-1);
+}
+.wx-aq-line__action {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.wx-aq-line__more {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--orange-ink);
+}
+
+/* ============================ S5 — wind minimap ========================= */
+
+.wx-wind {
+  position: relative;
+  border: 1px solid var(--rule);
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+}
+.wx-wind__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wx-wind__mslp {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-1);
+  background: var(--bg-0);
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+}
+
+/* ============================== S6 — footer ============================= */
+
+.wx-footer {
+  margin-top: var(--sp-7);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wx-footer__line {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+/* ============================ shared skeleton ============================ */
+
+.wx-skeleton-row {
+  display: flex;
+  gap: var(--sp-3);
+}
