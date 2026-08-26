@@ -72,4 +72,20 @@ export type { WfCoachmarkProps } from './types'
 
 export { default as BilingualLabel } from './BilingualLabel'
 
-// Composites (Wave C) — added once WfGlassCard.tsx / composites/WfChartFrame.tsx land.
+// Composites (Wave C)
+export { default as WfGlassCard } from './WfGlassCard'
+export type { WfGlassCardProps, WfGlassCardVariant, WfGlassCardAqi } from './types'
+
+export { default as WfCodeBlock } from './composites/WfCodeBlock'
+export type { WfCodeBlockProps } from './composites/WfCodeBlock'
+
+export { default as WfTimelineScrubber, snapToNearest } from './composites/WfTimelineScrubber'
+export type {
+  WfTimelineScrubberProps,
+  WfTimelineScrubberStep,
+  WfTimelineScrubberTrackConfig,
+  WfTimelineScrubberPlaybackConfig,
+} from './composites/WfTimelineScrubber'
+
+export { default as WfChartFrame } from './composites/WfChartFrame'
+export type { WfChartFrameProps, WfChartFrameEmptyReason } from './composites/WfChartFrame'

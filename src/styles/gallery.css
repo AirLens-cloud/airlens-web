@@ -1,0 +1,37 @@
+/**
+ * gallery.css — layout-only styling for /design (DesignGallery.tsx).
+ * Not part of the ported design system itself — purely the demo page's own
+ * scaffolding (section spacing, row wrapping).
+ */
+.design-gallery {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--sp-6, 32px) var(--sp-4, 16px) var(--sp-8, 64px);
+  background: var(--bg-0);
+  color: var(--ink-0);
+}
+.gallery-header {
+  padding-bottom: var(--sp-4, 16px);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--sp-6, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 12px);
+  align-items: flex-start;
+}
+.gallery-section {
+  padding: var(--sp-5, 24px) 0;
+  border-bottom: 1px dashed var(--rule);
+}
+.gallery-note { color: var(--ink-2); margin-top: -4px; margin-bottom: var(--sp-3, 12px); }
+.gallery-body { display: flex; flex-direction: column; gap: var(--sp-3, 12px); }
+.gallery-row { display: flex; align-items: center; gap: var(--sp-3, 12px); flex-wrap: wrap; }
+.gallery-row--wrap { align-items: stretch; }
+.gallery-swatch { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; }
+.gallery-obs-block { padding: var(--sp-4, 16px); background: var(--obs-void); }
+.gallery-obs-block .gallery-section { border-bottom-color: rgba(232, 236, 244, .14); }
+.gallery-obs-block .h-section { color: var(--obs-ink); }
+.gallery-obs-block .t-caption { color: var(--obs-hud); }
+.gallery-glass-demo { padding: 16px; width: 180px; }
+.gallery-fab-demo { position: relative; display: flex; justify-content: flex-end; min-height: 60px; }
+.gallery-bg-demo { position: relative; height: 220px; overflow: hidden; border: 1px solid var(--rule); background: var(--bg-1); }
