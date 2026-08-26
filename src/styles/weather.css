@@ -346,12 +346,23 @@
   text-transform: uppercase;
   color: var(--ink-2);
 }
+.wx-tile__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
 .wx-tile__value {
   font-family: var(--mono);
   font-size: 22px;
   font-weight: 700;
   color: var(--ink-0);
   font-variant-numeric: tabular-nums;
+}
+.wx-tile__arrow {
+  display: inline-block;
+  font-size: 16px;
+  color: var(--ink-2);
+  transform-origin: center;
 }
 .wx-tile__sub {
   font-family: var(--sans);

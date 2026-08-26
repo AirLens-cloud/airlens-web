@@ -30,20 +30,49 @@ function toFinite(v: number | null | undefined): number | null {
   return v != null && Number.isFinite(v) ? v : null
 }
 
+/** Open-Meteo's `wind_speed_10m` is served in km/h by default (confirmed via
+ * the proxy's own `hourly_units.wind_speed_10m`), not m/s — this repo shows
+ * m/s to match Korean weather convention, so every reading is converted here
+ * rather than displayed raw. */
+function windSpeedMsFromKmh(kmh: number): number {
+  return kmh / 3.6
+}
+
+/** `wind_direction_10m` is meteorological convention (degrees the wind is
+ * blowing FROM). The compass arrow follows the common consumer-weather-app
+ * convention instead — pointing in the direction the wind is blowing
+ * TOWARD — so the rotation is the reciprocal bearing. */
+function arrowRotationDegFromMeteorological(directionFromDeg: number): number {
+  return (directionFromDeg + 180) % 360
+}
+
 interface TileSpec {
   label: string
   value: string
   sub: string
+  /** Decorative compass arrow rotation (degrees), Wind tile only. */
+  arrowDeg?: number | null
 }
 
 /** One instrument tile — fail-soft per field: a null value renders "—" plus
  * a caption, never a fabricated 0, and never collapses the tile (no layout
  * jump — every tile keeps the same footprint whether the field resolved). */
-function Tile({ label, value, sub }: TileSpec) {
+function Tile({ label, value, sub, arrowDeg }: TileSpec) {
   return (
     <div className="wx-tile">
       <span className="wx-tile__label">{label}</span>
-      <span className="wx-tile__value">{value}</span>
+      <div className="wx-tile__value-row">
+        <span className="wx-tile__value">{value}</span>
+        {arrowDeg != null && Number.isFinite(arrowDeg) && (
+          <span
+            className="wx-tile__arrow"
+            aria-hidden="true"
+            style={{ transform: `rotate(${arrowDeg}deg)` }}
+          >
+            &uarr;
+          </span>
+        )}
+      </div>
       <span className="wx-tile__sub">{sub}</span>
     </div>
   )
@@ -51,7 +80,8 @@ function Tile({ label, value, sub }: TileSpec) {
 
 function buildTiles(weather: OpenMeteoWeatherHourly): TileSpec[] {
   const humidity = toFinite(weather.relative_humidity_2m?.[0])
-  const windSpeed = toFinite(weather.wind_speed_10m?.[0])
+  const windSpeedKmh = toFinite(weather.wind_speed_10m?.[0])
+  const windSpeedMs = windSpeedKmh !== null ? windSpeedMsFromKmh(windSpeedKmh) : null
   const windDirection = toFinite(weather.wind_direction_10m?.[0])
   const uv = toFinite(weather.uv_index?.[0])
   const cloud = toFinite(weather.cloud_cover?.[0])
@@ -62,8 +92,9 @@ function buildTiles(weather: OpenMeteoWeatherHourly): TileSpec[] {
     { label: 'Humidity', value: humidity !== null ? `${Math.round(humidity)}%` : '—', sub: humidity !== null ? 'relative' : 'Not measured' },
     {
       label: 'Wind',
-      value: windSpeed !== null ? `${windSpeed.toFixed(1)} m/s` : '—',
-      sub: windSpeed === null ? 'Not measured' : windDirection !== null ? compassLabel(windDirection) : 'direction unavailable',
+      value: windSpeedMs !== null ? `${windSpeedMs.toFixed(1)} m/s` : '—',
+      sub: windSpeedMs === null ? 'Not measured' : windDirection !== null ? compassLabel(windDirection) : 'direction unavailable',
+      arrowDeg: windDirection !== null ? arrowRotationDegFromMeteorological(windDirection) : null,
     },
     { label: 'UV Index', value: uv !== null ? uv.toFixed(1) : '—', sub: uv !== null ? uvGrade(uv) : 'Not measured' },
     { label: 'Cloud cover', value: cloud !== null ? `${Math.round(cloud)}%` : '—', sub: cloud !== null ? 'sky coverage' : 'Not measured' },
