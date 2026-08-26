@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useReducedMotion } from '../../../landing/shared/perf/useReducedMotion'
 import { useSpring } from '../../../motion/useSpring'
-import LiquidGlass from '../LiquidGlass'
+import LiquidGlass, { type LiquidGlassProps } from '../LiquidGlass'
 import AqiDot from '../../wireframe/AqiDot'
 import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
@@ -51,6 +51,15 @@ function formatCountdown(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+/** Shown when the mirror is older than REFRESH_INTERVAL_MS — a stale feed
+ * must read as "old data", never as an imminent refresh (0:00). */
+function formatDataAge(ms: number): string {
+  const h = Math.floor(ms / (60 * 60 * 1000))
+  if (h >= 48) return `${Math.floor(h / 24)}d ago`
+  if (h >= 1) return `${h}h ago`
+  return `${Math.max(1, Math.floor(ms / 60000))}m ago`
+}
+
 function getFocusable(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>(
@@ -59,13 +68,19 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
   )
 }
 
+export interface AqiCapsuleProps {
+  /** Glass surface variant — night for the landing hero, day for light
+   * surfaces (Today porting). */
+  variant?: LiquidGlassProps['variant']
+}
+
 /**
  * AqiCapsule — floating pill that expands into a 2-page glass panel
  * (current reading + range, then a 24h sparkline). idle -> open on
  * hover/click/keyboard, plus a one-shot session alert when the forecast
  * worsens in the next 24h.
  */
-export default function AqiCapsule(): ReactNode {
+export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
   const data = useCapsuleData()
   useReducedMotion()
   const [open, setOpen] = useState(false)
@@ -228,13 +243,16 @@ export default function AqiCapsule(): ReactNode {
     idle = <span className="aq-capsule__value">NO FEED</span>
     ariaLabel = 'Air quality feed unavailable, expand for details'
   } else {
-    const remaining = REFRESH_INTERVAL_MS - (nowTick - new Date(data.updatedAt).getTime())
+    const elapsed = nowTick - new Date(data.updatedAt).getTime()
+    const remaining = REFRESH_INTERVAL_MS - elapsed
     idle = (
       <>
         <AqiDot tier={data.tier} size={10} />
         <span className="aq-capsule__value">{Math.round(data.current)}</span>
         <span className="aq-capsule__unit">µg/m³</span>
-        <span className="aq-capsule__countdown">{formatCountdown(remaining)}</span>
+        <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined}>
+          {remaining > 0 ? formatCountdown(remaining) : formatDataAge(elapsed)}
+        </span>
       </>
     )
     ariaLabel = `Air quality ${Math.round(data.current)} PM2.5, expand for details`
@@ -249,7 +267,7 @@ export default function AqiCapsule(): ReactNode {
       onPointerLeave={handlePointerLeave}
     >
       <div ref={shellRef} className="aq-capsule__shell">
-        <LiquidGlass as="div" variant="night" radius={radius} className="aq-capsule__glass">
+        <LiquidGlass as="div" variant={variant} radius={radius} className="aq-capsule__glass">
           <button
             ref={triggerRef}
             type="button"
