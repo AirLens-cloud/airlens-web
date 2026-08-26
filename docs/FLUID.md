@@ -304,11 +304,10 @@ and `filter` are forced to `none` via the `--reduced` class
 
 ### `AqiCapsule` (`src/components/fluid/capsule/AqiCapsule.tsx`)
 
-No props — a self-contained floating widget. Fetches its own data via
-`useCapsuleData()` (below), renders a `LiquidGlass` shell that's
-**hardcoded to `variant="night"`** (`AqiCapsule.tsx:252`) regardless of page
-theme — if a porting page needs a `day` variant capsule, that's a change to
-`AqiCapsule.tsx`, not a prop it currently exposes.
+One optional prop — `variant?: 'day' | 'night'` (default `'night'`),
+forwarded to its `LiquidGlass` shell. Fetches its own data via
+`useCapsuleData()` (below). A porting page on a light surface passes
+`<AqiCapsule variant="day" />`; the landing hero keeps the default.
 
 - **Interaction**: hover-to-open (mouse pointer type only, `pointerType !== 'mouse'`
   is ignored — `AqiCapsule.tsx:140-150`), click/keyboard toggle, `Escape` to
@@ -326,7 +325,10 @@ theme — if a porting page needs a `day` variant capsule, that's a change to
   `REFRESH_INTERVAL_MS = 3h` countdown display is commented "Assumed
   forecast cadence ... Purely a countdown display; never asserted as a live
   guarantee" (`AqiCapsule.tsx:24-27`) — do not port this as a guarantee of
-  actual data freshness.
+  actual data freshness. When the mirror is older than the interval the
+  capsule switches from a countdown to data age (`Nh ago`, with a
+  `data-stale` attribute on the countdown span) instead of sticking at
+  `0:00` — stale data must read as old, never as an imminent refresh.
 
 ### `CapsulePanel` (`src/components/fluid/capsule/CapsulePanel.tsx`)
 
@@ -403,7 +405,7 @@ Matrix and priorities as approved; each row maps to the concrete API in §3.
 | Glass hero | P1 | `<LiquidGlass variant="day">` wrapping the hero surface. Pass an explicit `radius`/`bezel` if the hero's corner treatment differs from the `20`/`34` defaults — both are plain props, not tokens. |
 | Materialize panel | P1 | Wrap the panel's reveal in `<Materialize show={...} origin="...">`. `origin` should point at whatever visually "spawns" the panel (e.g. the element that triggered it) so the scale-in reads as coming from that point. |
 | Forecast band | P1 | `useSmoothedProgress(rawProgressRef)` feeding whatever per-frame reader animates the band — do not read the raw ref directly if the goal is the "descent scrub inertia" feel documented in §1/§3. |
-| Capsule anchor | P2 | `<AqiCapsule />` as-is (no props). Its `LiquidGlass` shell is fixed to `variant="night"` (§3) — if Today's hero is a `day` surface, decide explicitly whether the capsule should visually contrast (current behavior) or match; the component has to be edited either way, this isn't a prop toggle today. |
+| Capsule anchor | P2 | `<AqiCapsule />` (defaults to `variant="night"`). If Today's hero is a `day` surface, decide explicitly whether the capsule should visually contrast (default) or match — matching is now a prop toggle: `<AqiCapsule variant="day" />` (§3). |
 | Orb | P2 | `<SkyOrb pm25={...} tier={...} />` — feed the same PM2.5 reading the hero displays, not a separate fetch, so the orb and the numeric readout can't disagree. |
 
 ### Globe

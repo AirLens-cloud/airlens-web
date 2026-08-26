@@ -90,6 +90,38 @@ describe('AqiCapsule', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
 
+  it('shows a countdown while the mirror is within the refresh interval', () => {
+    // Arrange — updatedAt is now, so remaining ≈ 3h
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const countdown = container.querySelector('.aq-capsule__countdown')
+    expect(countdown?.textContent).toMatch(/^\d+:\d{2}$/)
+    expect(countdown?.hasAttribute('data-stale')).toBe(false)
+  })
+
+  it('shows data age instead of a stuck 0:00 when the mirror is stale', () => {
+    // Arrange — 5h-old data, beyond the 3h refresh interval
+    vi.mocked(useCapsuleData).mockReturnValue({
+      ...READY,
+      updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const countdown = container.querySelector('.aq-capsule__countdown')
+    expect(countdown?.textContent).toBe('5h ago')
+    expect(countdown?.getAttribute('data-stale')).toBe('true')
+  })
+
+  it('defaults to the night glass variant and accepts a day override', () => {
+    // Arrange / Act
+    const night = render(<AqiCapsule />)
+    const day = render(<AqiCapsule variant="day" />)
+    // Assert
+    expect(night.container.querySelector('.liquid-glass--night')).not.toBeNull()
+    expect(day.container.querySelector('.liquid-glass--day')).not.toBeNull()
+  })
+
   it('renders the honest NO FEED state instead of a fabricated reading', () => {
     // Arrange
     vi.mocked(useCapsuleData).mockReturnValue({ status: 'missing' })
