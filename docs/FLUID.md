@@ -83,14 +83,14 @@ exist today:
 
 | Const | File | `{ damping, response }` | ζ regime | Used for |
 |---|---|---|---|---|
-| `DEFAULT_CONFIG` | `src/landing/shared/useSmoothedProgress.ts:23` | `{ damping: 1, response: 0.25 }` | critically damped (ζ=1, no overshoot) | scroll-progress smoothing — the code comment explains why: a progress value must stay inside `[0,1]`, so an underdamped config that overshoots is wrong here (`useSmoothedProgress.ts:19-22`) |
+| `DEFAULT_CONFIG` | `src/landing/shared/useSmoothedProgress.ts:29` | `{ damping: 1, response: 0.25 }` | critically damped (ζ=1, no overshoot) | scroll-progress smoothing — the code comment explains why: a progress value must stay inside `[0,1]`, so an underdamped config that overshoots is wrong here (`useSmoothedProgress.ts:25-28`) |
 | `CAPSULE_SPRING` | `src/components/fluid/capsule/AqiCapsule.tsx:17` | `{ damping: 0.68, response: 0.38 }` | underdamped (ζ<1, overshoots) | the capsule's expand/collapse width+height |
 | `DRAG_SPRING` | `src/components/fluid/capsule/CapsulePanel.tsx:13` | `{ damping: 0.72, response: 0.32 }` | underdamped (ζ<1, overshoots) | the drag-to-page snap `translateX` |
 
 `damping` is the damping ratio ζ (1 = critically damped, <1 = overshoots,
 per the type doc at `src/motion/spring.ts:4-6`); `response` is a response
 time in seconds, converted to angular frequency as
-`ω = 2π / max(0.05, response)` (`src/motion/spring.ts:26,31`). Treat the
+`ω = 2π / max(0.05, response)` (`src/motion/spring.ts:29,34`). Treat the
 table above as "known-good values already tuned in this codebase," not
 formal names — if a porting page needs a fourth config, derive one the same
 way (pick ζ for overshoot-or-not, response for speed) rather than
@@ -111,8 +111,9 @@ inside component-scoped CSS as the shared easing curve for
 `fluid-materialize.css` (`transition-timing-function: var(--ease-fluid)`,
 `src/styles/fluid-materialize.css:9`). Note `Materialize`'s own transition
 duration is **not** driven by `--dur-enter` — it's a separate `durMs` prop
-defaulting to `340ms` (see §3); the two numbers are close but not the same
-constant, and nothing keeps them in sync.
+defaulting to `300ms` (see §3), matching the `--dur-enter` value by the
+entry-discipline rule (duration ≤300ms), not by a shared constant — a
+change to one does not automatically update the other.
 
 ### Glass token consumption contract — no new `--glass-*` tokens
 
@@ -164,14 +165,17 @@ class Spring {
 - `SpringEngine` is a **module-singleton** rAF driver — `add(item)` /
   `remove(item)` manage a `Set<{step(dtSec): boolean}>`; it only runs
   `requestAnimationFrame` while the set is non-empty, and stops itself once
-  every added item reports settled (`spring.ts:71-109`). One rAF loop
+  every added item reports settled (`spring.ts:82-120`). One rAF loop
   services every spring in the page — see §6.
-- `step()` clamps `dtSec` to `MAX_DT_SEC = 0.064` (`spring.ts:13,55`) — a
-  tab-backgrounding stall doesn't inject one giant physics step.
+- `step()` clamps `dtSec` to `MAX_DT_SEC = 0.064` first, then integrates that
+  clamped step in fixed `MAX_SUBSTEP_SEC = 0.004` (250Hz) substeps rather
+  than as one semi-implicit Euler step (`spring.ts:13,16,57-69`) — see §6
+  for why a single step at the full clamped duration is not safe for every
+  config this system uses.
 - `projectMomentum(velocityPxPerSec, decel = 0.998)` — exponential-decay
-  fling projection, returns final displacement in px (`spring.ts:114-116`).
+  fling projection, returns final displacement in px (`spring.ts:125-127`).
 - `rubberband(excess, coeff = 0.35)` — resistance scaling for out-of-bounds
-  drag (`spring.ts:119-121`).
+  drag (`spring.ts:129-131`).
 
 ### `useSpring` (`src/motion/useSpring.ts`)
 
@@ -219,11 +223,25 @@ Wraps a raw scroll/drag progress ref (expected range `[0,1]`) in a spring
 and returns a **different** ref object that lags and settles into the input
 value — a per-frame reader (e.g. an R3F `useFrame`) reads the smoothed ref
 instead of the raw one. Ref-based by design, not state-based, so it never
-forces a re-render on scroll (`useSmoothedProgress.ts:1-13`). Under
+forces a re-render on scroll (`useSmoothedProgress.ts:1-19`). Under
 `prefers-reduced-motion`, it returns the **same** `progressRef` object
 passed in — no spring, no rAF loop at all
-(`useSmoothedProgress.ts:53-56`, verified by test:
+(`useSmoothedProgress.ts:59-62`, verified by test:
 `useSmoothedProgress.test.ts:64-75`, `rafSpy` asserted never called).
+
+**Idle contract**: with motion enabled, an internal `requestAnimationFrame`
+poll loop reads the raw `progressRef` every frame — that poll loop itself
+never stops while the hook is mounted (it has to keep watching for the next
+scroll). What *does* go idle once scrolling stops is `SpringEngine`'s own
+tick loop: the poll loop only calls `spring.set()` — which is what
+re-registers the spring with `SpringEngine` — when the raw ref's value has
+actually changed since the last call, not unconditionally every frame
+(`useSmoothedProgress.ts:63-74`). Calling `spring.set()` on every frame
+regardless of change would keep re-adding the spring to `SpringEngine` even
+after it settled, permanently defeating `SpringEngine`'s own self-stop
+(§6) — this was a real bug in an earlier version of this hook, covered by
+the "idles once the target stops changing" case in
+`useSmoothedProgress.test.ts`.
 
 ### `LiquidGlass` (`src/components/fluid/LiquidGlass.tsx`)
 
@@ -258,7 +276,7 @@ interface LiquidGlassProps {
 interface MaterializeProps {
   show: boolean
   origin?: string       // CSS transform-origin, default 'center'
-  durMs?: number         // default 340
+  durMs?: number         // default 300
   className?: string
   children?: ReactNode
 }
@@ -266,7 +284,7 @@ interface MaterializeProps {
 
 Opacity/scale/blur "condense in, dissolve out" wrapper — CSS classes
 `fluid-materialize` / `fluid-materialize--entered` (see `fluid-materialize.css`
-for the exact property list: `opacity 0→1`, `transform: scale(0.94)→scale(1)`,
+for the exact property list: `opacity 0→1`, `transform: scale(0.96)→scale(1)`,
 `filter: blur(12px)→blur(0)`). Mount/unmount lifecycle
 (`Materialize.tsx:17-23`):
 
@@ -435,7 +453,7 @@ a new hook (e.g. `useFlipReorder`) when Insights actually needs it.
 |---|---|---|
 | `.fluid-enter` (CSS entry) | `transition: none` — no animation at all, not a shortened one | `motion.css:18-22` |
 | `useSpring` | Every `.set()` call becomes `spring.jump(target)` — instant, zero-velocity | `useSpring.ts:56-62` |
-| `useSmoothedProgress` | Returns the **same** raw `progressRef` object, no spring/rAF loop created at all | `useSmoothedProgress.ts:53-56` |
+| `useSmoothedProgress` | Returns the **same** raw `progressRef` object, no spring/rAF loop created at all | `useSmoothedProgress.ts:59-62` |
 | `Materialize` | `--reduced` class: only `opacity` transitions; `transform`/`filter` forced to `none` | `fluid-materialize.css:18-26` |
 | `SkyOrb` | Skips the rAF particle loop, draws one static frame (`drawStatic()`) instead | `SkyOrb.tsx:171-175` |
 | `LiquidGlass` | Not motion-gated directly — but `prefers-reduced-transparency: reduce` forces the `tint` tier regardless of browser capability (§1) | `glassTier.ts:23-28` |
@@ -462,7 +480,7 @@ not assume the fill/border tokens alone guarantee AA.
 ## 6. Performance budget
 
 - **Single rAF engine for all springs**: `SpringEngine`
-  (`src/motion/spring.ts:71-109`) is a module singleton — every `useSpring`
+  (`src/motion/spring.ts:82-120`) is a module singleton — every `useSpring`
   instance across the whole page shares one `requestAnimationFrame` loop,
   which self-stops once every registered spring reports `isSettled()`. This
   is why the pattern in §3 (`subscribe` → write to a ref's inline style,
@@ -484,10 +502,19 @@ not assume the fill/border tokens alone guarantee AA.
   debounced `150ms` after the last resize event before recomputing
   (`RESIZE_DEBOUNCE_MS = 150`, `LiquidGlass.tsx:15,41-49`) — not
   immediate-per-frame.
-- **`step()` dt clamp**: every spring step clamps `dtSec` to `MAX_DT_SEC = 0.064`
-  seconds (`src/motion/spring.ts:13,55`), so a tab-backgrounding stall (huge
-  real elapsed time on the next rAF callback) can't inject a single
-  destabilizing physics step.
+- **`step()` dt clamp + substep integration**: every spring step clamps
+  `dtSec` to `MAX_DT_SEC = 0.064` seconds first (`src/motion/spring.ts:13`),
+  so a tab-backgrounding stall (huge real elapsed time on the next rAF
+  callback) can't inject one arbitrarily large physics step. That clamped
+  step is then integrated in fixed `MAX_SUBSTEP_SEC = 0.004` (250Hz)
+  substeps rather than as a single semi-implicit Euler step
+  (`src/motion/spring.ts:16,57-73`) — a single step at the full clamped
+  `0.064s` is **not** unconditionally stable for every config in this
+  system (a stiff, lightly-damped spring like `CapsulePanel`'s
+  `DRAG_SPRING` — `damping: 0.72, response: 0.32` — diverges under it, an
+  amplifying eigenvalue of the discrete update), while the substepped
+  integration is stable across the full `response >= 0.05` range this
+  system allows.
 
 ## 7. Test conventions
 
