@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-ssr/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# editor / OS
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# logs
+*.log
+npm-debug.log*
+
+# cloudflare
+.wrangler/
+
+# test / coverage
+coverage/

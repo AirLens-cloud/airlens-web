@@ -1,0 +1,8 @@
+/* Minimal reset — no design system yet (DataProbe is intentionally unstyled). */
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+}

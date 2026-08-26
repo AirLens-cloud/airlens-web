@@ -1,0 +1,39 @@
+{
+  "name": "airlens-web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "AirLens web — HF-dataset-backed read-only data layer (bootstrap, pre-design). Data pipeline lives in AirLens-platform; this repo consumes Robeedau/airlens-live only.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "setup-hooks": "git config core.hooksPath scripts/git-hooks && chmod +x scripts/git-hooks/pre-commit && echo 'git hooks activated: core.hooksPath=scripts/git-hooks'"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.1"
+  }
+}

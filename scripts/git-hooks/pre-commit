@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# airlens-web git pre-commit hook — Layer 1 secret scan (gitleaks).
+# Activated via: npm run setup-hooks   (sets core.hooksPath=scripts/git-hooks)
+#
+# Bypass (NOT recommended): git commit --no-verify
+# CI Layer 2 (.github/workflows/ci.yml) re-runs gitleaks on the full diff.
+
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+NC=$'\033[0m'
+
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --redact -v --config="$ROOT/gitleaks.toml" --no-banner; then
+    echo "${RED}✗ gitleaks found secrets in staged changes — commit blocked.${NC}" >&2
+    echo "  Bypass (emergency only): git commit --no-verify" >&2
+    echo "  False-positive? Add to gitleaks.toml [allowlist] and document in PR." >&2
+    exit 1
+  fi
+else
+  echo "${YELLOW}⚠ gitleaks not installed — skipping secret scan.${NC}" >&2
+  echo "  Install: brew install gitleaks  (or https://github.com/gitleaks/gitleaks/releases)" >&2
+  echo "  CI will still enforce in GitHub Actions." >&2
+fi
+
+echo "${GREEN}✓ pre-commit checks passed${NC}" >&2
+exit 0

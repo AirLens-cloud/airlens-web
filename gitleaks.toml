@@ -1,0 +1,38 @@
+# gitleaks config — airlens-web
+# Layer 1 (local pre-commit) + Layer 2 (CI) 공용.
+# Ported from AirLens-platform/gitleaks.toml, trimmed to this repo's own paths
+# (this repo has no secrets/, Obsidian wiki, ML artifacts, or Skills/ vendor tree).
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "airlens-web project allowlist"
+
+# Placeholder strings — legitimate in .env.example / docs.
+regexes = [
+  '''your[_-]?\w+[_-]?(key|token|secret|id|url|dsn|password)''',
+  '''placeholder''',
+]
+
+# Paths — placeholders / build output / vendor.
+paths = [
+  '''.*\.env\.example$''',
+  '''.*\.env\.sample$''',
+  '''.*\.env\.template$''',
+  '''.*/node_modules/.*''',
+  '''package-lock\.json$''',
+  '''dist/.*''',
+  '''coverage/.*''',
+]
+
+commits = []
+
+# NVIDIA NIM API key — default gitleaks ruleset misses the `nvapi-` format.
+[[rules]]
+id = "nvidia-nim-api-key"
+description = "NVIDIA NIM API key"
+regex = '''nvapi-[A-Za-z0-9_-]{20,}'''
+keywords = ["nvapi-"]
+tags = ["nvidia", "ai", "api"]
