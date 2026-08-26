@@ -7,23 +7,23 @@ export interface ChapterCanvasSlotProps {
 }
 
 /**
- * ChapterCanvasSlot — React.lazy() boundary placeholder for a chapter's 3D
- * scene. Wave L0 (this file) only renders an empty X-pattern placeholder;
- * `three` / `@react-three/fiber` are installed but intentionally not
- * imported anywhere yet — the flight shell must not pull the 3D bundle
- * before there is a scene to show.
+ * ChapterCanvasSlot — static X-pattern placeholder for a chapter that doesn't
+ * have a scene yet. `three` / `@react-three/fiber` are installed but this
+ * component never imports them — the flight shell must not pull the 3D
+ * bundle before there is a scene to show.
  *
- * 3D scene lands in Wave L1-L3: this component's body becomes
- *   const Scene = lazy(() => import('./ch1-atmos/Scene'))
- *   return <Suspense fallback={<WfPlaceholder .../>}><Scene {...} /></Suspense>
- * one per chapter, swapped in without touching LandingFlight.tsx's layout.
+ * Wave L1: Chapter 1 has moved off this shared placeholder onto its own
+ * `React.lazy()` + `Suspense` boundary (`ch1-atmos/Ch1AtmosCanvasSlot.tsx`),
+ * wired directly from `LandingFlight.tsx`. This component now renders only
+ * for Chapters 2/3, until each gets the same lazy-boundary treatment in
+ * Wave L2/L3.
  */
 export function ChapterCanvasSlot({ chapterLabel, className }: ChapterCanvasSlotProps) {
-  const classes = ['landing-canvas-slot']
+  const classes = ['landing-canvas-slot', 'landing-canvas-slot--placeholder']
   if (className) classes.push(className)
   return (
     <div className={classes.join(' ')}>
-      <WfPlaceholder label={`${chapterLabel} — 3D scene (Wave L1-L3)`} />
+      <WfPlaceholder label={`${chapterLabel} — 3D scene (Wave L2-L3)`} />
     </div>
   )
 }

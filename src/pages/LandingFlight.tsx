@@ -1,6 +1,8 @@
 import { useRef } from 'react'
 import { useChapterProgress } from '../landing/shared/useChapterProgress'
 import { ChapterCanvasSlot } from '../landing/ChapterCanvasSlot'
+import { Ch1AtmosCanvasSlot } from '../landing/ch1-atmos/Ch1AtmosCanvasSlot'
+import { QualityProvider } from '../landing/shared/perf/QualityProvider'
 import '../styles/landing.css'
 
 interface ChapterDef {
@@ -25,7 +27,7 @@ const CHAPTERS: ChapterDef[] = [
 
 function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
   const ref = useRef<HTMLElement | null>(null)
-  const { progress } = useChapterProgress(ref)
+  const { progress, progressRef } = useChapterProgress(ref)
 
   return (
     <section
@@ -41,7 +43,13 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
           {progress.toFixed(2)}
         </span>
       </div>
-      {hasCanvasSlot ? <ChapterCanvasSlot chapterLabel={label} /> : null}
+      {hasCanvasSlot ? (
+        id === 'ch1' ? (
+          <Ch1AtmosCanvasSlot progress={progress} progressRef={progressRef} />
+        ) : (
+          <ChapterCanvasSlot chapterLabel={label} />
+        )
+      ) : null}
     </section>
   )
 }
@@ -50,15 +58,22 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
  * LandingFlight — Wave L0 shell for the "full flight" 5-chapter landing page.
  * Each chapter is its own tall `<section>` with independent scroll progress
  * (`useChapterProgress`); `three`/`@react-three/fiber` are not imported here —
- * chapter scenes land in Wave L1-L5 via `ChapterCanvasSlot`'s `React.lazy()`
- * boundary.
+ * chapter scenes land in Wave L1-L5, each behind its own `React.lazy()`
+ * boundary (Chapter 1's is `Ch1AtmosCanvasSlot`, Wave L1; Chapters 2/3 still
+ * render `ChapterCanvasSlot`'s static placeholder until L2/L3 land).
+ *
+ * `QualityProvider` wraps the whole flight (not per-chapter) so every chapter
+ * scene shares one render-quality tier decision instead of re-probing FPS
+ * per chapter.
  */
 export default function LandingFlight() {
   return (
-    <main className="landing-flight" data-testid="landing-flight">
-      {CHAPTERS.map((chapter) => (
-        <LandingChapter key={chapter.id} {...chapter} />
-      ))}
-    </main>
+    <QualityProvider>
+      <main className="landing-flight" data-testid="landing-flight">
+        {CHAPTERS.map((chapter) => (
+          <LandingChapter key={chapter.id} {...chapter} />
+        ))}
+      </main>
+    </QualityProvider>
   )
 }

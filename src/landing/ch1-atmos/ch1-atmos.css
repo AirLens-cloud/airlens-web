@@ -1,0 +1,307 @@
+/**
+ * ch1-atmos.css — Wave L1 chapter styles for the ATMOS earth-flight scene.
+ *
+ * Ported from AirLens-platform apps/landing-lab
+ * `src/concepts/atmos/atmos.css`, scoped under `.ch1-atmos-stage` (was a
+ * standalone page's `.atmos`/`.atmos__scroll`/`.atmos__sticky` — this chapter
+ * instead mounts inside `.landing-canvas-slot`, which `landing.css` already
+ * makes `position: sticky; height: 100vh`, so the outer scroll-container
+ * rules are dropped). Classnames are prefixed `ch1-` throughout.
+ *
+ * Token remapping (this repo's token names differ from landing-lab's):
+ *   --font-display -> var(--serif)   (this repo's heading font, see typography.css)
+ *   --font-serif    -> var(--sans)   (this repo has no Crimson Pro; same
+ *                                     substitution typography.css already
+ *                                     made for .t-lede/.t-quote)
+ *   --font-mono     -> var(--mono)
+ *   --dur-1/--dur-2 -> var(--dur-base)/var(--dur-slow)
+ *   --ease-in-out   -> literal `ease-in-out` keyword (no equivalent token;
+ *                      used only by the two decorative SCROLL-cue keyframes)
+ * ATMOS/EARTH hex literals come from ../theme (chapter-scoped, not
+ * theme-reactive — this stage is a permanently-dark space scene regardless of
+ * the site's light/dark toggle, the same "theme unchanged" treatment
+ * AirLens-platform's own Globe HUD uses).
+ */
+
+.ch1-atmos-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05070d;
+  color: #e8ecf4;
+}
+
+.ch1-atmos-stage--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+/* Cinematic vignette — frames the globe, fills the dark corners. */
+.ch1-atmos-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(ellipse at 50% 46%, transparent 55%, rgba(3, 5, 10, 0.55) 100%);
+}
+/* Subtle film grain over the empty point-density areas (self-contained SVG noise). */
+.ch1-atmos-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ch1-atmos-canvas {
+  position: absolute !important;
+  inset: 0;
+  display: block;
+}
+
+/* ── HUD frame ─────────────────────────────────────────────────────────────── */
+.ch1-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #5a6a85;
+  z-index: 3;
+}
+.ch1-hud > span {
+  position: absolute;
+}
+.ch1-hud__tl { top: 4.6rem; left: 1.5rem; }
+.ch1-hud__tr { top: 4.6rem; right: 1.5rem; }
+.ch1-hud__bl { bottom: 1.3rem; left: 1.5rem; }
+.ch1-hud__br { bottom: 1.3rem; right: 1.5rem; color: #25e2f4; }
+
+/* ── Narrative sections ────────────────────────────────────────────────────── */
+.ch1-sec {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0 clamp(1.5rem, 8vw, 7rem);
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  z-index: 2;
+}
+.ch1-sec--center { align-items: center; text-align: center; }
+.ch1-sec--left { align-items: flex-start; }
+.ch1-sec--right { align-items: flex-end; text-align: right; }
+/* Children rise on entry; the offset itself is scroll-driven (inline), the
+   transition just smooths the rAF stepping. */
+.ch1-sec > * { transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+
+.ch1-sec__hero {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 8vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  margin: 0;
+  text-shadow: 0 2px 40px rgba(5, 7, 13, 0.8);
+}
+.ch1-sec__sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #8a94a8;
+  margin: 0;
+}
+.ch1-sec__cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: #aeb8c9;
+  margin: 1.6rem 0 0;
+  animation: ch1-cue 2.4s ease-in-out infinite;
+}
+.ch1-sec__cue-arrow {
+  display: inline-block;
+  font-size: 14px;
+  animation: ch1-cue-bob 1.6s ease-in-out infinite;
+}
+@keyframes ch1-cue { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+@keyframes ch1-cue-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+.ch1-sec__kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #25e2f4;
+}
+.ch1-sec__head {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 5vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+  max-width: 20ch;
+  text-shadow: 0 2px 30px rgba(5, 7, 13, 0.8);
+}
+.ch1-sec__body {
+  font-family: var(--sans);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  color: #c2c9d6;
+  max-width: 40ch;
+  margin: 0;
+}
+.ch1-sec__mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #8a94a8;
+  margin: 0;
+}
+.ch1-sec__caveat {
+  font-family: var(--sans);
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #aab3c6;
+  max-width: 46ch;
+  border-left: 2px solid #25e2f4;
+  padding: 0.45rem 0.75rem;
+  margin: 0.5rem 0 0;
+  /* Scrim so the italic caveat stays legible over the point cloud (no blur). */
+  background: rgba(5, 7, 13, 0.62);
+}
+.ch1-sec--right .ch1-sec__caveat { border-left: none; border-right: 2px solid #25e2f4; }
+
+/* Hotspot leaders — S1 numbers pinned to the globe via projected screen coords */
+.ch1-leaders {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  font-family: var(--mono);
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+.ch1-leader { position: absolute; }
+.ch1-leader__dot {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+}
+.ch1-leader__stem {
+  position: absolute;
+  left: 2px;
+  top: -14px;
+  width: 18px;
+  height: 14px;
+  border-left: 1px solid rgba(239, 68, 68, 0.5);
+  border-top: 1px solid rgba(239, 68, 68, 0.5);
+}
+.ch1-leader__label {
+  position: absolute;
+  left: 22px;
+  top: -27px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #e8ecf4;
+  text-shadow: 0 1px 6px rgba(5, 7, 13, 0.92);
+}
+.ch1-leader__label b { color: #ff6a6a; font-weight: 700; letter-spacing: 0.16em; }
+.ch1-leader__val { font-size: 15px; font-weight: 700; color: #ffffff; }
+.ch1-leader__unit { color: #8a94a8; font-size: 9px; }
+
+/* Wind speed legend (S2) */
+.ch1-windlegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #8a94a8;
+}
+.ch1-windlegend__item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ch1-windlegend__sw { width: 10px; height: 10px; border-radius: 50%; }
+.ch1-windlegend__ramp {
+  width: 46px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #25e2f4, #f5a524);
+}
+
+/* Forecast sparklines */
+.ch1-sparks { display: flex; flex-direction: column; gap: 0.9rem; }
+.ch1-spark {
+  width: min(300px, 70vw);
+  border: 1px solid #1b2233;
+  padding: 0.6rem 0.75rem;
+  background: rgba(8, 11, 20, 0.55);
+  backdrop-filter: blur(4px);
+}
+.ch1-spark__head { display: flex; justify-content: space-between; align-items: baseline; }
+.ch1-spark__city { font-family: var(--serif); font-weight: 700; font-size: 0.95rem; }
+/* The interval width, not a grade — so it is set as a quiet annotation rather than
+   the boxed badge the platform reserves for a real DQSS score. */
+.ch1-spark__spread {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #8a94a8;
+}
+.ch1-spark__svg { width: 100%; height: 48px; display: block; margin: 0.35rem 0; touch-action: none; cursor: crosshair; }
+.ch1-spark__foot {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #8a94a8;
+}
+
+/* Chapter-close CTA */
+.ch1-sec__cta {
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(2rem, 6vw, 4rem);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* Phones: drop the two top HUD ticks so they never collide with wrapped chrome. */
+@media (max-width: 640px) {
+  .ch1-hud__tl,
+  .ch1-hud__tr { display: none; }
+  .ch1-sec { padding: 0 1.25rem; }
+  /* On phones the globe fills the screen, so projected leaders collide with the
+     section heading — drop them; the in-canvas markers + clusters still show. */
+  .ch1-leaders { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch1-sec { transition: none; }
+  .ch1-sec > * { transition: none; }
+  .ch1-sec__cue,
+  .ch1-sec__cue-arrow { animation: none; }
+}
