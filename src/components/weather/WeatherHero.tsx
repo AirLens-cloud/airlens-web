@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import AqiCapsule from '../fluid/capsule/AqiCapsule'
 import Materialize from '../fluid/Materialize'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
@@ -42,9 +41,11 @@ function round(v: number | null | undefined): number | null {
 
 /**
  * WeatherHero — S1. Sky-glass backdrop (11-phase gradient, F2) with the
- * current reading, location controls, and the existing floating AqiCapsule
- * as a branding anchor (its own independent "featured city" data source —
- * see docs/FLUID.md; S4 owns the location-specific PM2.5 reading).
+ * current reading and location controls. The site's floating AqiCapsule
+ * (its own independent "featured city" data source — see docs/FLUID.md) is
+ * no longer embedded here: `/weather` is wrapped in the same `FluidChrome`
+ * overlay as `/landing` and `/globe`, so a second, hero-anchored instance
+ * would double it up. S4 owns the location-specific PM2.5 reading.
  */
 export default function WeatherHero({
   location,
@@ -139,10 +140,6 @@ export default function WeatherHero({
             </div>
           </div>
         )}
-
-        <div className="wx-hero__capsule-anchor">
-          <AqiCapsule variant="day" />
-        </div>
       </div>
     </section>
   )

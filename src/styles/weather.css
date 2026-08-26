@@ -61,6 +61,19 @@
   --wx-ink-1: #0b1a2e;
   --wx-ink-2: rgba(11, 26, 46, 0.85);
   --wx-ink-3: rgba(11, 26, 46, 0.68);
+  /* Shared wireframe primitives rendered inside this hero (WfDataState's
+     error copy, WfSkeleton's loading pulse) read the global ink/rule/bg-1
+     tokens, not the wx-ink-prefixed ones above. Pin them to the same
+     dark-ink-default here — independent of the site's own light/dark
+     theme, which would otherwise cascade in the wrong ink for this
+     backdrop — and flip them alongside wx-ink below. Single
+     data-sky-phase-scoped judgment, no per-component luminance math. */
+  --ink-0: #0b1a2e;
+  --ink-1: rgba(11, 26, 46, 0.85);
+  --ink-2: rgba(11, 26, 46, 0.68);
+  --ink-3: rgba(11, 26, 46, 0.55);
+  --rule: rgba(11, 26, 46, 0.18);
+  --bg-1: rgba(11, 26, 46, 0.08);
   border-radius: var(--r-0);
   overflow: hidden;
   padding: var(--sp-6) var(--pad-x) var(--sp-7);
@@ -71,6 +84,12 @@
   --wx-ink-1: #ffffff;
   --wx-ink-2: rgba(255, 255, 255, 0.85);
   --wx-ink-3: rgba(255, 255, 255, 0.68);
+  --ink-0: #ffffff;
+  --ink-1: rgba(255, 255, 255, 0.85);
+  --ink-2: rgba(255, 255, 255, 0.68);
+  --ink-3: rgba(255, 255, 255, 0.55);
+  --rule: rgba(255, 255, 255, 0.24);
+  --bg-1: rgba(255, 255, 255, 0.14);
 }
 .wx-sky::before {
   content: '';
@@ -196,27 +215,13 @@
   color: var(--wx-ink-2);
 }
 
-.wx-hero__capsule-anchor {
-  position: absolute;
-  right: var(--pad-x);
-  bottom: var(--sp-6);
-  z-index: 2;
-}
-
-@media (max-width: 640px) {
-  .wx-hero__capsule-anchor {
-    position: static;
-    margin-top: var(--sp-5);
-    display: flex;
-    justify-content: flex-start;
-  }
-}
-
 /* ---- City search panel ---- */
 .wx-search-panel {
   margin-top: var(--sp-4);
   border: 1px solid var(--glass-border);
-  border-radius: var(--r-4);
+  /* Glass surface (glass-fill/glass-border, sits on the .wx-sky hero) —
+     square doctrine's glass exception is --r-glass, not --r-4. */
+  border-radius: var(--r-glass);
   background: var(--glass-fill);
   padding: var(--sp-3);
   max-width: 360px;

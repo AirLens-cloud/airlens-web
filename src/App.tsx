@@ -30,7 +30,11 @@ function App() {
     )
   }
   if (typeof window !== 'undefined' && window.location.pathname === '/weather') {
-    return <Weather />
+    return (
+      <FluidChrome>
+        <Weather />
+      </FluidChrome>
+    )
   }
   return <DataProbe />
 }

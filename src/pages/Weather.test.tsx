@@ -1,8 +1,12 @@
 // Smoke test: page-level render + status transitions (loading -> ready,
-// unconfigured, error/no-data). Section internals (hero temp math, rail
-// hour formatting, tile fail-soft captions, wind canvas) have their own
-// scope by construction — this test only checks the page assembles and
-// each section's three-state contract surfaces something honest.
+// unconfigured, error/no-data). Most section internals (rail hour
+// formatting, wind canvas, city search) have no dedicated unit test file
+// yet — this suite is their only current coverage, exercised indirectly
+// through a full page render. The one exception is the wind-speed unit
+// conversion (km/h -> m/s): a previous version of this suite only checked
+// that *some* value rendered, which is exactly why the km/h-labeled-as-m/s
+// bug shipped in the first commit undetected — so that value is now
+// asserted directly below, not just "did something show up".
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 
@@ -11,9 +15,6 @@ vi.mock('../hooks/useGeolocation', () => ({
 }))
 vi.mock('../hooks/useWeatherPageData', () => ({
   useWeatherPageData: vi.fn(),
-}))
-vi.mock('../components/fluid/capsule/AqiCapsule', () => ({
-  default: () => <div data-testid="mock-capsule" />,
 }))
 
 import { useGeolocation } from '../hooks/useGeolocation'
@@ -121,6 +122,25 @@ describe('Weather page', () => {
     // Assert
     expect(container.querySelector('.wx-hero__temp')).not.toBeNull()
     expect(getByText(/12 µg\/m³ PM2\.5/)).toBeTruthy()
+  })
+
+  it('converts the wind reading from km/h (the proxy unit) to m/s for display', () => {
+    // Arrange — Open-Meteo's hourly_units.wind_speed_10m is "km/h"; 3.2 km/h
+    // should render as 0.9 m/s (3.2 / 3.6), not the raw 3.2 under an "m/s" label.
+    mockGeo()
+    mockData({
+      status: 'ready',
+      configured: true,
+      weather: {
+        time: ['2026-01-01T00:00'],
+        wind_speed_10m: [3.2],
+        wind_direction_10m: [180],
+      },
+    })
+    // Act
+    const { getByText } = render(<Weather />)
+    // Assert
+    expect(getByText('0.9 m/s')).toBeTruthy()
   })
 
   it('shows the "chosen location" label after a user picks a location', () => {

@@ -10,6 +10,7 @@ vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-da
 vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/GlobePlaceholder', () => ({ default: () => <div data-testid="page-globe" /> }))
+vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({ default: () => <div data-testid="mock-capsule" /> }))
 
 import App from './App'
@@ -60,5 +61,17 @@ describe('App — FluidChrome routing', () => {
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
     expect(queryByTestId('page-globe')).not.toBeNull()
+  })
+
+  it('mounts the fluid chrome overlay on /weather', () => {
+    // Arrange — /weather gets the same site-nav-return capsule as /landing
+    // and /globe (weather-review finding); the hero no longer embeds its
+    // own AqiCapsule instance, so there is exactly one per page.
+    setPath('/weather')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('page-weather')).not.toBeNull()
   })
 })
