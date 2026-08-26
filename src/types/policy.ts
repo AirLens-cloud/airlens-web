@@ -45,6 +45,33 @@ export interface LaneCrossCheck {
   ground_stations?: CrossCheckLane
 }
 
+/**
+ * One row of `policy-impact/summary.json` — the whole 119-country SDID result
+ * set in a single request, so the hub can rank, count and map without fetching
+ * 119 files. The per-country file stays the source for the synthetic-control
+ * curve and the cross-check lanes.
+ */
+export interface PolicySummaryRow {
+  countryCode: string
+  att: number | null
+  ci_low: number | null
+  ci_high: number | null
+  p_value: number | null
+  significant: boolean | null
+  status: string | null
+  treatmentYear: number | null
+  panelSource: string | null
+  /** SDID panel-fit score (0–100). Not sensor DQSS — a different quantity. */
+  fitScore: number | null
+  hasCrossCheck: boolean
+}
+
+export interface PolicySummary {
+  generatedAt: string | null
+  count: number
+  countries: PolicySummaryRow[]
+}
+
 export interface PolicyImpact {
   id: string
   country: string | null
@@ -93,9 +120,14 @@ export interface PolicyIndexEntry {
 }
 
 /**
- * One country-year of the observed PM2.5 panel, with the interval the pipeline
- * actually measured across its contributing sources. p10/p90 are published
- * values, not a multiplier applied to the mean.
+ * One country-year of the observed PM2.5 panel.
+ *
+ * p10/p90 are the 10th and 90th percentiles of that year's station-day
+ * observations inside the country (`scripts/etl/organize_data.py`) — the
+ * OBSERVED SPREAD across stations and days, not a predictive uncertainty
+ * interval. They are published values, never a multiplier applied to the mean,
+ * and they collapse to the mean on a year with a single contributing station:
+ * a zero-width spread is a real state and must not be drawn as a band.
  */
 export interface CountryPanelPoint {
   year: number

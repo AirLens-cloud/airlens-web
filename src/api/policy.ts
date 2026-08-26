@@ -29,12 +29,14 @@ import type {
   LaneCrossCheck,
   PolicyImpact,
   PolicyIndexEntry,
+  PolicySummary,
   RawSyntheticPoint,
   SdidPoint,
 } from '../types/policy'
 
 const POLICY_BASE = `${HF_LIVE_BASE}/insights-data/policy-impact`
 const POLICY_INDEX_URL = `${POLICY_BASE}/index.json`
+const POLICY_SUMMARY_URL = `${POLICY_BASE}/summary.json`
 
 interface RawCrossCheckLane {
   att?: number | null
@@ -169,10 +171,39 @@ function mapRawPolicyData(raw: RawPolicyImpactData, index: PolicyIndexEntry | un
 }
 
 let _indexCache: PolicyIndexEntry[] | null = null
+let _summaryCache: PolicySummary | null = null
 
-/** Test seam — drops the memoized index so a fetch runs again. */
+/** Test seam — drops the memoized index/summary so a fetch runs again. */
 export function resetPolicyIndexCache(): void {
   _indexCache = null
+  _summaryCache = null
+}
+
+/**
+ * The whole estimated set in one request: every country the SDID batch ran on,
+ * with its verdict and the gate reason when it declined.
+ *
+ * It exists because the alternative — probing 119 files to learn which ones
+ * exist — makes "which countries were analysed" cost 119 round trips, and the
+ * index alone cannot answer it: the index labels 124 countries, of which only
+ * 118 were estimated, and one estimated country is missing from it entirely.
+ *
+ * Returns null (never throws) so the page can say the result set is unavailable
+ * rather than presenting an empty one as "nothing was analysed".
+ */
+export async function fetchPolicySummary(): Promise<PolicySummary | null> {
+  if (_summaryCache) return _summaryCache
+  try {
+    const res = await fetch(POLICY_SUMMARY_URL)
+    if (!res.ok) return null
+    const parsed = (await res.json()) as PolicySummary
+    if (!Array.isArray(parsed?.countries)) return null
+    _summaryCache = parsed
+    return _summaryCache
+  } catch (err) {
+    logger.warn('fetchPolicySummary failed:', err)
+    return null
+  }
 }
 
 export async function fetchPolicyIndex(): Promise<PolicyIndexEntry[]> {
