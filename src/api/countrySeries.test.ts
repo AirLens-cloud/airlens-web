@@ -86,6 +86,29 @@ describe('fetchCountrySeries', () => {
     expect(panel?.points.map((p) => p.year)).toEqual([2016])
   })
 
+  it('collapses a repeated year to one point, keeping the last', async () => {
+    // Arrange — two rows stamped 2016 is a publisher bug, but the panel is read
+    // downstream as a year-indexed sequence: the trend band walks adjacent
+    // years, so a repeat breaks contiguity and strands the earlier point, which
+    // the caption then calls "a year with no adjacent year" — untrue of a
+    // duplicate. Defining the behaviour here beats letting it fall out of a
+    // rendering loop.
+    mockFetch({
+      'by_country/KR.json': seriesBody({
+        series: [
+          { year: 2016, pm25Mean: 26.1, p10: 12, p90: 40 },
+          { year: 2016, pm25Mean: 25.0, p10: 11, p90: 39 },
+          { year: 2017, pm25Mean: 24.0, p10: 10, p90: 38 },
+        ],
+      }),
+    })
+    // Act
+    const panel = await fetchCountrySeries('KR')
+    // Assert
+    expect(panel?.points.map((p) => p.year)).toEqual([2016, 2017])
+    expect(panel?.points[0].pm25).toBe(25.0)
+  })
+
   it('sorts years ascending regardless of published order', async () => {
     mockFetch({
       'by_country/KR.json': seriesBody({

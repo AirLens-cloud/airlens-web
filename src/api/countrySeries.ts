@@ -53,13 +53,22 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
  * show where observation actually exists. p10/p90 stay null independently — a
  * published mean without a published interval is a real state, and inventing
  * one from the mean is exactly what this feed exists to stop.
+ *
+ * ONE POINT PER YEAR is part of the contract, enforced here rather than assumed.
+ * Every consumer downstream reads the series as a year-indexed sequence:
+ * `findPanelObservation` takes the first match, and the trend chart's band walks
+ * adjacent years, where a repeated year breaks contiguity and silently strands
+ * the earlier point — which the caption then reports as "a year with no adjacent
+ * year", a sentence that is simply untrue of a duplicate. Two rows for one year
+ * is a publisher bug either way; the last one wins, which is arbitrary but
+ * defined, and beats leaving the behaviour to fall out of a loop elsewhere.
  */
 function mapPoints(raw: RawSeriesPoint[] | undefined): CountryPanelPoint[] {
   if (!Array.isArray(raw)) return []
-  const out: CountryPanelPoint[] = []
+  const byYear = new Map<number, CountryPanelPoint>()
   for (const p of raw) {
     if (!finite(p.year) || !finite(p.pm25Mean)) continue
-    out.push({
+    byYear.set(p.year, {
       year: p.year,
       pm25: p.pm25Mean,
       p10: finite(p.p10) ? p.p10 : null,
@@ -68,7 +77,7 @@ function mapPoints(raw: RawSeriesPoint[] | undefined): CountryPanelPoint[] {
       sources: Array.isArray(p.sources) ? p.sources : [],
     })
   }
-  return out.sort((a, b) => a.year - b.year)
+  return [...byYear.values()].sort((a, b) => a.year - b.year)
 }
 
 /**
