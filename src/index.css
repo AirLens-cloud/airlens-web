@@ -3,6 +3,7 @@
  * obs.css before surfaces.css (surfaces does not currently depend on obs, but
  * keeping the observatory world grouped with its own tokens avoids drift). */
 @import './styles/tokens.css';
+@import './styles/motion.css';
 @import './styles/typography.css';
 @import './styles/obs.css';
 @import './styles/surfaces.css';
