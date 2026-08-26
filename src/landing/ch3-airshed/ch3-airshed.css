@@ -1,0 +1,318 @@
+/**
+ * ch3-airshed.css — Wave L3 chapter styles for the AIRSHED Seoul-district
+ * extrusion scene.
+ *
+ * Ported from AirLens-platform apps/landing-lab
+ * `src/concepts/seoul/seoul.css` (was a standalone page's
+ * `.seoul__scroll`/`.seoul__sticky`/position:sticky full-viewport stage with
+ * its own nav/dock/SHAP-panel chrome). This chapter instead mounts inside
+ * `.landing-canvas-slot`, which `landing.css` already makes
+ * `position: sticky; height: 100vh` — so `.ch3-as` is `position: relative;
+ * width/height: 100%` instead of owning its own scroll container, the same
+ * adjustment Ch1's `ch1-atmos.css` and Ch2's `ch2-particulate.css` made.
+ * Classnames are prefixed `ch3-` throughout (was bare `.seoul__*`) so this
+ * chapter's CSS can't collide with a sibling chapter's.
+ *
+ * Dropped from the source: `.seoul__dock*` (AssistantDock) and `.seoul__shap*`
+ * (ShapPanel) — both excluded from this port (approved decision D3). The
+ * source's bespoke `.seoul__error*` is also dropped — WfDataState (shared
+ * `wireframe.css`) renders the error state instead, same swap Ch1/Ch2 made.
+ *
+ * Token remapping (this repo's token names differ from landing-lab's):
+ *   --font-mono   -> var(--mono)
+ *   --font-display/--font-sans -> var(--serif)/var(--sans) (the source didn't
+ *                                  use a --font-serif face here; Archivo maps
+ *                                  to this repo's --serif heading font like
+ *                                  Ch1's remap)
+ *   --ease-out    -> var(--ease-out)
+ *   font-serif (body copy) -> var(--sans) (no Crimson Pro in this repo, same
+ *                              substitution Ch1/Ch2 made)
+ * SEOUL hex literals come from ../theme (chapter-scoped, not theme-reactive —
+ * this stage is a permanently-dark city scene regardless of the site's
+ * light/dark toggle, the same treatment Ch1's globe stage and Ch2's dusk
+ * field use).
+ */
+
+.ch3-as {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1026;
+  color: #e9edf6;
+}
+
+.ch3-as--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.ch3-as__canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* No-WebGL notice — the scroll narrative assumes a 3D backdrop it doesn't
+   have here, so it's a small centered notice rather than a full takeover
+   (the district table + HUD still render alongside it). */
+.ch3-as__nowebgl {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 2rem;
+  z-index: 1;
+}
+.ch3-as__nowebgl-h {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin: 0;
+}
+.ch3-as__nowebgl-b {
+  font-family: var(--sans);
+  color: #b9c1d6;
+  max-width: 42ch;
+  margin: 0;
+}
+
+/* ── HUD frame (top corners, scroll section name) ─────────────────────────── */
+.ch3-hud-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #96a3bd;
+  z-index: 3;
+}
+.ch3-hud-frame > span { position: absolute; top: 4.6rem; }
+.ch3-hf-tl { left: 1.5rem; }
+.ch3-hf-tr { right: 1.5rem; }
+.ch3-hf-br { bottom: 1.3rem; right: 1.5rem; top: auto; color: #f0a860; }
+
+/* ── Narrative sections ────────────────────────────────────────────────────── */
+.ch3-sec {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0 clamp(1.5rem, 8vw, 7rem);
+  pointer-events: none;
+  transition: opacity 420ms var(--ease-out);
+  z-index: 2;
+}
+.ch3-sec--center { align-items: center; text-align: center; }
+.ch3-sec--left { align-items: flex-start; }
+.ch3-sec--right { align-items: flex-end; text-align: right; }
+/* Side-aligned narrative must start clear of the pinned panels (rail 320px +
+   1.5rem inset on the left, table 300px + 1.5rem on the right, both z-index 4)
+   — with the default gutter the prose rendered underneath them. Breakpoints
+   mirror the responsive rules below: the table exists only >900px, the rail
+   is left-anchored only >640px. */
+@media (min-width: 641px) {
+  .ch3-sec--left { padding-left: calc(min(320px, 84vw) + 3rem); }
+}
+@media (min-width: 901px) {
+  .ch3-sec--right { padding-right: calc(min(300px, 86vw) + 3rem); }
+}
+.ch3-sec > * { transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out); }
+
+.ch3-sec__kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #f0a860;
+}
+.ch3-sec__hero {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 6.4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  margin: 0;
+  max-width: 18ch;
+  text-shadow: 0 2px 40px rgba(5, 7, 20, 0.8);
+}
+.ch3-sec__lede {
+  font-family: var(--sans);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.5;
+  color: #c7cee0;
+  max-width: 46ch;
+  margin: 0;
+}
+.ch3-sec__cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: #b7c0d6;
+  margin: 1.4rem 0 0;
+  animation: ch3-cue 2.4s ease-in-out infinite;
+}
+.ch3-sec__cue-arrow { display: inline-block; animation: ch3-cue-bob 1.6s ease-in-out infinite; }
+@keyframes ch3-cue { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+@keyframes ch3-cue-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+
+.ch3-sec__head {
+  font-family: var(--serif);
+  font-weight: 650;
+  font-size: clamp(1.6rem, 4.4vw, 2.8rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+  max-width: 20ch;
+  text-shadow: 0 2px 30px rgba(5, 7, 20, 0.8);
+}
+.ch3-sec__body {
+  font-family: var(--sans);
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  line-height: 1.5;
+  color: #c7cee0;
+  max-width: 38ch;
+  margin: 0;
+}
+.ch3-sec__caveat {
+  font-family: var(--sans);
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #b9c1d6;
+  max-width: 42ch;
+  border-left: 2px solid #f0a860;
+  padding: 0.45rem 0.75rem;
+  margin: 0;
+  background: rgba(11, 16, 38, 0.62);
+}
+.ch3-sec--right .ch3-sec__caveat { border-left: none; border-right: 2px solid #f0a860; }
+
+.ch3-sec__cta {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* ── Left rail: district HUD ───────────────────────────────────────────────── */
+.ch3-rail {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.3rem;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(320px, 84vw);
+  max-height: 62vh;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.ch3-hud {
+  background: rgba(16, 23, 54, 0.82);
+  border: 1px solid #2a3452;
+  padding: 0.85rem 1rem;
+  font-family: var(--mono);
+}
+.ch3-hud__eyebrow { font-size: 10px; letter-spacing: 0.2em; color: #96a3bd; margin: 0 0 0.2rem; }
+.ch3-hud__name { font-family: var(--serif); font-weight: 650; font-size: 1.1rem; margin: 0 0 0.3rem; color: #e9edf6; }
+.ch3-hud__value { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
+.ch3-hud__num { font-size: 1.5rem; font-weight: 700; color: #f0a860; }
+.ch3-hud__unit { font-size: 10px; color: #96a3bd; letter-spacing: 0.08em; }
+.ch3-hud__prov { font-size: 10.5px; line-height: 1.4; margin: 0 0 0.5rem; color: #cbd2de; }
+.ch3-hud__hint { font-size: 11px; color: #96a3bd; margin: 0 0 0.5rem; }
+.ch3-hud__snapshot { font-size: 9.5px; letter-spacing: 0.12em; color: #96a3bd; margin: 0.3rem 0 0; }
+.ch3-hud__massing { font-size: 9.5px; letter-spacing: 0.04em; color: #96a3bd; font-style: italic; margin: 0.2rem 0 0; }
+.ch3-hud__gap { font-size: 10px; line-height: 1.4; color: #96a3bd; margin: 0.4rem 0 0; border-top: 1px solid #2a3452; padding-top: 0.4rem; }
+
+/* ── District table (right) ────────────────────────────────────────────────── */
+.ch3-table-wrap {
+  position: absolute;
+  right: 1.5rem;
+  top: 4.8rem;
+  bottom: 6.5rem;
+  z-index: 4;
+  width: min(300px, 86vw);
+  overflow-y: auto;
+  background: rgba(16, 23, 54, 0.82);
+  border: 1px solid #2a3452;
+  pointer-events: auto;
+}
+.ch3-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+.ch3-table-caption {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0.6rem 0.75rem 0.4rem;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: #96a3bd;
+  background: #101736;
+  border-bottom: 1px solid #2a3452;
+}
+.ch3-table thead th {
+  position: sticky;
+  top: 2.1rem;
+  background: #101736;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: #6d7897;
+  border-bottom: 1px solid #2a3452;
+}
+.ch3-table tbody td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #1a2140; vertical-align: middle; }
+.ch3-table-num { font-variant-numeric: tabular-nums; color: #d5dae8; }
+.ch3-table tr.is-active { background: rgba(240, 168, 96, 0.1); }
+.ch3-table-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  color: #e9edf6;
+  font-family: var(--mono);
+  min-height: 24px;
+}
+.ch3-table-btn:focus-visible { outline: 2px solid #f0a860; outline-offset: 2px; }
+.ch3-table-ko { font-size: 9.5px; color: #96a3bd; }
+.ch3-table-level { font-size: 9.5px; letter-spacing: 0.06em; padding: 0.1rem 0.4rem; border: 1px solid currentColor; }
+.ch3-table-level--clean { color: #8fd0e8; }
+.ch3-table-level--elevated { color: #f0a860; }
+.ch3-table-level--high { color: #ff7a52; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .ch3-table-wrap { display: none; }
+}
+@media (max-width: 640px) {
+  .ch3-sec { padding: 0 1.25rem; }
+  .ch3-hud-frame > span { top: auto; }
+  .ch3-hf-tl { bottom: 1.3rem; left: 1.5rem; top: auto; }
+  .ch3-hf-tr { display: none; }
+  .ch3-rail { max-height: 40vh; width: calc(100vw - 3rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch3-sec { transition: none; }
+  .ch3-sec > * { transition: none; }
+  .ch3-sec__cue,
+  .ch3-sec__cue-arrow { animation: none; }
+}

@@ -3,6 +3,7 @@ import { useChapterProgress } from '../landing/shared/useChapterProgress'
 import { ChapterCanvasSlot } from '../landing/ChapterCanvasSlot'
 import { Ch1AtmosCanvasSlot } from '../landing/ch1-atmos/Ch1AtmosCanvasSlot'
 import { Ch2ParticulateCanvasSlot } from '../landing/ch2-particulate/Ch2ParticulateCanvasSlot'
+import { Ch3AirshedCanvasSlot } from '../landing/ch3-airshed/Ch3AirshedCanvasSlot'
 import { QualityProvider } from '../landing/shared/perf/QualityProvider'
 import '../styles/landing.css'
 
@@ -49,6 +50,8 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
           <Ch1AtmosCanvasSlot progress={progress} progressRef={progressRef} />
         ) : id === 'ch2' ? (
           <Ch2ParticulateCanvasSlot progress={progress} progressRef={progressRef} />
+        ) : id === 'ch3' ? (
+          <Ch3AirshedCanvasSlot progress={progress} progressRef={progressRef} />
         ) : (
           <ChapterCanvasSlot chapterLabel={label} />
         )
@@ -63,8 +66,9 @@ function LandingChapter({ id, label, vh, hasCanvasSlot }: ChapterDef) {
  * (`useChapterProgress`); `three`/`@react-three/fiber` are not imported here —
  * chapter scenes land in Wave L1-L5, each behind its own `React.lazy()`
  * boundary (Chapter 1's is `Ch1AtmosCanvasSlot`, Wave L1; Chapter 2's is
- * `Ch2ParticulateCanvasSlot`, Wave L2; Chapter 3 still renders
- * `ChapterCanvasSlot`'s static placeholder until L3 lands).
+ * `Ch2ParticulateCanvasSlot`, Wave L2; Chapter 3's is `Ch3AirshedCanvasSlot`,
+ * Wave L3; Chapters 4-5 still render `ChapterCanvasSlot`'s static placeholder
+ * until their own waves land).
  *
  * `QualityProvider` wraps the whole flight (not per-chapter) so every chapter
  * scene shares one render-quality tier decision instead of re-probing FPS
