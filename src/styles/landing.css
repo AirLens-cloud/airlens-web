@@ -1,0 +1,43 @@
+/**
+ * landing.css — Wave L0 flight-shell layout only. Tokens-only (tokens.css),
+ * no hardcoded colors/spacing. Chapter-specific visual treatments land with
+ * their scenes in Wave L1-L5.
+ */
+
+.landing-flight {
+  background: var(--bg-0);
+  color: var(--ink-0);
+}
+
+.landing-chapter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Wave L1: the canvas slot is now a full-bleed, scroll-pinned stage (was a
+ * `flex: 1` box that just filled whatever height was left in the chapter's
+ * flex column — fine for a static X-pattern placeholder, but a real
+ * scroll-scrubbed 3D scene needs to stay glued to the viewport while the
+ * chapter's own scroll travel drives its progress). `position: sticky` here
+ * matches the OBSERVATORY sticky-100vh pattern already used elsewhere in the
+ * design system (see design-taxonomy §0).
+ */
+.landing-canvas-slot {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Chapters that only have a static placeholder (Ch2/Ch3 pre-L2/L3, and Ch1's
+   own Suspense fallback before its scene chunk resolves) keep the old
+   centered box look instead of stretching the X-pattern across 100vh. */
+.landing-canvas-slot--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--sp-6);
+}

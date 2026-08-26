@@ -1,0 +1,172 @@
+/**
+ * ch4-briefing.css — Wave L4 chapter styles for the dawn wipe + briefing room.
+ *
+ * Deliberately three/@react-three/fiber-free (Canvas 2D/SVG/DOM only, per the
+ * Wave L4 brief) — this file styles plain `<div>`/`<article>`/`<svg>` markup.
+ *
+ * Token strategy: this chapter reuses `.obs-surface`'s existing
+ * `--obs-void`/`--obs-ink` (dark, "flight" phase) and `--obs-paper`/
+ * `--obs-paper-ink` (light, "field report" phase) tokens (obs.css) instead of
+ * inventing a chapter-scoped hex palette the way Ch1/Ch2/Ch3's `theme.ts`
+ * files do — those two token pairs already are the exact void/paper contrast
+ * this chapter's wipe needs, and `DawnReport`/`InkInstrument` (composites.css)
+ * already style themselves against the same tokens, so reusing them means
+ * this chapter's paper content matches the design gallery's rendering of the
+ * same two components with zero new literals.
+ *
+ * `--ch4-wipe` (0..1, set inline by Ch4BriefingRoom from chapter progress) is
+ * this chapter's own contribution: cross-fades the stage's background/ink
+ * between the void and paper token pairs via `color-mix()`.
+ */
+
+.ch4-stage {
+  /* Flowing paper surface, not a pinned canvas stage: the briefing content is
+   * taller than one viewport, so a sticky-100vh + overflow-hidden stage (the
+   * Ch1-3 pattern) clips it. Paper is a reading surface (design-taxonomy §0
+   * fixed, not fluid) — let it flow with the page; `--ch4-wipe` still drives
+   * the void→paper background as the chapter scrolls in. min-height keeps the
+   * void phase full-screen before the wipe completes. */
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  /* The chapter section is a min-height:120vh flex column; without flex-grow
+   * the stage stops at its own content height and the leftover section space
+   * shows the page background as a white band before Chapter 5 (visible on
+   * viewports taller than the briefing content). Grow to fill the section so
+   * the paper runs edge-to-edge into the next chapter. */
+  flex: 1;
+  /* Center the paper within whatever height the section grants, so the grown
+   * space reads as balanced letterhead margins instead of a bottom-only tail. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  --ch4-wipe: 0;
+  background: color-mix(in oklab, var(--obs-void) calc((1 - var(--ch4-wipe)) * 100%), var(--obs-paper) calc(var(--ch4-wipe) * 100%));
+  color: color-mix(in oklab, var(--obs-ink) calc((1 - var(--ch4-wipe)) * 100%), var(--obs-paper-ink) calc(var(--ch4-wipe) * 100%));
+}
+
+.ch4-stage--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  background: var(--obs-void);
+  color: var(--obs-ink);
+}
+
+/* ── Void-phase kicker ─────────────────────────────────────────────────────── */
+.ch4-kicker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 200ms var(--obs-ez);
+}
+.ch4-kicker__m {
+  font-family: var(--obs-mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--obs-hud);
+}
+
+/* ── Paper content ─────────────────────────────────────────────────────────── */
+.ch4-paper {
+  /* In flow (not absolute): the paper content defines the stage's height, so
+   * nothing clips and there is no nested scrollbar — the page scroll is the
+   * only scroll. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: clamp(2.5rem, 6vw, 5rem) var(--pad-x) 4rem;
+  transition: opacity 260ms var(--obs-ez);
+}
+
+.ch4-paper__head {
+  max-width: 640px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.ch4-paper__eyebrow {
+  color: var(--obs-paper-mut);
+}
+.ch4-paper__heading {
+  font-family: var(--obs-display);
+  font-weight: 900;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0;
+}
+.ch4-paper__sub {
+  font-family: var(--sans);
+  font-size: 1rem;
+  color: var(--obs-paper-mut);
+  margin: 0;
+}
+
+.ch4-stage .dawn-report {
+  width: min(100%, 640px);
+}
+
+/* ── Instrument cards ──────────────────────────────────────────────────────── */
+.ch4-cards {
+  width: 100%;
+  max-width: 960px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-5);
+}
+
+.ch4-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  background: var(--obs-paper);
+  border: 1px solid var(--obs-hairline);
+  color: var(--obs-paper-ink);
+  transition: opacity 260ms var(--obs-ez), transform 260ms var(--obs-ez);
+}
+.ch4-card__idx {
+  color: var(--obs-paper-mut);
+}
+.ch4-card__heading {
+  font-family: var(--obs-display);
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.ch4-card__body {
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--obs-paper-mut);
+  margin: 0;
+}
+.ch4-card__source {
+  color: var(--obs-paper-mut);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--obs-hairline);
+}
+
+@media (max-width: 900px) {
+  .ch4-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch4-kicker,
+  .ch4-paper,
+  .ch4-card {
+    transition: none;
+  }
+}

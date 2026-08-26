@@ -10,3 +10,17 @@ export const K4_PALETTE: readonly string[] = ['#4F7A4F', '#B58A2E', '#B86B2E', '
 
 /** obs-cyan — matches --obs-cyan, used only for the void-surface condensation trail. */
 export const OBS_CYAN_HEX = '#25e2f4'
+
+/**
+ * Named subset of the AQI hex scale, keyed the way `@airlens/design-tokens`'
+ * `AQI_GRADE_HEX` was keyed in the source repo (Wave L1, ch1-atmos port).
+ * MODERATE/UNHEALTHY reuse K4_PALETTE's existing stops (indices 1 and 3) rather
+ * than repeat their literals; HAZARDOUS is not part of K4_PALETTE's 4-tier
+ * subset, so it is added here instead of a new parallel array — value mirrors
+ * `--aqi-haz` in src/styles/tokens.css.
+ */
+export const AQI_GRADE_HEX = {
+  MODERATE: K4_PALETTE[1],
+  UNHEALTHY: K4_PALETTE[3],
+  HAZARDOUS: '#4a1f4a',
+} as const

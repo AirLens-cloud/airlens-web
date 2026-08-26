@@ -15,8 +15,12 @@
     "setup-hooks": "git config core.hooksPath scripts/git-hooks && chmod +x scripts/git-hooks/pre-commit && echo 'git hooks activated: core.hooksPath=scripts/git-hooks'"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "three": "^0.185.1",
+    "topojson-client": "^3.1.0",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
@@ -25,6 +29,7 @@
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/topojson-client": "^3.1.5",
     "@vitejs/plugin-react": "^6.0.4",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
