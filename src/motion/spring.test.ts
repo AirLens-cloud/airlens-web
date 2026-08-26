@@ -78,6 +78,30 @@ describe('Spring — stability at clamped dt (DRAG_SPRING config)', () => {
   })
 })
 
+describe('Spring — stability at clamped dt (useSmoothedProgress DEFAULT_CONFIG)', () => {
+  it('never diverges and converges to target when driven at the max clamped dt', () => {
+    // Arrange — matches useSmoothedProgress.ts's DEFAULT_CONFIG (damping 1,
+    // response 0.25). A single semi-implicit Euler step at this config
+    // already diverges starting around dt=33ms (~4.3x amplification per
+    // step), and diverges harder at the clamp: MAX_DT_SEC=0.064 gives a
+    // discrete-update eigenvalue of max|lambda|=4.32. The progress range
+    // this hook smooths is [0,1], so the bound below scales off a target
+    // of 1 rather than DRAG_SPRING's -280px.
+    const spring = new Spring(0, { damping: 1, response: 0.25 })
+    spring.setTarget(1)
+    // Act
+    let done = false
+    for (let i = 0; i < 200 && !done; i++) {
+      done = spring.step(0.064)
+      // Assert — no divergence at any point along the way.
+      expect(Math.abs(spring.get())).toBeLessThanOrEqual(1.5)
+    }
+    // Assert — converges to target.
+    expect(done).toBe(true)
+    expect(spring.get()).toBeCloseTo(1, 1)
+  })
+})
+
 describe('projectMomentum / rubberband', () => {
   it('projects a fling distance from velocity', () => {
     expect(projectMomentum(1000)).toBeCloseTo(499, 0)
