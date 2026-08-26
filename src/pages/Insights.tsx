@@ -183,8 +183,13 @@ export default function Insights() {
           <WfPlaceholder height={360} label="Loading the regional panel…" />
         ) : mapAnchor ? (
           <PolicyMap
-            // Remount on country change: the map owns a `pickedYear`, and a year
-            // picked for the previous country is not a year this one observed.
+            // The map owns a `pickedYear`, and a year picked for the previous
+            // country is not a year this one observed. Today the remount is
+            // already guaranteed by the branch above: switching country changes
+            // the detail key, which returns `status: 'loading'` for a frame and
+            // swaps in the placeholder, unmounting the map. This `key` is the
+            // second lock — it keeps the guarantee if that loading branch is
+            // ever removed or made to hold the previous render.
             key={selected.countryCode}
             panels={detail.peerPanels}
             selectedCode={selected.countryCode}
@@ -193,6 +198,7 @@ export default function Insights() {
             focusYear={detail.impact?.status === 'ok' ? (selected.summary.treatmentYear ?? null) : null}
             peersWithoutAnchor={detail.peersWithoutAnchor}
             peersOmitted={detail.peersOmitted}
+            peersUnreadable={detail.peersUnreadable}
           />
         ) : (
           <section className="ins-map-band">

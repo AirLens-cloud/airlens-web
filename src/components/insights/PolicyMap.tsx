@@ -29,6 +29,8 @@ export interface PolicyMapProps {
   /** Region peers with no coordinate in COUNTRY_CENTERS — reported, not hidden. */
   peersWithoutAnchor: string[]
   peersOmitted: number
+  /** Peers whose read failed — absent because unreadable, not because unmeasured. */
+  peersUnreadable: number
   unit?: string
 }
 
@@ -40,6 +42,7 @@ export default function PolicyMap({
   focusYear,
   peersWithoutAnchor,
   peersOmitted,
+  peersUnreadable,
   unit = 'µg/m³',
 }: PolicyMapProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
@@ -162,6 +165,9 @@ export default function PolicyMap({
           ? ` ${peersWithoutAnchor.length} more (${peersWithoutAnchor.join(', ')}) have no map coordinate in this build and are absent from the map entirely.`
           : ''}
         {peersOmitted > 0 ? ` ${peersOmitted} further peers were not requested.` : ''}
+        {peersUnreadable > 0
+          ? ` ${peersUnreadable} more could not be read — their panels may exist; this map simply failed to fetch them.`
+          : ''}
       </p>
     </section>
   )

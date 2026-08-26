@@ -89,15 +89,25 @@ export default function PolicyTrendLines({
     // whose straight edge asserts a spread across 2018.
     const bandRuns: string[] = []
     let run: CountryPanelPoint[] = []
+    // Counted at flush, not at push: a year whose spread ends up alone in a
+    // one-point run is discarded below and never drawn, so counting it when it
+    // was pushed would make the caption claim more coverage than the chart
+    // shows. The caption is about what is on screen.
+    let bandYears = 0
+    // Years that published a usable spread at all, drawn or not. The gap
+    // between this and `bandYears` is years whose spread exists but has no
+    // adjacent year to form a polygon with — a real state the caption owes the
+    // reader, since otherwise those years read as "no spread was measured".
+    let spreadYears = 0
     const flush = (): void => {
       if (run.length >= 2) {
         const top = run.map((pt, j) => `${j === 0 ? 'M' : 'L'} ${toX(pt.year).toFixed(1)} ${toY(pt.p90 as number).toFixed(1)}`).join(' ')
         const bottom = [...run].reverse().map((pt) => `L ${toX(pt.year).toFixed(1)} ${toY(pt.p10 as number).toFixed(1)}`).join(' ')
         bandRuns.push(`${top} ${bottom} Z`)
+        bandYears += run.length
       }
       run = []
     }
-    let bandYears = 0
     if (primary) {
       for (const pt of primary.points) {
         const hasSpread = pt.p10 !== null && pt.p90 !== null && pt.p90 > pt.p10
@@ -108,13 +118,13 @@ export default function PolicyTrendLines({
         const prev = run[run.length - 1]
         if (prev && pt.year !== prev.year + 1) flush()
         run.push(pt)
-        bandYears += 1
+        spreadYears += 1
       }
       flush()
     }
 
     return {
-      years, yMax, toX, toY, lines, bandRuns, bandYears,
+      years, yMax, toX, toY, lines, bandRuns, bandYears, spreadYears,
       primaryYears: primary?.points.length ?? 0,
       primaryName: primary?.countryName ?? selectedCode,
       omitted: Math.max(0, withPoints.length - shown.length),
@@ -130,7 +140,10 @@ export default function PolicyTrendLines({
     )
   }
 
-  const { years, yMax, toX, toY, lines, bandRuns, bandYears, primaryYears, primaryName, omitted } = data
+  const { years, yMax, toX, toY, lines, bandRuns, bandYears, spreadYears, primaryYears, primaryName, omitted } = data
+  // Years with a spread that no polygon could be built from — an isolated year
+  // between two that published none. Named rather than folded into "the rest".
+  const isolatedSpreadYears = spreadYears - bandYears
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => yMax * f)
   const labelStep = Math.max(1, Math.ceil(years.length / 8))
 
@@ -186,8 +199,11 @@ export default function PolicyTrendLines({
 
       <p className="ins-note">
         {bandYears > 0
-          ? `The shaded band is the 10th–90th percentile of ${primaryName}'s station-day readings for that year — how much observations varied across the country, not how uncertain the mean is. It is drawn on ${bandYears} of ${primaryYears} years; the rest had a single contributing station, which publishes no spread.`
-          : `No year in ${primaryName}'s series has more than one contributing station, so there is no measured spread to draw.`}
+          ? `The shaded band is the 10th–90th percentile of ${primaryName}'s station-day readings for that year — how much observations varied across the country, not how uncertain the mean is. It is drawn on ${bandYears} of ${primaryYears} years; the rest published no spread, which is what a year with a single contributing station looks like.`
+          : `No band is drawn: no two adjacent years in ${primaryName}'s series both published a spread, and a single year cannot form one.`}
+        {isolatedSpreadYears > 0
+          ? ` ${isolatedSpreadYears} further ${isolatedSpreadYears === 1 ? 'year has' : 'years have'} a measured spread but no adjacent year to draw it against, so ${isolatedSpreadYears === 1 ? 'it is' : 'they are'} left undrawn rather than shown as a point.`
+          : ''}
         {' '}Series from different countries can rest on different source mixes and are not strictly comparable year for year.
         {omitted > 0 ? ` ${omitted} further peer countries are not plotted.` : ''}
       </p>

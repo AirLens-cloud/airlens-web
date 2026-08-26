@@ -54,7 +54,8 @@ describe('PolicyTrendLines — the spread band', () => {
     const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
     // Assert — no band is ever derived from the mean.
     expect(bands(container)).toHaveLength(0)
-    expect(screen.getByText(/no measured spread to draw/i)).toBeTruthy()
+    expect(screen.getByText(/no two adjacent years/i)).toBeTruthy()
+    expect(screen.queryByText(/further year/i)).toBeNull()
   })
 
   it('treats a zero-width p10 == p90 as no spread, not as a precise one', () => {
@@ -89,6 +90,32 @@ describe('PolicyTrendLines — the spread band', () => {
     const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
     // Assert
     expect(bands(container)).toHaveLength(2)
+  })
+
+  it('does not count a spread year that no polygon could be built from', () => {
+    // Arrange — 2019 has a spread but both neighbours do not, so its run is one
+    // point long and is discarded. Counting it would claim coverage the chart
+    // does not show.
+    const panels = [
+      panel('KR', [pt(2017, 26, 14, 42), pt(2018, 24, 12, 40), pt(2019, 22, 11, 38), pt(2020, 19), pt(2021, 18, 8, 32)]),
+    ]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert — one polygon over 2017–2019; 2021's spread is stranded.
+    expect(bands(container)).toHaveLength(1)
+    expect(screen.getByText(/on 3 of 5 years/i)).toBeTruthy()
+    expect(screen.getByText(/1 further year has a measured spread but no adjacent year/i)).toBeTruthy()
+  })
+
+  it('says a stranded spread is undrawn rather than claiming none was measured', () => {
+    // Arrange — every spread year is isolated, so no band can be drawn at all.
+    const panels = [panel('KR', [pt(2018, 24, 12, 40), pt(2019, 22), pt(2020, 19, 9, 34)])]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert — "no spread was measured" would be false here.
+    expect(bands(container)).toHaveLength(0)
+    expect(screen.getByText(/no two adjacent years/i)).toBeTruthy()
+    expect(screen.getByText(/2 further years have a measured spread/i)).toBeTruthy()
   })
 
   it('counts the years the band covers against the years in the series', () => {

@@ -61,6 +61,15 @@ export interface InsightsDetail {
   peersWithoutAnchor: string[]
   /** Peers beyond MAP_PEER_LIMIT that were never requested. */
   peersOmitted: number
+  /**
+   * Peers that WERE requested and whose read failed (5xx, network, bad JSON).
+   * Counted apart from the two above because it is a different fact: those
+   * peers are absent from the comparison because we could not read them, not
+   * because nothing was published for them. Without this the map shrinks
+   * silently and looks identical to a region that was only ever measured that
+   * sparsely — the same swallowing the primary-country readers stopped doing.
+   */
+  peersUnreadable: number
 }
 
 function joinCountries(
@@ -129,6 +138,7 @@ const EMPTY_DETAIL: InsightsDetail = {
   peerPanels: [],
   peersWithoutAnchor: [],
   peersOmitted: 0,
+  peersUnreadable: 0,
 }
 
 /**
@@ -175,18 +185,22 @@ export function useInsightsDetail(
     ])
       .then(([impact, panel, peers]) => {
         if (cancelled) return
+        // A rejected peer and a peer that resolved to null are different facts:
+        // the first failed to read, the second published nothing. Both leave
+        // the map, but only one of them is worth telling the reader about.
+        const fulfilled = peers.filter(
+          (r): r is PromiseFulfilledResult<CountryPanel | null> => r.status === 'fulfilled',
+        )
         setSettled({
           key,
           detail: {
             status: 'ready',
             impact,
             panel,
-            peerPanels: peers
-              .filter((r): r is PromiseFulfilledResult<CountryPanel | null> => r.status === 'fulfilled')
-              .map((r) => r.value)
-              .filter((p): p is CountryPanel => p !== null),
+            peerPanels: fulfilled.map((r) => r.value).filter((p): p is CountryPanel => p !== null),
             peersWithoutAnchor: unanchored,
             peersOmitted: Math.max(0, anchored.length - codes.length),
+            peersUnreadable: peers.length - fulfilled.length,
           },
         })
       })

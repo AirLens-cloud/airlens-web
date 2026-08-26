@@ -11,11 +11,38 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react'
 import type { PolicyImpact, PolicyIndexEntry, PolicySummary } from '../types/policy'
 
-vi.mock('../components/insights/PolicyMap', () => ({
-  default: ({ selectedCode }: { selectedCode: string }) => (
-    <div data-testid="band-map" data-country={selectedCode} />
-  ),
-}))
+/**
+ * The map stub records MOUNTS, not renders — `useEffect(..., [])` fires once per
+ * instance. That is the only way to see the `key` prop doing its job: without
+ * it React reuses the instance across a country switch and the real map's
+ * `pickedYear` survives into a country that may never have observed that year.
+ */
+const stub = vi.hoisted(() => ({ mapMounts: [] as string[] }))
+vi.mock('../components/insights/PolicyMap', async () => {
+  const { useEffect } = await vi.importActual<typeof import('react')>('react')
+  function PolicyMapStub({
+    selectedCode,
+    peersUnreadable,
+  }: {
+    selectedCode: string
+    peersUnreadable: number
+  }) {
+    // Empty deps on purpose: this must fire once per INSTANCE, not per change
+    // of selectedCode — that is the whole signal being recorded.
+    useEffect(() => {
+      stub.mapMounts.push(selectedCode)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+    return (
+      <div
+        data-testid="band-map"
+        data-country={selectedCode}
+        data-unreadable={String(peersUnreadable)}
+      />
+    )
+  }
+  return { default: PolicyMapStub }
+})
 vi.mock('../components/insights/CityPredictionCard', () => ({
   default: () => <div data-testid="band-prediction" />,
 }))
@@ -134,6 +161,7 @@ async function renderPage(path = '/insights') {
 
 beforeEach(() => {
   vi.unstubAllGlobals()
+  stub.mapMounts.length = 0
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false, media: query, onchange: null,
     addListener: vi.fn(), removeListener: vi.fn(),
@@ -270,6 +298,72 @@ describe('Insights — failure states', () => {
     // Assert — an outage is named as one, and the number above it still stands.
     await waitFor(() => expect(screen.getByText(/could not be read/i)).toBeTruthy())
     expect(document.querySelector('.ins-headline-att')?.textContent).toBe('-1.87')
+  })
+})
+
+describe('Insights — a peer that could not be read', () => {
+  it('counts it apart from peers that published nothing', async () => {
+    // Arrange — JP's panel 503s; everything else serves.
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('by_country/JP.json')) return { ok: false, status: 503 } as Response
+      const hit = Object.entries(FULL_FEED).find(([path]) => url.includes(path))
+      if (!hit) return { ok: false, status: 404 } as Response
+      return { ok: true, status: 200, json: async () => hit[1] } as unknown as Response
+    }))
+    // Act
+    await renderPage()
+    // Assert — a failed neighbour must not shrink the map silently; it is a
+    // different fact from a neighbour with no published panel.
+    await waitFor(() =>
+      expect(screen.getByTestId('band-map').getAttribute('data-unreadable')).toBe('1'),
+    )
+    expect(screen.getByTestId('band-map').getAttribute('data-country')).toBe('KR')
+  })
+
+  it('reports zero unreadable peers when every peer answers', async () => {
+    mockFetch(FULL_FEED)
+    await renderPage()
+    await waitFor(() =>
+      expect(screen.getByTestId('band-map').getAttribute('data-unreadable')).toBe('0'),
+    )
+  })
+})
+
+describe('Insights — the map on a country switch', () => {
+  /**
+   * This pins the PROPERTY — the map instance never spans two countries, so its
+   * `pickedYear` cannot outlive the country it was picked for — not the
+   * mechanism. Two mechanisms currently enforce it: the detail key returns
+   * `status: 'loading'` for a frame (swapping in the placeholder), and the
+   * `key` prop on `<PolicyMap>`. Removing either alone still passes; that is
+   * why the assertion is on mounts rather than on the prop.
+   */
+  it('never carries one map instance across two countries', async () => {
+    // Arrange
+    mockFetch(FULL_FEED)
+    const { container } = await renderPage()
+    await waitFor(() => expect(stub.mapMounts).toEqual(['KR']))
+    // Act
+    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'JP' } })
+    // Assert — a fresh mount for JP, not the KR instance re-rendered.
+    await waitFor(() => expect(stub.mapMounts).toEqual(['KR', 'JP']))
+  })
+
+  it('takes the map off screen while the new country is in flight', async () => {
+    // Arrange — this is the mechanism the property above currently rests on, so
+    // it is worth asserting directly rather than inferring.
+    mockFetch(FULL_FEED)
+    const { container } = await renderPage()
+    await waitFor(() => expect(screen.getByTestId('band-map')).toBeTruthy())
+    // Act
+    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'JP' } })
+    // Assert
+    expect(screen.queryByTestId('band-map')).toBeNull()
+    await waitFor(() =>
+      expect(screen.getByTestId('band-map').getAttribute('data-country')).toBe('JP'),
+    )
   })
 })
 
