@@ -1,0 +1,68 @@
+/* obs.css — OBSERVATORY instrument-world tokens + shared primitives.
+ * Ported from AirLens-platform apps/web/src/styles/observatory-shared.css.
+ *
+ * Scope contract unchanged: everything lives under `.obs-surface`. A page opts in
+ * by adding the class to its surface root and importing this file.
+ *
+ * Font substitution (porting brief decision #5 — Martian Mono is not bundled):
+ *   --obs-mono    : Martian Mono     -> JetBrains Mono (var(--mono) family)
+ * Overused Grotesk WAS ported (OFL 1.1 — self-hosting/redistribution permitted,
+ * see public/fonts/observatory/LICENSE.md) — weights 900/500, subset self-hosted.
+ *
+ * --obs-cyan is the ONLY place `#25e2f4` exists in this codebase (porting brief
+ * decision #1) — it is instrument decoration, scoped to .obs-surface, never a
+ * global brand/accent token and never used on interactive chrome outside this
+ * scope.
+ *
+ * NOTE (carried over from the source file's own warning): never place two
+ * asterisks immediately followed by a slash inside this comment block — that
+ * byte sequence is the CSS block-comment terminator and will silently truncate
+ * whatever follows it.
+ */
+
+@font-face { font-family: 'Overused Grotesk'; font-weight: 900; font-display: swap; src: url('/fonts/observatory/og-black.woff2') format('woff2'); }
+@font-face { font-family: 'Overused Grotesk'; font-weight: 500; font-display: swap; src: url('/fonts/observatory/og-medium.woff2') format('woff2'); }
+
+.obs-surface {
+  --obs-void: #05070d;
+  --obs-void-2: #0a0f1a;
+  --obs-ink: #e8ecf4;
+  --obs-hud: #7e8aa2;
+  --obs-hud-dim: #4a5468;
+  --obs-void-line: #1d2430;
+  --obs-cyan: #25e2f4; /* instrument decoration only — never interactive, never global */
+  --obs-paper: #f7f5f0;
+  --obs-paper-ink: #111114;
+  --obs-paper-mut: #5c5c56;
+  --obs-hairline: #dedbd2;
+  --obs-display: 'Overused Grotesk', var(--serif);
+  --obs-mono: var(--mono);
+  --obs-ez: cubic-bezier(0.22, 1, 0.36, 1);
+  --obs-gut: 32px;
+}
+
+/* mono micro-labels */
+.obs-surface .m { font-family: var(--obs-mono); font-weight: 400; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.obs-surface .m-b { font-family: var(--obs-mono); font-weight: 700; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.obs-surface .num { font-variant-numeric: tabular-nums; }
+.obs-surface .obs-hud-label { font-family: var(--obs-mono); font-weight: 400; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--obs-hud); }
+
+/* DQSS badge, obs dialect (Glass-box: pairs with p10-p90 readouts) */
+.obs-surface .obs-dqss { display: inline-flex; align-items: center; gap: 7px; font-family: var(--obs-mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--obs-ink); border: 1px solid rgba(232,236,244,.4); padding: 4px 9px; }
+.obs-surface .obs-dqss em { font-style: normal; color: var(--obs-void); background: var(--obs-ink); padding: 0 5px; }
+
+/* corner brackets — drawn in once on mount, then still. */
+.obs-surface .obs-cnr { position: absolute; width: 14px; height: 14px; border: 0 solid rgba(37,226,244,.45); pointer-events: none; animation: obs-cnr .7s var(--obs-ez) .3s forwards; }
+.obs-surface .obs-cnr--tl { border-left-width: 1px; border-top-width: 1px; clip-path: inset(0 100% 100% 0); }
+.obs-surface .obs-cnr--tr { border-right-width: 1px; border-top-width: 1px; clip-path: inset(0 0 100% 100%); }
+.obs-surface .obs-cnr--bl { border-left-width: 1px; border-bottom-width: 1px; clip-path: inset(100% 100% 0 0); }
+.obs-surface .obs-cnr--br { border-right-width: 1px; border-bottom-width: 1px; clip-path: inset(100% 0 0 100%); }
+
+@keyframes obs-cnr { to { clip-path: inset(0 0 0 0); } }
+@keyframes obs-pulse { 0% { box-shadow: 0 0 0 0 rgba(255,92,0,.5);} 70% { box-shadow: 0 0 0 7px rgba(255,92,0,0);} 100% { box-shadow: 0 0 0 0 rgba(255,92,0,0);} }
+@keyframes obs-rise { to { opacity: 1; transform: none; } }
+@keyframes hud-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .obs-surface .obs-cnr { animation: none; clip-path: none; }
+}

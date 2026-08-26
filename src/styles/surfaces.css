@@ -1,0 +1,91 @@
+/**
+ * surfaces.css — paper hairline cards, glass cards (AQI-tint variant), placeholder
+ * gradients, and shared reveal motion.
+ *
+ * Ported from AirLens-platform apps/web/src/reado.css. The sky-glass 11-phase
+ * weather gradient is NOT ported (porting brief decision #3) — glass surfaces here
+ * sit on a flat AQI tint instead of a time-of-day sky gradient.
+ *
+ * AA verification (2026-08-26, computed via WCAG relative-luminance formula against
+ * the flat --tint-* background, i.e. the prefers-reduced-transparency fallback —
+ * the worst case for contrast since blur/translucency only average toward this
+ * color, never away from it):
+ *
+ *   --tint-good      (#b5cfd9) + dark ink (#0b1a2e) = 10.73:1  PASS
+ *   --tint-moderate  (#e0b87a) + dark ink (#0b1a2e) =  9.41:1  PASS
+ *   --tint-unhealthy (#b87852) + dark ink (#0b1a2e) =  4.87:1  PASS
+ *   --tint-unhealthy (#b87852) + white ink (#ffffff)=  3.59:1  FAIL (<4.5)
+ *   --tint-hazard    (#5a3a2a) + white ink (#ffffff)= 10.13:1  PASS
+ *   --tint-hazard    (#5a3a2a) + dark ink (#0b1a2e) =  1.73:1  FAIL (<4.5)
+ *
+ * The porting brief specified "good/moderate = dark ink, unhealthy/hazard = white
+ * ink". That rule fails AA for `unhealthy` (3.59:1) — measured, not assumed. This
+ * file instead pairs ink by measured contrast: good/moderate/unhealthy all get dark
+ * ink, hazard alone gets white ink. Flagged for team-lead review in the wave report.
+ */
+
+/* ---- Paper hairline card ---- */
+.wf-card {
+  background: var(--bg-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-0);
+}
+.wf-card--lift {
+  box-shadow: var(--shadow-pop);
+}
+
+/* ---- Glass card (AQI-tint variant) ---- */
+.glass-card {
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-glass);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--glass-card-ink, var(--tint-ink-dark));
+}
+.glass-card.glass-card--lift {
+  background: var(--glass-fill-lift);
+}
+/* night-fixed glass (Globe-HUD-style surfaces) — theme/tint invariant, always white ink */
+.glass-card.glass-card--night {
+  background: var(--glass-night-fill);
+  border-color: var(--glass-night-border);
+  color: #ffffff;
+}
+/* AQI-tint backdrop the glass card sits on. Ink pairing is measured (see header) —
+   unhealthy keeps dark ink (white fails AA at 3.59:1); hazard alone flips to white. */
+.glass-card[data-aqi="good"] { background-color: var(--tint-good); --glass-card-ink: var(--tint-ink-dark); }
+.glass-card[data-aqi="moderate"] { background-color: var(--tint-moderate); --glass-card-ink: var(--tint-ink-dark); }
+.glass-card[data-aqi="unhealthy"] { background-color: var(--tint-unhealthy); --glass-card-ink: var(--tint-ink-dark); }
+.glass-card[data-aqi="hazard"] { background-color: var(--tint-hazard); --glass-card-ink: #ffffff; }
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card {
+    background: var(--glass-opaque);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---- Placeholder gradients (blog/dispatch image fallback, no photo available) ---- */
+.img-ph.bg1 { background: linear-gradient(150deg, #e8ddc9 0%, #cbb894 60%, #a98f60 100%); }
+.img-ph.bg2 { background: linear-gradient(140deg, #cfdcd2 0%, #9db8a4 60%, #6e8f78 100%); }
+.img-ph.bg3 { background: linear-gradient(160deg, #dccfd6 0%, #b394a4 60%, #8a6478 100%); }
+.img-ph.bg4 { background: linear-gradient(135deg, #d8dee9 0%, #aab6c8 55%, #8494ac 100%); }
+
+/* ---- Shared reveal motion ---- */
+@keyframes tw-reveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes wf-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

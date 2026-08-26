@@ -1,0 +1,260 @@
+/**
+ * tokens.css — AirLens design tokens (ported from AirLens-platform apps/web/src/reado.css).
+ *
+ * Source: /Volumes/WD_BLACK/AirLens-platform/apps/web/src/reado.css (SOT, 4957 lines).
+ * That file scopes tokens under `@scope (.reado-shell)`; this port flattens them onto
+ * bare `:root` — this repo has no paper/ink-v9 vs reado dual-theme cascade to isolate
+ * from, so the @scope indirection has no job here.
+ *
+ * Theme model: light tokens on :root, dark overrides under both
+ *   - `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`
+ *   - `:root[data-theme="dark"]` (explicit toggle wins in both directions)
+ * (Artifact-style 3-state theming; this app does not yet ship a theme toggle, but the
+ * tokens are defined for it up front so components never hardcode a light-only value.)
+ *
+ * Decisions carried over from the porting brief (2026-08-26):
+ *   1. --viz-accent / obs cyan is NOT a global brand token — it lives only inside
+ *      `.obs-surface` (see obs.css) as `--obs-cyan`. Brand accent is orange, always.
+ *   2. Crimson Pro is not bundled — the 3 crimson-only classes (t-lede/t-quote/t-caveat)
+ *      are redefined onto Inter/mono in typography.css; --crimson token below still
+ *      exists (so `var(--crimson)` never resolves to `unset`) but resolves to a sans
+ *      fallback stack, never to a font-face we didn't load.
+ *   3. Sky-glass gradients (11-phase weather backdrop) are NOT ported — glass surfaces
+ *      here sit on a flat AQI tint instead (--tint-good/--tint-moderate/--tint-unhealthy/
+ *      --tint-hazard, S7 values from the porting brief). See surfaces.css for the ink
+ *      inversion rule that pairs with these tints.
+ *   4. AqiDot repaints onto the low-saturation K4 6-tier palette below
+ *      (--aqi-good..--aqi-haz) instead of the old high-saturation 4-tier wireframe
+ *      palette (#6ec97a family) — brief decision #4.
+ *   5. Overused Grotesk / Martian Mono replaced by system stacks; obs mono token
+ *      points at JetBrains Mono (already loaded for --mono) instead of Martian Mono.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- Paper-Ink base (reado.css :scope, light) ---- */
+  --bg-0: #ffffff;
+  --bg-1: #f8f8f8;
+  --ink-0: #000000;
+  --ink-1: #333333;
+  --ink-2: #6b6b6b;
+  --ink-3: #727272;
+  --rule: #e5e5e5;
+  --rule-strong: #000000;
+
+  /* ---- Brand accent (orange only — obs cyan is scoped, see obs.css) ---- */
+  --orange: #ff5c00;
+  --orange-ink: #c74700; /* small-text variant, WCAG AA >=4.5:1 on --bg-0/--bg-1 */
+  --accent: var(--orange);
+  --highlighter: #ffd84a;
+  --ink-on-accent: #ffffff;
+
+  /* ---- AQI 6-tier (K4 low-saturation palette — decision #4) ---- */
+  --aqi-good: #4f7a4f;
+  --aqi-mod: #b58a2e;
+  --aqi-usg: #b86b2e;
+  --aqi-unh: #9f3a2e;
+  --aqi-vunh: #6b1f1f;
+  --aqi-haz: #4a1f4a;
+  /* -ink text variants — WCAG AA >=4.5:1 on --bg-0/--bg-1 */
+  --aqi-mod-ink: #8a6820;
+  --aqi-usg-ink: #96541e;
+  --aqi-good-ink: #4f7a4f;
+
+  /* ---- AQI tint (S7, flat — glass surfaces sit on these, no sky gradient) ---- */
+  --tint-good: #b5cfd9;
+  --tint-moderate: #e0b87a;
+  --tint-unhealthy: #b87852;
+  --tint-hazard: #5a3a2a;
+  /* ink to use on top of each tint — good/moderate = dark ink, unhealthy/hazard = white
+     ink (see surfaces.css .glass-card[data-aqi] for the pairing + AA notes). */
+  --tint-ink-dark: #0b1a2e;
+  --tint-ink-light: #ffffff;
+
+  /* ---- DQSS 5-grade ---- */
+  --dqss-a: #2ea36a;
+  --dqss-b: #6ec97a;
+  --dqss-c: #ffd84a;
+  --dqss-d: #ff8b3d;
+  --dqss-f: #c0392b;
+  --dqss-a-badge-bg: #e8f4ec;
+  --dqss-a-badge-border: #6ec97a;
+  --dqss-a-badge-ink: #2e7d3b;
+  --dqss-b-badge-bg: #fcf5d8;
+  --dqss-b-badge-border: #d4b62e;
+  --dqss-b-badge-ink: #806a00;
+  --dqss-c-badge-bg: #ffe9d4;
+  --dqss-c-badge-border: #ff8b3d;
+  --dqss-c-badge-ink: #a8460e;
+  --dqss-d-badge-bg: #fde0d6;
+  --dqss-d-badge-border: #e0613a;
+  --dqss-d-badge-ink: #a8341a;
+  --dqss-f-badge-bg: #f6dbd6;
+  --dqss-f-badge-border: #c0392b;
+  --dqss-f-badge-ink: #7e2018;
+
+  /* ---- Semantic ---- */
+  --semantic-good: #2ea36a;
+  --semantic-warn: #ff6b3d;
+  --semantic-bad: #9f3a2e;
+  --semantic-bad-ink: var(--semantic-bad);
+  --viz-live: #4ade80; /* status dot only — not brand chrome */
+  --viz-bad: #ef4444;
+
+  /* ---- Fonts ---- */
+  --serif: "Plus Jakarta Sans", "Inter", sans-serif;
+  --sans: "Inter", sans-serif;
+  --crimson: "Inter", sans-serif; /* Crimson Pro not bundled (decision #2) — sans fallback, never unset */
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ---- Spacing (8pt) ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* ---- Radius (square doctrine — --r-pill/--r-glass are the only non-zero exceptions) ---- */
+  --r-0: 0;
+  --r-4: 8px;
+  --r-pill: 999px;
+  --r-glass: 20px;
+
+  /* ---- Control heights ---- */
+  --control-h-sm: 32px;
+  --control-h-md: 40px;
+  --control-h-lg: 56px;
+  --fab-size: 60px;
+  --nav-height: 80px;
+  --shell: 1280px;
+  --pad-x: clamp(20px, 3vw, 40px);
+
+  /* ---- Shadow (tinted, layered, single light source — never pure black) ---- */
+  --shadow-pop: 0 1px 2px rgba(17, 20, 24, 0.05), 0 6px 24px -10px rgba(17, 20, 24, 0.12);
+  --shadow-fab: 0 2px 8px rgba(17, 20, 24, 0.10), 0 10px 28px -8px rgba(17, 20, 24, 0.18);
+  --shadow-glass: 0 8px 24px -6px rgba(28, 56, 104, 0.16);
+
+  /* ---- Glass (Liquid Glass — day surfaces sit on --tint-*, not a sky gradient) ---- */
+  --glass-fill: rgba(255, 255, 255, 0.20);
+  --glass-fill-lift: rgba(255, 255, 255, 0.28);
+  --glass-opaque: #e8f0f9; /* prefers-reduced-transparency fallback */
+  --glass-blur: 20px;
+  --glass-border: rgba(255, 255, 255, 0.40);
+  /* night-fixed glass (Globe HUD-style surfaces) — theme-invariant */
+  --glass-night-fill: rgba(10, 16, 30, 0.70);
+  --glass-night-fill-lift: rgba(16, 24, 42, 0.80);
+  --glass-night-border: rgba(255, 255, 255, 0.14);
+  --glass-night-opaque: #0c1422;
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-micro: 120ms;
+  --dur-fast: 200ms;
+  --dur-base: 280ms;
+  --dur-slow: 480ms;
+
+  /* ---- z-index ---- */
+  --z-content: 5;
+  --z-sticky: 20;
+  --z-overlay: 50;
+  --z-nav: 100;
+  --z-panel: 940;
+  --z-fab: 950;
+  --z-modal: 1000;
+  --z-notification: 1050;
+  --z-onboarding: 1100;
+
+  /* ---- misc tint utilities ---- */
+  --tint-hover: rgba(0, 0, 0, 0.04);
+  --tint-rule: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-0: #0c1015;
+    --bg-1: #131820;
+    --ink-0: #f4f1e8;
+    --ink-1: #c5c0b3;
+    --ink-2: #8b8678;
+    --ink-3: #6f6b62;
+    --rule: rgba(255, 255, 255, 0.08);
+    --rule-strong: #f4f1e8;
+
+    --shadow-pop: 0 1px 2px rgba(17, 20, 24, 0.30), 0 6px 24px -10px rgba(17, 20, 24, 0.50);
+    --shadow-fab: 0 2px 8px rgba(17, 20, 24, 0.35), 0 10px 28px -8px rgba(17, 20, 24, 0.55);
+    --shadow-glass: 0 8px 24px -6px rgba(17, 20, 24, 0.45);
+
+    --glass-fill: rgba(20, 30, 54, 0.32);
+    --glass-fill-lift: rgba(28, 40, 68, 0.42);
+    --glass-opaque: #141e33;
+    --glass-border: rgba(255, 255, 255, 0.18);
+
+    --orange-ink: var(--orange);
+    --aqi-mod-ink: var(--aqi-mod);
+    --aqi-usg-ink: #c4762f;
+    --aqi-good-ink: var(--semantic-good);
+    --semantic-bad-ink: #d9705c;
+
+    --dqss-a-badge-ink: var(--dqss-a);
+    --dqss-b-badge-ink: var(--dqss-b);
+    --dqss-c-badge-ink: var(--dqss-c);
+    --dqss-d-badge-ink: var(--dqss-d);
+    --dqss-f-badge-ink: var(--viz-bad);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-0: #0c1015;
+  --bg-1: #131820;
+  --ink-0: #f4f1e8;
+  --ink-1: #c5c0b3;
+  --ink-2: #8b8678;
+  --ink-3: #6f6b62;
+  --rule: rgba(255, 255, 255, 0.08);
+  --rule-strong: #f4f1e8;
+
+  --shadow-pop: 0 1px 2px rgba(17, 20, 24, 0.30), 0 6px 24px -10px rgba(17, 20, 24, 0.50);
+  --shadow-fab: 0 2px 8px rgba(17, 20, 24, 0.35), 0 10px 28px -8px rgba(17, 20, 24, 0.55);
+  --shadow-glass: 0 8px 24px -6px rgba(17, 20, 24, 0.45);
+
+  --glass-fill: rgba(20, 30, 54, 0.32);
+  --glass-fill-lift: rgba(28, 40, 68, 0.42);
+  --glass-opaque: #141e33;
+  --glass-border: rgba(255, 255, 255, 0.18);
+
+  --orange-ink: var(--orange);
+  --aqi-mod-ink: var(--aqi-mod);
+  --aqi-usg-ink: #c4762f;
+  --aqi-good-ink: var(--semantic-good);
+  --semantic-bad-ink: #d9705c;
+
+  --dqss-a-badge-ink: var(--dqss-a);
+  --dqss-b-badge-ink: var(--dqss-b);
+  --dqss-c-badge-ink: var(--dqss-c);
+  --dqss-d-badge-ink: var(--dqss-d);
+  --dqss-f-badge-ink: var(--viz-bad);
+}
+
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--ink-0);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
