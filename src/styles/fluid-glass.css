@@ -1,0 +1,36 @@
+/* fluid-glass.css — LiquidGlass surface. Tier classes (liquid-glass--refract/
+ * --blur/--tint) are applied by the component per glassTier.ts's detection;
+ * variant classes (--day/--night) select which fill/border pairing to use.
+ * Consumes only existing tokens — no new --glass-* values defined here. */
+.liquid-glass {
+  position: relative;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+.liquid-glass--night {
+  border-color: var(--glass-night-border);
+}
+
+.liquid-glass--refract.liquid-glass--day,
+.liquid-glass--blur.liquid-glass--day {
+  background: var(--glass-fill);
+}
+
+.liquid-glass--refract.liquid-glass--night,
+.liquid-glass--blur.liquid-glass--night {
+  background: var(--glass-night-fill);
+}
+
+.liquid-glass--blur {
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+}
+
+.liquid-glass--tint.liquid-glass--day {
+  background: var(--glass-opaque);
+}
+
+.liquid-glass--tint.liquid-glass--night {
+  background: var(--glass-night-opaque);
+}
