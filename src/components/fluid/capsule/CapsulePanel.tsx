@@ -140,18 +140,26 @@ export default function CapsulePanel({ data, contentWidth }: CapsulePanelProps):
               {TIER_LABEL[data.tier]}
             </div>
             <p className="aq-capsule-panel__range">
-              Expected today: {Math.round(data.range.lo)}–{Math.round(data.range.hi)} µg/m³
+              {data.range
+                ? `Expected today: ${Math.round(data.range.lo)}–${Math.round(data.range.hi)} µg/m³`
+                : 'No uncertainty band published for this forecast'}
             </p>
             <p className="aq-capsule-panel__meta">{data.city}</p>
           </div>
           <div className="aq-capsule-panel__page" style={{ width: contentWidth }}>
-            <p className="aq-capsule-panel__meta">24h forecast · expected range</p>
+            <p className="aq-capsule-panel__meta">
+              {data.range ? '24h forecast · expected range' : '24h forecast · single value, no band'}
+            </p>
             {spark ? (
               <svg
                 viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
                 className="aq-capsule-panel__spark"
                 role="img"
-                aria-label="24-hour PM2.5 forecast with shaded expected range"
+                aria-label={
+                  data.range
+                    ? '24-hour PM2.5 forecast with shaded expected range'
+                    : '24-hour PM2.5 forecast, no uncertainty band published'
+                }
               >
                 <polygon points={spark.areaPoints} className="aq-capsule-panel__spark-area" />
                 <polyline points={spark.linePoints} className="aq-capsule-panel__spark-line" fill="none" />

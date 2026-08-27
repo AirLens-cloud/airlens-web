@@ -1,9 +1,22 @@
-// useCapsuleData — maps the shared TFT forecast mirror onto the shape
+// useCapsuleData — maps the live forecast feed onto the shape
 // AqiCapsule/CapsulePanel need: a featured city's current reading, today's
 // expected range, a 24h series, and a 3-way (never fabricated) alert signal.
+//
+// Source: `fetchForecast` (HF `aq-data/forecast.json`, cron-refreshed, with a
+// bundled static fallback). It used to read `loadTft` — the landing chapters'
+// `public/mirror/data/tft.json`, a snapshot committed once and never
+// refreshed, which had the capsule reporting a reading four months old on
+// every surface. The landing chapters keep that mirror: it is a narrative
+// surface, and its sparkline/band sections hard-depend on the TFT p10/p90
+// fields the live deterministic feed does not carry.
+//
+// That is the trade this makes explicit: the live source (Open-Meteo CAMS) is
+// deterministic and publishes NO uncertainty band, so `range` is null there
+// rather than collapsed onto the point value. A p10/p90-carrying source is
+// still handled — if one is published, the band comes back on its own.
 import { useEffect, useState } from 'react'
-import { loadTft } from '../../../landing/shared/data/loaders'
-import type { TftCity, TftHour } from '../../../landing/shared/data/loaders'
+import { fetchForecast } from '../../../lib/today/forecastSource'
+import type { ForecastCity, ForecastHourly } from '../../../types/forecast'
 import type { AqiTier } from '../../wireframe/AqiDot'
 
 export type CapsuleAlert = 'worsening' | 'steady' | 'unknown'
@@ -25,7 +38,9 @@ export interface CapsuleDataReady {
   city: string
   current: number
   tier: AqiTier
-  range: CapsuleRange
+  /** null when the source publishes no p10/p90 — a deterministic forecast has
+   * no band, and a lo===hi "range" would read as one measured at zero width. */
+  range: CapsuleRange | null
   series24h: CapsuleSeriesPoint[]
   updatedAt: string
   alert: CapsuleAlert
@@ -61,8 +76,8 @@ const TIER_RANK: Record<AqiTier, number> = {
  * (`forecastRowAt48h`) — highest first-hour PM2.5 among cities — applied to
  * the current hour instead of +48h. Independent implementation per the wave
  * brief; the chapter-internal helper is not promoted/shared. */
-function pickFeaturedCity(cities: TftCity[]): TftCity | null {
-  let city: TftCity | null = null
+function pickFeaturedCity(cities: ForecastCity[]): ForecastCity | null {
+  let city: ForecastCity | null = null
   for (const c of cities) {
     const now = c.hourly[0]
     if (!now || !Number.isFinite(now.pm25)) continue
@@ -71,7 +86,7 @@ function pickFeaturedCity(cities: TftCity[]): TftCity | null {
   return city
 }
 
-function detectAlert(hourly: TftHour[], currentTier: AqiTier): CapsuleAlert {
+function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAlert {
   if (hourly.length < 2 || currentTier === 'unknown') return 'unknown'
   const currentRank = TIER_RANK[currentTier]
   const window = hourly.slice(0, LOOKAHEAD_HOURS)
@@ -89,25 +104,34 @@ export function useCapsuleData(): CapsuleDataState {
 
   useEffect(() => {
     let alive = true
-    loadTft()
-      .then((tft) => {
+    fetchForecast()
+      .then((forecast) => {
         if (!alive) return
-        const city = pickFeaturedCity(tft.cities)
+        const city = forecast ? pickFeaturedCity(forecast.cities) : null
         const now = city?.hourly[0]
-        if (!city || !now || !Number.isFinite(now.pm25)) {
+        if (!forecast || !city || !now || !Number.isFinite(now.pm25)) {
           setState({ status: 'missing' })
           return
         }
         const window = city.hourly.slice(0, LOOKAHEAD_HOURS)
         let lo = now.pm25
         let hi = now.pm25
+        // Only a band the source actually published widens lo/hi. If no hour
+        // carries one, `range` stays null instead of reporting lo===hi.
+        let sawBand = false
         const series24h: CapsuleSeriesPoint[] = []
         for (const hour of window) {
           if (!Number.isFinite(hour.pm25)) continue
-          const p10 = Number.isFinite(hour.pm25_p10) ? hour.pm25_p10 : null
-          const p90 = Number.isFinite(hour.pm25_p90) ? hour.pm25_p90 : null
-          if (p10 !== null) lo = Math.min(lo, p10)
-          if (p90 !== null) hi = Math.max(hi, p90)
+          const p10 = Number.isFinite(hour.pm25_p10) ? (hour.pm25_p10 as number) : null
+          const p90 = Number.isFinite(hour.pm25_p90) ? (hour.pm25_p90 as number) : null
+          if (p10 !== null) {
+            lo = Math.min(lo, p10)
+            sawBand = true
+          }
+          if (p90 !== null) {
+            hi = Math.max(hi, p90)
+            sawBand = true
+          }
           series24h.push({ time: hour.time, p10, p50: hour.pm25, p90 })
         }
         const tier = tierFromPm25(now.pm25)
@@ -116,9 +140,9 @@ export function useCapsuleData(): CapsuleDataState {
           city: city.name,
           current: now.pm25,
           tier,
-          range: { lo, hi },
+          range: sawBand ? { lo, hi } : null,
           series24h,
-          updatedAt: tft.generated_at,
+          updatedAt: forecast.generated_at,
           alert: detectAlert(city.hourly, tier),
         })
       })
