@@ -2,8 +2,17 @@ import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
 import LandingFlight from './pages/LandingFlight'
 import Globe from './pages/Globe'
+import { Suspense, lazy } from 'react'
 import Weather from './pages/Weather'
 import FluidChrome from './app/FluidChrome'
+
+/**
+ * Insights is code-split because it pulls the dotted map, whose land-point
+ * table alone is ~196 kB of source. Imported statically it lands in the entry
+ * chunk and every visitor to the landing page pays for a map they never open
+ * (measured: 333 kB → 588 kB raw on `dist/assets/index-*.js`).
+ */
+const Insights = lazy(() => import('./pages/Insights'))
 
 /**
  * Plain pathname branching — no react-router-dom dependency (not installed
@@ -35,6 +44,15 @@ function App() {
     return (
       <FluidChrome capsuleVariant="day">
         <Weather />
+      </FluidChrome>
+    )
+  }
+  if (typeof window !== 'undefined' && window.location.pathname === '/insights') {
+    return (
+      <FluidChrome capsuleVariant="day">
+        <Suspense fallback={null}>
+          <Insights />
+        </Suspense>
       </FluidChrome>
     )
   }

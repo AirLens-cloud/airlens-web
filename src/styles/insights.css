@@ -1,0 +1,386 @@
+/* ════════════════════════════════════════════════════════════════════
+   INSIGHTS — the SDID policy-impact hub.
+
+   Space division: HYBRID. `.ins-shell` is a capped fluid column
+   (100% width, --shell cap); band 3 (the map) is the one surface that
+   breaks wider inside it. Nothing inside the cap declares a second cap.
+
+   Surface: Paper-Ink, spoken in the observatory dialect — the page root
+   carries `.obs-surface` so obs.css's --obs-* tokens and mono micro-labels
+   (.m / .num) apply. The map frame is the only void surface, matching the
+   dark canvas DottedMap renders. design-lint: this file is NOT inside an
+   observatory/ directory, so the typography/spacing carve-out does not
+   apply — every value here snaps to the 8pt scale and the type classes.
+   ════════════════════════════════════════════════════════════════════ */
+
+.ins-page {
+  background: var(--bg-0);
+  color: var(--ink-0);
+  min-height: 100vh;
+}
+
+.ins-shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+
+/* ── country picker ── */
+.ins-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: var(--sp-3);
+}
+
+.ins-picker-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-2);
+}
+
+.ins-picker-select,
+.ins-year-select {
+  height: var(--control-h-sm);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-0);
+  background: var(--bg-0);
+  color: var(--ink-0);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 0 var(--sp-2);
+  max-width: 320px;
+}
+
+.ins-picker-stamp { color: var(--ink-2); }
+
+/* ── band 1: headline ── */
+.ins-headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ins-headline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  color: var(--ink-2);
+}
+
+.ins-headline-title {
+  font-family: var(--obs-display, var(--serif));
+  font-weight: 900;
+  font-size: clamp(36px, 5vw, 68px);
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--ink-0);
+}
+
+.ins-headline-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.ins-headline-att {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(32px, 4vw, 52px);
+  letter-spacing: -0.04em;
+  color: var(--ink-0);
+}
+
+.ins-headline-unit { color: var(--ink-2); font-size: 14px; }
+
+.ins-headline-verdict {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  border: 1px solid currentColor;
+  padding: var(--sp-1) var(--sp-2);
+}
+
+.ins-verdict-reliable { color: var(--orange-ink); }
+.ins-verdict-insignificant,
+.ins-verdict-no_data { color: var(--ink-2); }
+.ins-verdict-unstable { color: var(--aqi-unh); }
+
+.ins-headline-stats {
+  display: flex;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+  padding-top: var(--sp-3);
+  margin: 0;
+}
+
+.ins-headline-stats dt {
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ins-headline-stats dd {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--ink-0);
+}
+
+.ins-headline-read,
+.ins-headline-gate-note { color: var(--ink-1); max-width: 68ch; margin: 0; }
+
+.ins-headline-gate {
+  color: var(--ink-0);
+  font-size: 18px;
+  max-width: 68ch;
+  margin: 0;
+  border-left: 2px solid var(--orange);
+  padding-left: var(--sp-3);
+}
+
+.ins-headline-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  border-top: 1px solid var(--rule);
+  padding-top: var(--sp-3);
+}
+
+.ins-headline-foot .m { max-width: 60ch; }
+
+/* ── shared band furniture ── */
+.ins-band-title {
+  font-family: var(--obs-display, var(--serif));
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 0 0 var(--sp-3);
+  color: var(--ink-0);
+}
+
+.ins-note,
+.ins-caveat {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 76ch;
+  margin: var(--sp-3) 0 0;
+}
+
+.ins-caveat {
+  font-style: italic;
+  border-left: 2px solid var(--rule-strong);
+  padding-left: var(--sp-3);
+}
+
+.ins-empty {
+  color: var(--ink-1);
+  border: 1px dashed var(--rule);
+  padding: var(--sp-4);
+  margin: 0;
+  max-width: 76ch;
+}
+
+.ins-chart { width: 100%; overflow-x: auto; }
+.ins-chart svg { width: 100%; height: auto; display: block; color: var(--ink-0); }
+
+.ins-legend {
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+}
+
+.ins-legend-row { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ins-swatch { display: inline-block; width: 16px; height: 3px; background: var(--ink-0); }
+
+/* ── band 2: two panels ── */
+.ins-duo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.ins-lane-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.ins-lane {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: baseline;
+  gap: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--rule);
+  padding: var(--sp-3) 0;
+}
+
+.ins-lane--primary { border-top: 1px solid var(--rule-strong); }
+.ins-lane-name { color: var(--ink-2); }
+.ins-lane--primary .ins-lane-name { color: var(--ink-0); }
+.ins-lane-att { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.ins-lane-unit { color: var(--ink-2); font-size: 11px; }
+.ins-lane-p { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.ins-lane-gated { grid-column: 2 / -1; font-family: var(--mono); font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.08em; }
+.ins-lane-detail { grid-column: 1 / -1; margin: 0; color: var(--ink-2); font-size: 12px; line-height: 1.5; max-width: 60ch; }
+.ins-lane-verdict { margin: var(--sp-3) 0 0; color: var(--ink-0); font-size: 14px; max-width: 68ch; border-top: 1px solid var(--rule); padding-top: var(--sp-3); }
+
+.ins-bar { fill: var(--ink-1); }
+.ins-bar--active { fill: var(--orange); }
+.ins-bar-label { fill: var(--ink-0); }
+.ins-bar-value { fill: var(--ink-2); font-family: var(--mono); }
+
+/* ── band 3: the map, the page's one wide surface ── */
+.ins-map-band { width: 100%; }
+
+.ins-map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.ins-map-controls { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-3); }
+.ins-year-label { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--ink-2); }
+
+.ins-view-toggle {
+  height: var(--control-h-sm);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-0);
+  background: var(--bg-0);
+  color: var(--ink-0);
+  padding: 0 var(--sp-3);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.ins-view-toggle[aria-pressed='true'] { background: var(--ink-0); color: var(--bg-0); }
+
+/* The frame's height must be DEFINITE, never `min-height`. DottedMap measures
+   its container with a ResizeObserver and sizes the canvas to match; with only
+   a minimum, the canvas it inserts grows the container, which grows the canvas
+   — measured at 8376px and still climbing before this was pinned. */
+.ins-map-frame {
+  position: relative;
+  background: var(--obs-void);
+  border: 1px solid var(--rule);
+  height: clamp(320px, 52vh, 560px);
+  overflow: hidden;
+}
+
+.ins-map-canvas { width: 100%; height: 100%; }
+
+.ins-map-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: var(--obs-void-2);
+  color: var(--obs-ink);
+  border: 1px solid var(--obs-void-line);
+  padding: var(--sp-2) var(--sp-3);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+
+.ins-map-tooltip-name { font-size: 12px; }
+.ins-map-tooltip-val { font-family: var(--mono); font-size: 11px; color: var(--obs-hud); }
+
+.ins-map-overlay-empty {
+  position: absolute;
+  inset: auto var(--sp-4) var(--sp-4);
+  margin: 0;
+  background: var(--obs-void-2);
+  color: var(--obs-ink);
+  border: 1px solid var(--obs-void-line);
+  padding: var(--sp-3);
+  font-size: 13px;
+  max-width: 60ch;
+}
+
+/* ── band 4: synthetic control ── */
+.ins-sdid-line { stroke-width: 2; }
+.ins-sdid-line--observed { stroke: var(--ink-0); }
+.ins-sdid-line--synthetic { stroke: var(--ink-2); stroke-dasharray: 5 4; }
+.ins-sdid-effect { fill: var(--orange); fill-opacity: 0.18; stroke: none; }
+.ins-sdid-fitband { fill: var(--ink-2); fill-opacity: 0.06; }
+.ins-sdid-needle { stroke: var(--orange); stroke-width: 1; stroke-dasharray: 3 3; }
+.ins-sdid-needle-label { fill: var(--orange-ink); font-family: var(--mono); letter-spacing: 0.08em; }
+
+.ins-swatch--observed { background: var(--ink-0); }
+.ins-swatch--synthetic { background: var(--ink-2); }
+.ins-swatch--effect { background: var(--orange); height: 8px; }
+.ins-swatch--fit { background: var(--ink-3); height: 8px; opacity: 0.4; }
+.ins-swatch--spread { background: var(--ink-1); height: 8px; opacity: 0.3; }
+
+/* ── band 5: observed trend ── */
+.ins-trend-line { stroke-width: 2; fill: none; }
+.ins-trend-line-0 { stroke: var(--ink-0); }
+.ins-trend-line-1 { stroke: var(--aqi-mod); }
+.ins-trend-line-2 { stroke: var(--aqi-usg); }
+.ins-trend-line-3 { stroke: var(--aqi-good); }
+.ins-trend-label { fill: currentColor; font-family: var(--mono); }
+.ins-trend-line-0.ins-trend-label { fill: var(--ink-0); }
+.ins-trend-band { fill: var(--ink-1); fill-opacity: 0.16; stroke: none; }
+.ins-legend .ins-swatch.ins-trend-line-0 { background: var(--ink-0); }
+.ins-legend .ins-swatch.ins-trend-line-1 { background: var(--aqi-mod); }
+.ins-legend .ins-swatch.ins-trend-line-2 { background: var(--aqi-usg); }
+.ins-legend .ins-swatch.ins-trend-line-3 { background: var(--aqi-good); }
+
+/* ── band 6: the two cards ── */
+.ins-card {
+  border: 1px solid var(--rule);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ins-card--pending { border-style: dashed; }
+.ins-card-head { display: flex; justify-content: space-between; gap: var(--sp-3); color: var(--ink-2); }
+.ins-card-status { color: var(--ink-3); }
+.ins-card-value { display: flex; align-items: baseline; gap: var(--sp-2); }
+.ins-card-num { font-family: var(--mono); font-weight: 700; font-size: 40px; letter-spacing: -0.04em; }
+.ins-card-unit { color: var(--ink-2); font-size: 13px; }
+.ins-card-meta,
+.ins-card-note { color: var(--ink-2); font-size: 13px; margin: 0; }
+.ins-card-lede { color: var(--ink-0); font-size: 16px; margin: 0; }
+
+/* ── footer ── */
+.ins-foot { border-top: 1px solid var(--rule); padding-top: var(--sp-4); color: var(--ink-2); }
+
+@media (max-width: 768px) {
+  .ins-shell { padding: var(--sp-5) var(--sp-4) var(--sp-7); gap: var(--sp-6); }
+  .ins-headline-stats { gap: var(--sp-4); }
+  .ins-map-frame { height: clamp(280px, 46vh, 380px); }
+  .ins-lane { grid-template-columns: 1fr auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ins-view-toggle { transition: none; }
+}

@@ -11,6 +11,7 @@ vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /> }))
 vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
+vi.mock('./pages/Insights', () => ({ default: () => <div data-testid="page-insights" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
   default: ({ variant }: { variant?: string }) => (
     <div data-testid="mock-capsule" data-variant={variant ?? 'night'} />
@@ -77,6 +78,20 @@ describe('App — FluidChrome routing', () => {
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
     expect(queryByTestId('page-weather')).not.toBeNull()
+  })
+
+  it('mounts the fluid chrome overlay on /insights', async () => {
+    // Arrange — the SDID hub is a light Paper-Ink surface, so it takes the same
+    // day capsule as /weather rather than the night one. The page itself is
+    // lazy (it carries the dotted map's land-point table), so the assertion on
+    // it has to await the chunk; the chrome around it is immediate.
+    setPath('/insights')
+    // Act
+    const { queryByTestId, findByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('mock-capsule')?.getAttribute('data-variant')).toBe('day')
+    expect(await findByTestId('page-insights')).not.toBeNull()
   })
 
   it('renders the capsule in its day variant on /weather, night everywhere else', () => {
