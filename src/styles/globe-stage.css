@@ -1,0 +1,342 @@
+/* globe-stage.css — layout + chrome for the /globe observation deck (G2).
+ *
+ * Everything is scoped under `.obs-surface` like the rest of the observatory
+ * world (obs.css owns the tokens; composites.css owns the three ported
+ * observatory components). This file adds only what the stage itself needs:
+ * the space division, and the three chrome surfaces G2 introduces (legend,
+ * layer switchboard, frame strip) plus the grid readout.
+ *
+ * Space division (design doctrine §0): the stage is **hybrid** — a fluid main
+ * column that takes the viewport, plus a fixed-cap instrument rail expressed
+ * as a clamp() boundary rather than a bare pixel column.
+ *
+ * The glass material on the legend / switchboard / frame strip comes from
+ * LiquidGlass (fluid-glass.css) — never restated here. The grid readout is the
+ * one exception and says why in its own block.
+ */
+
+.obs-surface.globe-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--obs-void);
+  color: var(--obs-ink);
+}
+
+.obs-surface .globe-stage {
+  display: grid;
+  grid-template-columns: 1fr clamp(320px, 30vw, 380px);
+  flex: 1;
+  min-height: 0;
+}
+
+.obs-surface .globe-stage-main {
+  position: relative;
+  min-height: 60vh;
+  overflow: hidden;
+}
+
+.obs-surface .globe-3d-shell {
+  position: absolute;
+  inset: 0;
+}
+
+.obs-surface .globe-3d-shell:focus-visible {
+  outline: 2px solid var(--obs-cyan);
+  outline-offset: -2px;
+}
+
+.obs-surface .globe-stage-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  border-left: 1px solid var(--obs-void-line);
+  background: var(--obs-void-2);
+}
+
+/* The rail component is authored as a flow element; on the stage it floats
+   over the sphere at the left edge. */
+.obs-surface .globe-stage-main > .atmos-mode-rail {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 3;
+}
+
+/* ── GlobeLegend ─────────────────────────────────────────────────────────── */
+
+.obs-surface .globe-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  gap: 7px;
+  width: min(420px, calc(100% - 48px));
+  padding: 12px 14px;
+  transform: translateX(-50%);
+}
+
+.obs-surface .lg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.obs-surface .lg-head .name { color: var(--obs-ink); }
+.obs-surface .lg-head .unit { color: var(--obs-hud); }
+.obs-surface .lg-head .range { margin-left: auto; color: var(--obs-cyan); font-variant-numeric: tabular-nums; }
+
+.obs-surface .lg-bar {
+  height: 7px;
+  border: 1px solid rgba(232, 236, 244, .14);
+}
+
+.obs-surface .lg-ticks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--obs-hud-dim);
+  font: 400 8px/1 var(--obs-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.obs-surface .lg-caveat {
+  color: var(--obs-hud);
+  font: 500 10px/1.45 var(--obs-display);
+}
+
+.obs-surface .lg-wind-motion {
+  display: grid;
+  gap: 5px;
+  padding-top: 3px;
+}
+
+.obs-surface .lg-wind-sample {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  color: var(--obs-hud);
+  font: 400 8px/1 var(--obs-mono);
+  letter-spacing: .08em;
+}
+
+.obs-surface .lg-wind-sample .track {
+  position: relative;
+  height: 1px;
+  background: rgba(232, 236, 244, .14);
+}
+
+.obs-surface .lg-wind-sample .dash {
+  position: absolute;
+  top: -1px;
+  height: 3px;
+  background: var(--obs-ink);
+}
+
+.obs-surface .lg-wind-sample.calm .dash { left: 4%; width: 14%; opacity: .55; }
+.obs-surface .lg-wind-sample.brisk .dash { left: 26%; width: 26%; opacity: .78; }
+.obs-surface .lg-wind-sample.strong .dash { left: 54%; width: 42%; opacity: 1; }
+.obs-surface .lg-wind-sample .range { color: var(--obs-ink); font-variant-numeric: tabular-nums; }
+.obs-surface .lg-wind-sample .range .unit { margin-left: 4px; color: var(--obs-hud-dim); }
+
+/* ── GlobeLayerToggles ───────────────────────────────────────────────────── */
+
+.obs-surface .globe-layers {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.obs-surface .gl-kicker,
+.obs-surface .gt-kicker {
+  color: var(--obs-hud-dim);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .18em;
+}
+
+.obs-surface .gl-overlays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.obs-surface .gl-overlay-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.obs-surface .gl-group-name {
+  width: 100%;
+  color: var(--obs-hud-dim);
+  font: 400 7px/1 var(--obs-mono);
+  letter-spacing: .14em;
+}
+
+.obs-surface .gl-overlay {
+  padding: 5px 7px;
+  color: var(--obs-hud);
+  background: transparent;
+  border: 1px solid rgba(232, 236, 244, .14);
+  border-radius: var(--r-0);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+
+.obs-surface .gl-overlay:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
+.obs-surface .gl-overlay:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
+.obs-surface .gl-overlay.is-active {
+  color: var(--obs-ink);
+  background: rgba(37, 226, 244, .075);
+  border-color: rgba(37, 226, 244, .38);
+}
+
+.obs-surface .gl-switches { display: grid; gap: 3px; }
+
+.obs-surface .gl-switch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  color: var(--obs-hud);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-0);
+  text-align: left;
+  cursor: pointer;
+  transition: color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+
+.obs-surface .gl-switch:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
+.obs-surface .gl-switch:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
+.obs-surface .gl-switch.is-on { color: var(--obs-ink); border-color: rgba(37, 226, 244, .2); }
+.obs-surface .gl-switch-copy { display: grid; gap: 3px; min-width: 0; }
+.obs-surface .gl-switch-copy strong { font: 700 9px/1 var(--obs-mono); letter-spacing: .1em; }
+.obs-surface .gl-switch-copy small {
+  overflow: hidden;
+  color: var(--obs-hud-dim);
+  font: 500 9px/1.2 var(--obs-display);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.obs-surface .gl-switch-state { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); letter-spacing: .1em; }
+.obs-surface .gl-switch.is-on .gl-switch-state { color: var(--obs-cyan); }
+
+/* ── GlobeTimeline ───────────────────────────────────────────────────────── */
+
+.obs-surface .globe-timeline {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.obs-surface .gt-frames {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.obs-surface .gt-frame {
+  display: grid;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  color: var(--obs-hud);
+  background: transparent;
+  border: 1px solid rgba(232, 236, 244, .14);
+  border-radius: var(--r-0);
+  cursor: pointer;
+  transition: color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+
+.obs-surface .gt-frame:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
+.obs-surface .gt-frame:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
+.obs-surface .gt-frame.is-active {
+  color: var(--obs-ink);
+  background: rgba(37, 226, 244, .075);
+  border-color: rgba(37, 226, 244, .38);
+}
+.obs-surface .gt-frame strong { font: 700 9px/1 var(--obs-mono); letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.obs-surface .gt-frame small { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); font-variant-numeric: tabular-nums; }
+
+.obs-surface .gt-caveat,
+.obs-surface .gt-notice {
+  margin: 0;
+  color: var(--obs-hud);
+  font: 500 10px/1.45 var(--obs-display);
+}
+
+.obs-surface .globe-timeline.is-disabled .gt-notice { color: var(--orange); }
+
+/* ── GlobeGridTooltip ────────────────────────────────────────────────────── */
+
+/* Not a LiquidGlass surface (see the component's note — it mounts per hover),
+   so the night-glass material is restated here from the same tokens. */
+.obs-surface .globe-grid-readout {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  pointer-events: none;
+  background: var(--glass-night-fill, rgba(5, 9, 16, .82));
+  border: 1px solid var(--glass-night-border, rgba(232, 236, 244, .14));
+}
+
+.obs-surface .gr-name {
+  color: var(--obs-hud);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.obs-surface .gr-row { display: flex; align-items: baseline; gap: 5px; }
+.obs-surface .gr-value { color: var(--obs-ink); font: 700 18px/1 var(--obs-mono); font-variant-numeric: tabular-nums; }
+.obs-surface .gr-unit { color: var(--obs-hud); font: 400 8px/1 var(--obs-mono); }
+.obs-surface .gr-nodata { color: var(--obs-hud); font: 500 11px/1.2 var(--obs-display); }
+.obs-surface .gr-coords { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); font-variant-numeric: tabular-nums; }
+
+/* ── WebGL context loss (Globe3DScene) ───────────────────────────────────── */
+
+.obs-surface .gl-ctx-lost {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 7, 13, .92);
+}
+
+.obs-surface .gl-ctx-lost-inner { display: grid; gap: 10px; justify-items: center; text-align: center; }
+.obs-surface .gl-ctx-lost-title { margin: 0; color: var(--obs-ink); font: 700 11px/1 var(--obs-mono); letter-spacing: .14em; text-transform: uppercase; }
+.obs-surface .gl-ctx-lost-desc { margin: 0; color: var(--obs-hud); font: 500 12px/1.5 var(--obs-display); }
+
+/* ── Narrow viewports ────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .obs-surface .globe-stage { grid-template-columns: 1fr; }
+  .obs-surface .globe-stage-main { min-height: 56vh; }
+  .obs-surface .globe-stage-rail { border-left: 0; border-top: 1px solid var(--obs-void-line); }
+  .obs-surface .globe-stage-main > .atmos-mode-rail { top: 12px; left: 12px; width: 172px; }
+  .obs-surface .globe-legend { bottom: 12px; width: calc(100% - 24px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obs-surface .gl-overlay,
+  .obs-surface .gl-switch,
+  .obs-surface .gt-frame { transition: none; }
+}
