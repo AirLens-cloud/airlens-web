@@ -21,10 +21,13 @@ const EXPANDED_W = 320
 const EXPANDED_H = 300
 const PANEL_PAD = 20
 
-/** Assumed forecast cadence — matches the sibling grid-snapshot pipeline's
- * 3h cron (see docs/DATA-SNAPSHOT.md provenance for this mirror). Purely a
- * countdown display; never asserted as a live guarantee. */
-const REFRESH_INTERVAL_MS = 3 * 60 * 60 * 1000
+/** Assumed forecast cadence — matches the publish cron behind the capsule's
+ * source (`forecastSource.ts`: the HF CAMS forecast refreshes every 6h). It
+ * was 3h while the capsule read the grid-snapshot mirror; leaving it there
+ * after the source moved would flip the readout to "Xh ago" (data-stale)
+ * halfway through every real refresh window, i.e. half the time on current
+ * data. Purely a countdown display; never asserted as a live guarantee. */
+const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000
 const ALERT_AUTOCLOSE_MS = 4000
 const ALERT_SESSION_KEY = 'airlens-capsule-alert-shown'
 

@@ -1,0 +1,148 @@
+name: Deploy to Cloudflare Pages
+
+# The `airlens-web` Pages project has no Git provider attached (direct-upload
+# only), so nothing deployed on a merge to main — three merged surfaces sat
+# behind a build from before them, and every route fell through to the M0 data
+# probe page. This workflow is the deploy path.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_PAGES_TOKEN  — scoped token, Account -> Cloudflare Pages -> Edit
+#   CLOUDFLARE_ACCOUNT_ID   — the account the `airlens-web` project lives in
+# Both are absent until someone adds them; the preflight below fails loudly
+# rather than letting wrangler report a confusing auth error.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy-airlens-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # CI already gates typecheck/lint/test on this same commit. Build here so
+      # what ships is built from this checkout, not fetched from another run.
+      - name: Build
+        run: npm run build
+
+      - name: Preflight — deploy credentials present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=0
+          [ -n "$TOKEN" ] || { echo "::error::CLOUDFLARE_PAGES_TOKEN is not set"; missing=1; }
+          [ -n "$ACCOUNT" ] || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not set"; missing=1; }
+          [ "$missing" = "0" ] || exit 1
+          echo "deploy credentials present (values masked)"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy dist
+            --project-name=airlens-web
+            --branch=main
+            --commit-dirty=true
+            --commit-message="${{ github.sha }}"
+
+      # A green deploy step is not proof the site serves this build — the stale
+      # deployment that prompted this workflow also returned 200 on every path,
+      # including routes it did not have. So assert on artifacts only a real
+      # upload of THIS dist can produce: the entry bundle's content hash, plus
+      # a sample of the files the entry alone would not catch (a lazily-loaded
+      # route chunk, and the globe textures, which ship outside the JS graph
+      # and so can fail to upload while every bundle succeeds).
+      - name: Verify the deploy actually landed
+        env:
+          SITE: https://airlens-web.pages.dev
+        run: |
+          set -u
+          fail=0
+
+          # Rollup emits exactly one entry chunk. More than one means the glob
+          # below is ambiguous and this check can no longer prove anything —
+          # stop rather than silently compare mismatched chunks.
+          local_entries=$(find dist/assets -maxdepth 1 -name 'index-*.js' | wc -l | tr -d ' ')
+          if [ "$local_entries" != "1" ]; then
+            echo "::error::expected exactly 1 dist/assets/index-*.js, found $local_entries — verification cannot identify the entry chunk"
+            exit 1
+          fi
+          local_entry=$(basename "$(find dist/assets -maxdepth 1 -name 'index-*.js')")
+
+          # Pages puts a fresh upload behind the alias within seconds, but not
+          # instantly. Retry so slow propagation reads as slow, not as failure.
+          entry=""
+          for _ in $(seq 1 12); do
+            entry=$(curl -sf "$SITE/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
+            [ "$entry" = "$local_entry" ] && break
+            sleep 10
+          done
+          echo "entry — deployed: ${entry:-<none>} / built: $local_entry"
+          if [ "$entry" != "$local_entry" ]; then
+            echo "::error::deployed entry (${entry:-<none>}) != built entry ($local_entry) — the upload did not land"
+            exit 1
+          fi
+
+          # Every built asset the entry HTML does not name: route chunks and
+          # the static textures. Sampling these catches a partial upload.
+          probe() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1")
+            if [ "$code" = "200" ]; then
+              echo "  ok   $1"
+            else
+              echo "::error::$1 returned $code (expected 200) — this build's assets are not all served"
+              fail=1
+            fi
+          }
+          # Named explicitly, not globbed from dist: a glob can only check what
+          # the build happened to emit, so a texture silently dropped from
+          # public/ would vanish from the probe list instead of failing. These
+          # three are what globe-presets.ts references; OceanSphere logs
+          # "Texture load failed" and renders a flat sphere without them.
+          for tex in earth-land-mask.png earth-bump.png earth-night-2k.jpg; do
+            if [ ! -f "dist/textures/$tex" ]; then
+              echo "::error::dist/textures/$tex is missing from the build — public/textures/ lost a file globe-presets.ts needs"
+              fail=1
+              continue
+            fi
+            probe "/textures/$tex"
+          done
+
+          # Representative code-split chunks, resolved from this build. A name
+          # that stops matching must fail: silently skipping it would turn this
+          # gate into a pass that proves nothing. If a chunk is legitimately
+          # renamed or inlined into the entry, update this list in the same PR.
+          for name in Globe3DScene Insights idw.worker OceanSphere; do
+            chunk=$(find dist/assets -maxdepth 1 -name "$name-*.js" | head -1)
+            if [ -z "$chunk" ]; then
+              echo "::error::no dist/assets/$name-*.js in this build — update the probe list in this workflow"
+              fail=1
+              continue
+            fi
+            probe "/assets/$(basename "$chunk")"
+          done
+
+          [ "$fail" = "0" ] || exit 1
+          echo "deploy verified: entry hash matches and sampled assets are served"

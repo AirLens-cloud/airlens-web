@@ -27,8 +27,21 @@ export const HF_LIVE_BASE: string =
 /**
  * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
  * the Weather page's `/api/proxy/open-meteo-weather` and
- * `/api/proxy/open-meteo-aq` routes live here. An empty string (unset) is an
- * honest "not configured" state: callers must skip the fetch entirely
- * rather than attempt a request against an empty base URL.
+ * `/api/proxy/open-meteo-aq` routes live here. Public and keyless, so it gets
+ * the same baked-in default as the two bases above: leaving it to an env var
+ * nobody sets is what shipped every Weather card as "unavailable".
+ *
+ * The empty-base branch downstream (`weatherProxy.ts` skipping the fetch,
+ * `useWeatherPageData`'s `configured: false`, and the five section states it
+ * feeds) is now reachable ONLY via an explicit `VITE_COMMUNITY_API_BASE=`
+ * override. Nobody sets that — so treat it as a guard against a future
+ * misconfiguration, kept covered by tests that force it, not as a state the
+ * shipped app reaches. Do not read those branches as evidence the Weather
+ * page has a live "not configured" mode; it does not.
+ *
+ * Note the worker answers only origins on its CORS allowlist (AirLens-platform
+ * `apps/web/workers/api/wrangler.toml` `ALLOWED_ORIGINS`), which does not
+ * include localhost — `npm run dev` gets a 403 here, deployed builds do not.
  */
-export const COMMUNITY_API_BASE: string = import.meta.env.VITE_COMMUNITY_API_BASE ?? '';
+export const COMMUNITY_API_BASE: string =
+  import.meta.env.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';

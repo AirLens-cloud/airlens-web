@@ -17,8 +17,11 @@ export type WeatherPageStatus = 'loading' | 'ready'
 
 export interface WeatherPageData {
   status: WeatherPageStatus
-  /** false when `VITE_COMMUNITY_API_BASE` is unset — an honest, permanent
-   * "not configured" state, distinct from a retryable network failure. */
+  /** false only when `VITE_COMMUNITY_API_BASE` is explicitly overridden to an
+   * empty string — an honest, permanent "not configured" state, distinct from
+   * a retryable network failure. `COMMUNITY_API_BASE` now carries a baked-in
+   * public default (`lib/config/dataSources.ts`), so in every real build this
+   * is true and the branch is a misconfiguration guard, not a live mode. */
   configured: boolean
   weather: OpenMeteoWeatherHourly | null
   aq: OpenMeteoAqHourly | null
