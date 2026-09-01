@@ -27,7 +27,9 @@ const STATIC_GRID_PATH = '/data/current-pm25-grid.json';
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5000;
-const DEFAULT_MAX_AGE_HOURS = 48;
+/** Exported so other Today-surface sources (e.g. `useTodayCams.ts`) judge
+ * staleness against the same threshold rather than inventing their own. */
+export const DEFAULT_MAX_AGE_HOURS = 48;
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 5000;

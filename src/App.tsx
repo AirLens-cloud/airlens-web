@@ -2,10 +2,24 @@ import { DataProbe } from './pages/DataProbe'
 import DesignGallery from './pages/DesignGallery'
 import LandingFlight from './pages/LandingFlight'
 import Globe from './pages/Globe'
-import { Suspense, lazy } from 'react'
-import Weather from './pages/Weather'
+import { Suspense, lazy, useEffect } from 'react'
+import Today from './pages/Today'
 import Home from './pages/Home'
 import FluidChrome from './app/FluidChrome'
+
+/**
+ * WeatherRedirectShim — `/weather` no longer has its own page. Today absorbed
+ * it (DECISIONS-2026-08-28 D4): the route now bounces to `/today` with its
+ * Conditions tab pre-selected, so existing links/bookmarks keep working
+ * instead of 404ing. `location.replace` (not `.href =`) so the old URL
+ * never lands in browser history.
+ */
+function WeatherRedirectShim() {
+  useEffect(() => {
+    window.location.replace('/today?tab=conditions')
+  }, [])
+  return null
+}
 
 /**
  * Insights is code-split because it pulls the dotted map, whose land-point
@@ -41,12 +55,18 @@ function App() {
       </FluidChrome>
     )
   }
+  // /weather is absorbed into /today (DECISIONS-2026-08-28 D4) — this is now
+  // a redirect shim, not a page render. `Weather.tsx` itself is untouched;
+  // Today's Conditions tab reuses its section components directly.
   if (typeof window !== 'undefined' && window.location.pathname === '/weather') {
-    return (
-      <FluidChrome capsuleVariant="day">
-        <Weather />
-      </FluidChrome>
-    )
+    return <WeatherRedirectShim />
+  }
+  // Today IS the briefing/decision surface — it renders its own current-
+  // reading HUD and Answer hero, so it is not wrapped in FluidChrome (that
+  // would float a second, redundant AqiCapsule readout over it). Same
+  // reasoning as Home, below.
+  if (typeof window !== 'undefined' && window.location.pathname === '/today') {
+    return <Today />
   }
   if (typeof window !== 'undefined' && window.location.pathname === '/insights') {
     return (
