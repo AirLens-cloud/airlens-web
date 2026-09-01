@@ -78,23 +78,96 @@ whoever writes tests against a ported component, see §7.
 
 There is **no** exported spring-preset registry (no `presets.ts`, no named
 export like `SPRING_JELLY`). Each component that uses `useSpring` declares
-its own `SpringConfig` object literal as a local `const`. The three that
-exist today:
+its own `SpringConfig` object literal as a local `const`. Five exist today:
 
 | Const | File | `{ damping, response }` | ζ regime | Used for |
 |---|---|---|---|---|
 | `DEFAULT_CONFIG` | `src/landing/shared/useSmoothedProgress.ts:29` | `{ damping: 1, response: 0.25 }` | critically damped (ζ=1, no overshoot) | scroll-progress smoothing — the code comment explains why: a progress value must stay inside `[0,1]`, so an underdamped config that overshoots is wrong here (`useSmoothedProgress.ts:25-28`) |
 | `CAPSULE_SPRING` | `src/components/fluid/capsule/AqiCapsule.tsx:17` | `{ damping: 0.68, response: 0.38 }` | underdamped (ζ<1, overshoots) | the capsule's expand/collapse width+height |
 | `DRAG_SPRING` | `src/components/fluid/capsule/CapsulePanel.tsx:13` | `{ damping: 0.72, response: 0.32 }` | underdamped (ζ<1, overshoots) | the drag-to-page snap `translateX` |
+| `PANEL_SPRING` | `src/components/chat/ChatFAB.tsx:48` | `{ damping: 0.8, response: 0.3 }` | underdamped (ζ<1, overshoots) | the chat panel's open/close `translateY` + drag-to-dismiss — the gesture-table's exact ζ0.8/r0.30 value (§1a below) |
+| `VALUE_SPRING` | `src/components/home/HomeHero.tsx:24` | `{ damping: 1.0, response: 0.5 }` | critically damped (ζ=1, no overshoot) | the Home hero's headline PM2.5 number — deliberately slower than the ζ1.0/r0.35 base default (`HomeHero.tsx:22-23`); a settling number reads better over 500ms than snapping in 350ms |
 
 `damping` is the damping ratio ζ (1 = critically damped, <1 = overshoots,
 per the type doc at `src/motion/spring.ts:4-6`); `response` is a response
 time in seconds, converted to angular frequency as
 `ω = 2π / max(0.05, response)` (`src/motion/spring.ts:29,34`). Treat the
 table above as "known-good values already tuned in this codebase," not
-formal names — if a porting page needs a fourth config, derive one the same
+formal names — if a porting page needs a new config, derive one the same
 way (pick ζ for overshoot-or-not, response for speed) rather than
-introducing a shared presets file this repo doesn't have.
+introducing a shared presets file this repo doesn't have; note whether it
+belongs in the base default or the gesture-table registry below.
+
+### Δ5 motion contract — base default, gesture-table registry, press, reduced-motion
+
+Wave 5's interaction/gesture delta (Δ5, B1-B6). Two spring regimes, a
+CSS-only press system, and one reduced-motion substitution rule govern every
+consumer of `useSpring` and the pressable-control classes added in B5.
+
+**Base default — ζ1.0 / r0.35.** Critically damped, no overshoot. This is
+the assumed regime for any new spring-driven surface that isn't in the
+gesture-table registry below (`ChatFAB.tsx:47`, `HomeHero.tsx:22`). No
+literal `{ damping: 1.0, response: 0.35 }` constant is shared in code — per
+the "per-component constants" principle above, a surface adopting the base
+default declares its own local const at (or near) those values; `HomeHero`'s
+`VALUE_SPRING` is a documented, intentional deviation from it (slower, for a
+legible headline number), not a second default.
+
+**Gesture-table registry — ζ0.8 / r0.30, closed list.** A small, explicitly
+enumerated set of surfaces is allowed the bouncier (underdamped) regime,
+because they are direct-manipulation / drag-driven UI where a little
+overshoot reads as physical, not sloppy: **sheet, capsule, chat panel,
+flick** (`ChatFAB.tsx:14-16,46-47`). `PANEL_SPRING` (chat panel) hits this
+exactly at `{ damping: 0.8, response: 0.3 }`; `CAPSULE_SPRING` and
+`DRAG_SPRING` (capsule expand/collapse and its drag-to-page snap) are tuned
+close to it (0.68-0.72 / 0.32-0.38) rather than pinned to the identical
+numbers — expected, since ζ0.8/r0.30 is the registry's nominal target, not a
+shared constant every entry must equal byte-for-byte. **Adding a fifth
+category requires adding a row here and in the code comments that cite this
+list** (`ChatFAB.tsx:46`, `chrome.css:162-167`) — it is not a default other
+surfaces can reach for ad hoc. A "sheet" surface has no component in this
+repo yet; the category exists in the registry for a future bottom-sheet
+port, not for anything currently rendered.
+
+**Press — CSS-only, not spring-driven.** `--dur-press: 100ms`
+(`src/styles/tokens.css:174-175`) pairs with a `:active { transform:
+scale(0.96) }` rule — no JS, no `useSpring` involvement, because a press is
+a binary pressed/released state, not something that benefits from spring
+physics. Applied per-surface (never a blanket `button:active` selector, so a
+surface can opt out or use a different scale if a future one needs to):
+`.btn` (`wireframe.css:162-182`, which also replaced its previous bare `.2s`
+transition with explicit `background-color`/`color`/`border-color`/
+`transform` properties), `.fab` (`composites.css:187-205`, which also
+**removed** its `:hover { transform: translateY(-2px) }` lift — a Δ5
+contract violation — no hover lift or hover shadow is allowed anywhere),
+`.chat-send` (`composites.css:287-295`), `.chrome-nav__trigger`
+(`chrome.css:107-124`), and `.chrome-nav__mobile-toggle`
+(`chrome.css:236-246`).
+
+**Reduced-motion substitution — 200ms crossfade, never an infinite loop.**
+`useSpring.set()` calls `spring.jump()` instead of animating when
+`useReducedMotion()` is true (`useSpring.ts:56-62`) — every spring-driven
+surface snaps to its target instantly under reduced motion, no exception.
+Where a surface also needs *some* transition so the state change isn't
+silently invisible, the fix is a plain CSS opacity transition running
+independently of the spring, not a shortened spring: the chat panel's
+`.chat-panel-spring` opacity fades over `--dur-fast` (200ms) on `data-open`
+regardless of reduced-motion, "so reduced-motion can keep the 200ms
+crossfade even while the spring snaps position instantly"
+(`composites.css:220-224`). This is the same shape as the entry-discipline
+rule in §1 above (`.fluid-enter` strips its transition entirely rather than
+shortening it) applied to gesture-table surfaces specifically. No
+Δ5-introduced animation loops indefinitely — every spring settles
+(`Spring.isSettled()`, `spring.ts:53-55`) and every CSS transition is
+one-shot, state-triggered.
+
+**Property scope — transform + opacity only, plus entry blur.** Every Δ5
+spring/press/crossfade above animates only `transform` and/or `opacity`
+(never `width`/`height`/`top`/`left`/layout properties) — `AqiCapsule`'s
+`width`/`height` spring predates Δ5 and is a known exception, not a
+precedent to extend. The one addition beyond transform+opacity is entry
+blur, already covered by the fallback-ladder/glass sections above, not a
+new Δ5 property.
 
 ## 2. Tokens
 
@@ -114,6 +187,10 @@ duration is **not** driven by `--dur-enter` — it's a separate `durMs` prop
 defaulting to `300ms` (see §3), matching the `--dur-enter` value by the
 entry-discipline rule (duration ≤300ms), not by a shared constant — a
 change to one does not automatically update the other.
+
+Wave 5 Δ5 (B5) added a fourth: `--dur-press: 100ms`
+(`src/styles/tokens.css:174-175`), consumed only by the `:active { transform:
+scale(0.96) }` press rule — see the Δ5 motion contract subsection in §1.
 
 ### Glass token consumption contract — no new `--glass-*` tokens
 
@@ -209,6 +286,13 @@ Reduced-motion is handled **inside** the hook, not by the caller: when
 `useReducedMotion()` is true, `.set()` calls `spring.jump(target)` instead of
 animating (`useSpring.ts:56-62`) — every consumer gets reduced-motion
 correctness for free.
+
+**Exception (Wave 5 Δ5, B4):** `HomeHero.tsx:24-69` subscribes into
+`useState` instead of a style ref — the spring drives rendered *text*
+content (the headline PM2.5 number), which has no DOM node to write an
+inline style onto the way a `transform`/`width` animation does. This is the
+one place in the codebase `useSpring` triggers a React re-render per
+animation frame; every other consumer keeps the style-ref pattern above.
 
 ### `useSmoothedProgress` (`src/landing/shared/useSmoothedProgress.ts`)
 
