@@ -1,12 +1,15 @@
-/* today.css — `/today` Decision surface. Lives under `.obs-surface` (obs.css
- * tokens) and reuses `.gobs-hud` (composites.css) for the HUD band. Square +
- * hairline only — no radius, no box-shadow (paper/ink doctrine, obs dialect).
+/* today.css — `/today` briefing surface (Weather Storyboard v3, Wave 2A).
+ * `.today-page` itself is paper (sky-glass hero + paper body — WeatherHero
+ * owns the one glass surface, see weather.css). `.today-insight` is the one
+ * OBSERVATORY exception: it carries `.obs-surface` (obs.css tokens) and
+ * reuses `.gobs-hud` (composites.css) for the HUD band, so the demoted
+ * Decision content renders as a self-contained dark instrument panel
+ * embedded in the paper page, unchanged from its pre-Wave-2A appearance.
+ * Square + hairline only inside it — no radius, no box-shadow.
  */
 
 .today-page {
   min-height: 100vh;
-  background: var(--obs-void);
-  color: var(--obs-ink);
   padding-bottom: 64px;
 }
 
@@ -24,42 +27,20 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 16px var(--obs-gut) 0;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 16px var(--pad-x) 0;
 }
 
-.today-location {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--obs-mono);
-}
-
-.today-location__label {
-  color: var(--obs-hud);
-}
-
-.today-location__btn {
-  background: transparent;
-  border: 1px solid var(--obs-void-line);
+/* Embedded dark instrument panel — see file header. Width-capped + centered
+ * like `.wx-shell` (weather.css) so it lines up with the hero/toolbar/
+ * Conditions content above and below it. */
+.today-insight {
+  background: var(--obs-void);
   color: var(--obs-ink);
-  font-family: var(--obs-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-.today-location__btn:hover:not(:disabled) {
-  border-color: var(--obs-cyan);
-}
-.today-location__btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.today-location__denied {
-  padding: 8px var(--obs-gut) 0;
-  color: var(--obs-hud);
+  max-width: var(--shell);
+  margin: 24px auto 0;
+  padding-bottom: 24px;
 }
 
 .today-decision {
@@ -207,6 +188,9 @@
 }
 
 /* ── Conditions tab ── */
+/* `.wx-shell` (weather.css, also on this element) sets `max-width`/`margin`;
+ * this overrides its `padding: 0 var(--pad-x)` to add the top gap below the
+ * toolbar while keeping the same horizontal gutter. */
 .today-conditions {
-  padding: 24px var(--obs-gut) 0;
+  padding: 24px var(--pad-x) 0;
 }

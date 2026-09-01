@@ -127,15 +127,14 @@ describe('App — FluidChrome routing', () => {
     Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
   })
 
-  it('renders Today (not FluidChrome) on /today', () => {
-    // Arrange — Today is its own briefing/decision surface (own HUD + Answer
-    // hero), so it is not wrapped in FluidChrome — same reasoning as Home,
-    // and the reason /insights and /globe are (they have no such hero).
+  it('mounts the fluid chrome overlay on /today (Wave 2A — WeatherHero replaced the always-visible PM2.5 HUD/Answer hero, so the floating AqiCapsule no longer doubles it up)', () => {
+    // Arrange
     setPath('/today')
     // Act
     const { queryByTestId } = render(<App />)
     // Assert
-    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('mock-capsule')?.getAttribute('data-variant')).toBe('day')
     expect(queryByTestId('page-today')).not.toBeNull()
   })
 
@@ -153,13 +152,16 @@ describe('App — FluidChrome routing', () => {
     expect(await findByTestId('page-insights')).not.toBeNull()
   })
 
-  it('renders the capsule in its day variant on /insights, night on /landing — /today has none of its own', () => {
-    // Arrange / Act — /insights keeps its light Paper-Ink day tint; /landing
-    // keeps the default night variant unchanged. /today mounts no capsule at
-    // all (its own HUD/Answer hero is the readout — see the FluidChrome test
-    // above), so there is nothing to assert a variant on there.
+  it('renders the capsule in its day variant on /today and /insights, night on /landing', () => {
+    // Arrange / Act — /today and /insights keep the light Paper-Ink day
+    // tint; /landing keeps the default night variant unchanged.
     // render() queries default to document.body, so each render must be
     // cleaned up before the next to avoid picking up both mock capsules.
+    setPath('/today')
+    const today = render(<App />)
+    const todayVariant = today.getByTestId('mock-capsule').getAttribute('data-variant')
+    cleanup()
+
     setPath('/insights')
     const insights = render(<App />)
     const insightsVariant = insights.getByTestId('mock-capsule').getAttribute('data-variant')
@@ -170,6 +172,7 @@ describe('App — FluidChrome routing', () => {
     const landingVariant = landing.getByTestId('mock-capsule').getAttribute('data-variant')
 
     // Assert
+    expect(todayVariant).toBe('day')
     expect(insightsVariant).toBe('day')
     expect(landingVariant).toBe('night')
   })

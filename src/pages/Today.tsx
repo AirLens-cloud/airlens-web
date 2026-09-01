@@ -1,15 +1,19 @@
 /**
- * Today — `/today`, the Decision surface
- * (page-specs/today-decision-surface.md). Decision tab (default): Answer ->
- * Why -> What next -> Evidence, all fed by one chosen location
- * (`useGeolocation`, ported from the former `/weather` page). Conditions
- * tab: the former `/weather` page's instrument sections, sharing the same
- * `useWeatherPageData` fetch rather than a second copy (§14 #4 — "공유
- * 확정"). `WeatherHero` is deliberately excluded from Conditions — Answer
- * (Decision tab) replaces it as the page's single current-reading hero.
+ * Today — `/today`, the briefing surface (page-specs/today-decision-surface.md,
+ * re-cut under Weather Storyboard v3 — Wave 2A). `WeatherHero` (ported from
+ * the former `/weather` page) is now permanently on-screen: the sky-glass
+ * temperature reading + location controls that used to live in this file's
+ * own toolbar. Below it, two tabs: Conditions (default) — the former
+ * `/weather` page's instrument sections, sharing one `useWeatherPageData`
+ * fetch — and Insight (secondary) — the PM2.5 decision content (HUD, Answer,
+ * Why/What next, Evidence) that used to be this page's default view,
+ * demoted to an embedded dark instrument panel (`.today-insight.obs-surface`
+ * — the obs tokens are class-scoped, so isolating just this panel is safe
+ * even though the page body around it is now paper).
  *
- * `/weather` now redirects here with `?tab=conditions` (App.tsx shim) so
- * returning visitors land on the tab they expect.
+ * `/weather` still redirects here with `?tab=conditions` (App.tsx shim);
+ * a stray `?tab=decision` (the tab's old name) maps to Insight for
+ * backward compatibility.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useGeolocation } from '../hooks/useGeolocation'
@@ -19,8 +23,7 @@ import { useTodayCams } from '../hooks/useTodayCams'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
 import { computeSourceAgreement } from '../lib/today/sourceAgreement'
 import WfSegmented from '../components/wireframe/WfSegmented'
-import Materialize from '../components/fluid/Materialize'
-import CitySearch from '../components/weather/CitySearch'
+import WeatherHero from '../components/weather/WeatherHero'
 import TodayHud, { type TodayHudStatus } from '../components/today/TodayHud'
 import TodayAnswer from '../components/today/TodayAnswer'
 import TodayWhy from '../components/today/TodayWhy'
@@ -32,20 +35,22 @@ import AirQualityLine from '../components/weather/AirQualityLine'
 import WindMinimap from '../components/weather/WindMinimap'
 import SourceFooter from '../components/weather/SourceFooter'
 import type { WeatherCity } from '../lib/cityCatalog'
+import '../styles/weather.css'
 import '../styles/today.css'
 
-export type TodayTab = 'decision' | 'conditions'
+export type TodayTab = 'insight' | 'conditions'
 
-/** Read once on mount — `?tab=conditions` is how the `/weather` redirect
- * shim opens Today with its Conditions tab pre-selected. */
+/** Read once on mount. `?tab=conditions` is the `/weather` redirect shim's
+ * pre-selection; a stray `?tab=decision` (the tab's pre-Wave-2A name) maps
+ * to Insight for backward compatibility. Conditions is the default. */
 function initialTab(): TodayTab {
-  if (typeof window === 'undefined') return 'decision'
-  return new URLSearchParams(window.location.search).get('tab') === 'conditions' ? 'conditions' : 'decision'
+  if (typeof window === 'undefined') return 'conditions'
+  const tab = new URLSearchParams(window.location.search).get('tab')
+  return tab === 'decision' || tab === 'insight' ? 'insight' : 'conditions'
 }
 
 export default function Today() {
   const [tab, setTab] = useState<TodayTab>(initialTab)
-  const [searchOpen, setSearchOpen] = useState(false)
   // Read once, in a lazy initializer (React's documented escape hatch for a
   // one-time non-deterministic read) rather than calling `Date.now()`
   // directly in the render body, which the purity lint rule rejects — same
@@ -58,7 +63,6 @@ export default function Today() {
 
   function handleSelectCity(city: WeatherCity): void {
     setLocation({ lat: city.lat, lon: city.lon, label: `${city.name}, ${city.countryCode}` })
-    setSearchOpen(false)
   }
 
   const gridPm25 = grid.status === 'ready' ? grid.pm25 : null
@@ -118,15 +122,18 @@ export default function Today() {
     grid.status === 'ready' ? grid.updatedAt : cams.status === 'ready' ? (cams.series24h[0]?.time ?? cams.updatedAt) : null
 
   return (
-    <main className="obs-surface today-page">
+    <main className="today-page">
       <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
-        <TodayHud
-          status={hudStatus}
-          city={primaryCity}
-          countryCode={primaryCountryCode}
-          validTimeMs={validTimeMs}
-          updatedAgeMs={updatedAgeMs}
-          natureLabel={natureLabel}
+        <WeatherHero
+          location={location}
+          requestingLocation={requesting}
+          locationDenied={denied}
+          onRequestLocation={requestLocation}
+          onSelectCity={handleSelectCity}
+          status={weatherData.status}
+          configured={weatherData.configured}
+          weather={weatherData.weather}
+          onRetry={weatherData.retry}
         />
       </div>
 
@@ -136,56 +143,44 @@ export default function Today() {
           activeKey={tab}
           onChange={(key) => setTab(key as TodayTab)}
           items={[
-            { key: 'decision', label: 'Decision' },
             { key: 'conditions', label: 'Conditions' },
+            { key: 'insight', label: 'Insight' },
           ]}
         />
-        <div className="today-location">
-          <span className="today-location__label t-micro">{location.label}</span>
-          <button type="button" className="today-location__btn" onClick={requestLocation} disabled={requesting}>
-            {requesting ? 'Locating…' : 'Use my location'}
-          </button>
-          <button
-            type="button"
-            className="today-location__btn"
-            onClick={() => setSearchOpen((v) => !v)}
-            aria-expanded={searchOpen}
-          >
-            Search city
-          </button>
-        </div>
       </div>
 
-      {denied && (
-        <p className="today-location__denied t-micro">Location permission was not granted — showing the default location.</p>
-      )}
-
-      <Materialize show={searchOpen} origin="top right">
-        <CitySearch onSelect={handleSelectCity} />
-      </Materialize>
-
-      {tab === 'decision' && (
-        <div className="today-decision fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
-          <TodayAnswer
-            tier={primaryTier}
-            pm25={primaryPm25}
+      {tab === 'insight' && (
+        <div className="today-insight obs-surface fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+          <TodayHud
+            status={hudStatus}
             city={primaryCity}
             countryCode={primaryCountryCode}
-            validTimeIso={validTimeIso}
-            distanceKm={primaryDistanceKm}
+            validTimeMs={validTimeMs}
+            updatedAgeMs={updatedAgeMs}
+            natureLabel={natureLabel}
           />
-          <div className="today-decision__row">
-            <TodayWhy
-              grid={grid}
-              cams={cams}
-              weather={weatherData.weather}
-              weatherStatus={weatherData.status}
-              weatherConfigured={weatherData.configured}
-              onRetryWeather={weatherData.retry}
+          <div className="today-decision">
+            <TodayAnswer
+              tier={primaryTier}
+              pm25={primaryPm25}
+              city={primaryCity}
+              countryCode={primaryCountryCode}
+              validTimeIso={validTimeIso}
+              distanceKm={primaryDistanceKm}
             />
-            <TodayWhatNext tier={primaryTier} agreeCount={agreeCount} resolvedCount={resolvedCount} />
+            <div className="today-decision__row">
+              <TodayWhy
+                grid={grid}
+                cams={cams}
+                weather={weatherData.weather}
+                weatherStatus={weatherData.status}
+                weatherConfigured={weatherData.configured}
+                onRetryWeather={weatherData.retry}
+              />
+              <TodayWhatNext tier={primaryTier} agreeCount={agreeCount} resolvedCount={resolvedCount} />
+            </div>
+            <TodayEvidence grid={grid} cams={cams} agreement={agreement} />
           </div>
-          <TodayEvidence grid={grid} cams={cams} agreement={agreement} />
         </div>
       )}
 
