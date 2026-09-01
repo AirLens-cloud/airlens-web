@@ -304,9 +304,18 @@
    capsule (56px tall) previously sat at 92..148 — inside both ranges.
    Anchor below the 390px (worst-case) stack height instead of the nav bar
    alone; at wide viewports this just floats it a bit deeper into the canvas,
-   which is harmless (it's an overlay on the visualization either way). */
+   which is harmless (it's an overlay on the visualization either way).
+   The buffer below was originally spelled as --sp-8 + --sp-8 + --sp-6 (a
+   convenient way to write 160px, not a claim that this offset should track
+   spacing-token changes) — the mobile-density pass's tokens.css redefines
+   --sp-8 at ≤768px, and that survey deliberately excluded this line: the
+   229px stack height is the HUD's own text/line-wrap geometry, unrelated
+   to --sp-8. Written as a literal so a future --sp-8 edit can't silently
+   erode the measured 11px clearance (240 vs 229) again; --nav-height stays
+   a variable because the capsule genuinely needs to sit that much lower
+   when the nav bar itself is taller (or shorter, at mobile). */
 .chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay {
-  --fluid-chrome-top: calc(var(--nav-height) + var(--sp-8) + var(--sp-8) + var(--sp-6));
+  --fluid-chrome-top: calc(var(--nav-height) + 160px);
 }
 
 /* Blocker fix (review round 1): /globe's overlay nav (chrome-nav--overlay,

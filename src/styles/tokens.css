@@ -133,6 +133,16 @@
   --shell: 1280px;
   --pad-x: clamp(20px, 3vw, 40px);
 
+  /* ---- Typography scale (responsive) — consumed by typography.css's
+     .h-hero/.t-numeric. Desktop values match those classes' original
+     literal clamps 1:1; the mobile media query below is the only place
+     that redefines them, so every .h-hero/.t-numeric consumer gets the
+     density fix from one cascade point instead of a per-component
+     override. (Component-local clamps like home.css's
+     .home-hero__value stay as their own literal — see that file.) */
+  --fs-hero: clamp(56px, 7vw, 96px);
+  --fs-numeric: clamp(80px, 11vw, 144px);
+
   /* ---- Shadow (tinted, layered, single light source — never pure black) ---- */
   --shadow-pop: 0 1px 2px rgba(17, 20, 24, 0.05), 0 6px 24px -10px rgba(17, 20, 24, 0.12);
   --shadow-fab: 0 2px 8px rgba(17, 20, 24, 0.10), 0 10px 28px -8px rgba(17, 20, 24, 0.18);
@@ -240,6 +250,29 @@
   --dqss-c-badge-ink: var(--dqss-c);
   --dqss-d-badge-ink: var(--dqss-d);
   --dqss-f-badge-ink: var(--viz-bad);
+}
+
+/* ---- Mobile density (Wave 3 mobile pass, ≤768px) — redefines tokens only,
+   no per-component @media buckets, so every consumer (home/research/
+   weather/catalog/insights/static/chrome-footer's outer padding, plus
+   typography.css's .h-hero/.t-numeric) gets the compaction from one
+   cascade point. Breakpoint matches chrome.css's existing footer 2-col
+   collapse (768px). --sp-7/--sp-8 usage was surveyed first (8 files, 24
+   call sites — all section-level padding-block/margin/gap; the one
+   exception, chrome.css's Globe capsule offset, was decoupled from
+   --sp-8 into a literal so this redefinition can't erode that
+   measured clearance — see chrome.css). --nav-height's own cross-file
+   dependents (chrome.css) were checked the same way: the capsule anchor
+   is nav-height-relative by design, so a smaller nav-height there is
+   compensated automatically, not broken. */
+@media (max-width: 768px) {
+  :root {
+    --sp-7: 32px;
+    --sp-8: 40px;
+    --nav-height: 64px;
+    --fs-hero: clamp(32px, 9vw, 56px);
+    --fs-numeric: clamp(48px, 13vw, 80px);
+  }
 }
 
 body {

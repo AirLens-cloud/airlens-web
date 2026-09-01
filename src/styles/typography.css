@@ -17,7 +17,7 @@
 .h-hero {
   font-family: var(--serif);
   font-weight: 800;
-  font-size: clamp(56px, 7vw, 96px);
+  font-size: var(--fs-hero);
   letter-spacing: -0.05em;
   line-height: 1;
   color: var(--ink-0);
@@ -81,7 +81,7 @@
 .t-numeric {
   font-family: var(--mono);
   font-weight: 700;
-  font-size: clamp(80px, 11vw, 144px);
+  font-size: var(--fs-numeric);
   line-height: 0.92;
   letter-spacing: -0.04em;
   color: var(--ink-0);
