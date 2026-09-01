@@ -1,0 +1,10 @@
+# SPA fallback. Cloudflare Pages already serves index.html for unmatched paths
+# on this project, so this file is not what makes /globe work today — it is here
+# so the behaviour is declared in the build output rather than inherited from a
+# project-level default. That matters for the planned cutover onto the existing
+# `airlens` Pages project, where the deployed dist replaces the project's files
+# wholesale: whatever is not in dist/ is gone.
+#
+# Note this returns the same 200 shell for paths that do not exist. Adding a
+# real 404 requires per-route rendering, which this repo does not have yet.
+/*  /index.html  200

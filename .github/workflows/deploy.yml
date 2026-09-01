@@ -56,7 +56,9 @@ jobs:
           echo "deploy credentials present (values masked)"
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        # SHA-pinned (repo policy: third-party actions pin to a commit, not a
+        # movable tag — this step receives the deploy credentials).
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -108,7 +110,10 @@ jobs:
           # Every built asset the entry HTML does not name: route chunks and
           # the static textures. Sampling these catches a partial upload.
           probe() {
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1")
+            # `|| true`: a transport failure (DNS, refused, timeout) exits curl
+            # nonzero, and under the runner's errexit that would kill the whole
+            # verify step mid-list instead of recording this one probe as 000.
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1" || true)
             if [ "$code" = "200" ]; then
               echo "  ok   $1"
             else
@@ -144,5 +149,44 @@ jobs:
             probe "/assets/$(basename "$chunk")"
           done
 
+          # Pages metadata files. These are not referenced by any bundle, so
+          # nothing above would notice them disappearing from public/ — and
+          # they are what carries the security headers and SPA fallback across
+          # a future deploy onto a different Pages project.
+          for meta in _headers _redirects; do
+            if [ ! -f "dist/$meta" ]; then
+              echo "::error::dist/$meta is missing — public/$meta was not copied into the build"
+              fail=1
+            fi
+          done
+
+          # A served CSP is the only proof _headers was applied; the file being
+          # in dist/ proves only that it was uploaded.
+          csp=$(curl -sI "$SITE/" | grep -ic '^content-security-policy:' || true)
+          if [ "$csp" = "0" ]; then
+            echo "::error::no Content-Security-Policy on $SITE/ — _headers did not take effect"
+            fail=1
+          else
+            echo "  ok   Content-Security-Policy served"
+          fi
+
+          # Client-routed paths. Read what this does and does not prove: every
+          # path on this site returns the same 200 index.html shell, including
+          # paths that do not exist, because routing happens in the browser.
+          # So a 200 here means "the SPA fallback is intact", NOT "this route
+          # renders". The nonexistent path is probed alongside them to keep
+          # that distinction visible in the log rather than inviting the next
+          # reader to mistake these greens for route coverage. Turning any of
+          # this into a real assertion needs per-route rendering, which this
+          # repo does not have.
+          for route in / /globe /weather /insights /__no_such_route__; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$route" || true)
+            echo "  $code  $route"
+            if [ "$code" != "200" ]; then
+              echo "::error::$route returned $code — SPA fallback is broken"
+              fail=1
+            fi
+          done
+
           [ "$fail" = "0" ] || exit 1
-          echo "deploy verified: entry hash matches and sampled assets are served"
+          echo "deploy verified: entry hash matches, sampled assets are served, headers applied"

@@ -65,3 +65,30 @@ substitute fake data when every source in a fallback chain fails.
 | `lib/today/forecastSource.ts` | `src/lib/today/forecastSource.ts` | 1:1 port |
 | `hooks/useDataHealth.ts` | `src/hooks/useDataHealth.ts` | 1:1 port, plus `lib/dataHealth.ts` / `lib/config/dataHealth.ts` / `store/dataHealthStore.ts` |
 | `lib/config/feeds.ts` | `src/lib/config/globeOntology.ts` | Pipeline-only subset (feed paths/varKeys) — the source module's visual grammar (color scales, legends, layer contracts) has no Globe renderer to serve here yet |
+
+## Staying mergeable back into AirLens-platform
+
+This repo is expected to end up as `apps/web` inside the AirLens-platform npm
+workspace. That move is not scheduled, and nothing here should be shaped around
+it — but three cheap conventions keep it from becoming expensive. They cost
+nothing today and are easy to violate by accident.
+
+- **No `@/*` import alias.** Every import in `src/` is relative today
+  (`grep -r "from '@/'" src` returns nothing). Relative imports survive being
+  moved wholesale into another tree; an alias has to be reconciled against the
+  one `apps/web` already defines.
+- **No Vite 8-only APIs in `vite.config.ts`.** The monorepo root pins
+  `"vite": "7.3.6"` as an npm `overrides` entry, which applies to every
+  workspace. Joining that workspace would force this app onto Vite 7. The
+  config here is plugins + dev proxy + test config, all of which are version-
+  agnostic; keeping it that way makes the version question a one-line decision
+  later instead of a migration.
+- **Keep `public/_headers` and `public/_redirects` in the build output.** A
+  Cloudflare Pages deploy replaces the target project's files wholesale, so
+  these are what carry the security headers and SPA fallback across a project
+  switch. See the comments in each file.
+
+Things deliberately *not* pre-aligned, because doing so now would cost more
+than doing it at move time: the package name (`airlens-web` vs `airlens`),
+TypeScript/Vite/plugin versions, the lockfile, and whether to consume
+`packages/shared-types` and `packages/design-tokens`.
