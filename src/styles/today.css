@@ -1,0 +1,204 @@
+/* today.css — `/today` Decision surface. Lives under `.obs-surface` (obs.css
+ * tokens) and reuses `.gobs-hud` (composites.css) for the HUD band. Square +
+ * hairline only — no radius, no box-shadow (paper/ink doctrine, obs dialect).
+ */
+
+.today-page {
+  min-height: 100vh;
+  background: var(--obs-void);
+  color: var(--obs-ink);
+  padding-bottom: 64px;
+}
+
+.today-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px var(--obs-gut) 0;
+}
+
+.today-location {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--obs-mono);
+}
+
+.today-location__label {
+  color: var(--obs-hud);
+}
+
+.today-location__btn {
+  background: transparent;
+  border: 1px solid var(--obs-void-line);
+  color: var(--obs-ink);
+  font-family: var(--obs-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.today-location__btn:hover:not(:disabled) {
+  border-color: var(--obs-cyan);
+}
+.today-location__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.today-location__denied {
+  padding: 8px var(--obs-gut) 0;
+  color: var(--obs-hud);
+}
+
+.today-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px var(--obs-gut) 0;
+}
+
+/* ── ① Answer ── */
+.today-answer__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.today-answer__sentence {
+  font-family: var(--obs-display);
+  font-weight: 900;
+  font-size: 30px;
+  line-height: 1.15;
+  margin: 0;
+}
+.today-answer__meta {
+  margin-top: 10px;
+  color: var(--obs-hud);
+}
+
+/* ── ②③ Why / What next row ── */
+.today-decision__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .today-decision__row {
+    grid-template-columns: 1fr;
+  }
+  /* Mobile order: Answer -> What next -> Why -> Evidence
+     (page-specs §8 — action guidance ranks above evidence detail). */
+  .today-what-next {
+    order: -1;
+  }
+}
+
+.today-panel__title {
+  color: var(--obs-hud);
+  margin: 0 0 12px;
+}
+
+/* small-multiple cell grid — GRID / CAMS / GOOGLE (Why) and GRID / CAMS /
+ * AGREEMENT (Evidence) never collapse into one averaged number. */
+.today-why__sources,
+.today-evidence__cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--obs-void-line);
+  border: 1px solid var(--obs-void-line);
+}
+@media (max-width: 640px) {
+  .today-why__sources,
+  .today-evidence__cells {
+    grid-template-columns: 1fr;
+  }
+}
+
+.today-cell {
+  background: var(--obs-void);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 88px;
+}
+.today-cell--void {
+  border: 1px dashed var(--obs-void-line);
+  justify-content: center;
+}
+.today-cell__label {
+  color: var(--obs-hud-dim);
+}
+.today-cell__value {
+  color: var(--obs-ink);
+  font-size: 22px;
+}
+.today-cell__value small {
+  font-size: 12px;
+  color: var(--obs-hud);
+  margin-left: 4px;
+}
+.today-cell__sub {
+  color: var(--obs-hud);
+}
+.today-cell__void {
+  color: var(--obs-hud-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.today-why__observed {
+  margin-top: 14px;
+}
+.today-why__observed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--obs-ink);
+}
+.today-why__unknown {
+  margin-top: 8px;
+  color: var(--obs-hud-dim);
+}
+
+/* ── ③ What next ── */
+.today-what-next {
+  border: 1px solid var(--obs-void-line);
+  padding: 16px;
+}
+.today-what-next__general,
+.today-what-next__sensitive {
+  margin: 0 0 10px;
+  color: var(--obs-ink);
+}
+.today-what-next__general strong,
+.today-what-next__sensitive strong {
+  display: block;
+  color: var(--obs-hud);
+  margin-bottom: 2px;
+}
+.today-what-next__confidence {
+  margin: 12px 0 0;
+  color: var(--obs-hud-dim);
+}
+
+/* ── ④ Evidence ── */
+.today-evidence__note {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--orange);
+  color: var(--obs-hud);
+}
+
+/* ── Conditions tab ── */
+.today-conditions {
+  padding: 24px var(--obs-gut) 0;
+}

@@ -10,7 +10,7 @@ vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-da
 vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /> }))
-vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
+vi.mock('./pages/Today', () => ({ default: () => <div data-testid="page-today" /> }))
 vi.mock('./pages/Home', () => ({ default: () => <div data-testid="page-home" /> }))
 vi.mock('./pages/Insights', () => ({ default: () => <div data-testid="page-insights" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
@@ -90,16 +90,36 @@ describe('App — FluidChrome routing', () => {
     expect(queryByTestId('page-globe')).not.toBeNull()
   })
 
-  it('mounts the fluid chrome overlay on /weather', () => {
-    // Arrange — /weather gets the same site-nav-return capsule as /landing
-    // and /globe (weather-review finding); the hero no longer embeds its
-    // own AqiCapsule instance, so there is exactly one per page.
+  it('redirects /weather to /today?tab=conditions (D4 — /weather absorbed into Today) instead of rendering a page', () => {
+    // Arrange — /weather is now a redirect shim, not a route; it renders
+    // neither the fluid chrome nor any page component. jsdom's
+    // `window.location.replace` is not spy-able in place (non-configurable),
+    // so the whole `location` object is swapped for one with a mock
+    // `replace`, then restored after the assertion.
     setPath('/weather')
+    const originalLocation = window.location
+    const replaceMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, replace: replaceMock },
+    })
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(replaceMock).toHaveBeenCalledWith('/today?tab=conditions')
+    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+    expect(queryByTestId('page-today')).toBeNull()
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+  })
+
+  it('mounts the fluid chrome overlay on /today', () => {
+    // Arrange
+    setPath('/today')
     // Act
     const { queryByTestId } = render(<App />)
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
-    expect(queryByTestId('page-weather')).not.toBeNull()
+    expect(queryByTestId('page-today')).not.toBeNull()
   })
 
   it('mounts the fluid chrome overlay on /insights', async () => {
@@ -116,14 +136,14 @@ describe('App — FluidChrome routing', () => {
     expect(await findByTestId('page-insights')).not.toBeNull()
   })
 
-  it('renders the capsule in its day variant on /weather, night everywhere else', () => {
-    // Arrange / Act — /weather's light sky-glass hero needs the day glass
-    // tint; /landing and /globe keep the default night variant unchanged.
+  it('renders the capsule in its day variant on /insights, night on /today (obs dark surface) and /landing', () => {
+    // Arrange / Act — /insights keeps its light Paper-Ink day tint; /today is
+    // an obs dark surface like /globe, so it takes the default night variant.
     // render() queries default to document.body, so each render must be
     // cleaned up before the next to avoid picking up both mock capsules.
-    setPath('/weather')
-    const weather = render(<App />)
-    const weatherVariant = weather.getByTestId('mock-capsule').getAttribute('data-variant')
+    setPath('/today')
+    const today = render(<App />)
+    const todayVariant = today.getByTestId('mock-capsule').getAttribute('data-variant')
     cleanup()
 
     setPath('/landing')
@@ -131,7 +151,7 @@ describe('App — FluidChrome routing', () => {
     const landingVariant = landing.getByTestId('mock-capsule').getAttribute('data-variant')
 
     // Assert
-    expect(weatherVariant).toBe('day')
+    expect(todayVariant).toBe('night')
     expect(landingVariant).toBe('night')
   })
 })
