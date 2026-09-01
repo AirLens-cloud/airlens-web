@@ -365,7 +365,7 @@
   font-size: 12.5px; /* design-lint-ok: typography — footer link row, not prose */
   color: var(--ink-1);
   text-decoration: none;
-  padding: 3px 0;
+  padding: var(--sp-1) 0;
 }
 
 .chrome-footer__links a:hover {
