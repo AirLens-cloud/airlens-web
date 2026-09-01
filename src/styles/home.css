@@ -1,0 +1,272 @@
+/**
+ * home.css — `/` Home page ("Live Atmospheric Briefing", approved mockup
+ * variant A "Instrument Band").
+ *
+ * Space classification (design-taxonomy.md §0): `hybrid` — same shape as
+ * weather.css's shell (fluid width, `--shell` cap via `.home-shell` /
+ * `.home-hero__inner`). Surface-material: the hero is the one glass surface
+ * on this page (AQI-tint, via WfGlassCard) — the strip and the why-now/
+ * act-on-it row below it are paper.
+ *
+ * No motion/animation in this file by design — Home has no ticking
+ * countdown or transition (unlike AqiCapsule/CapsulePanel's spring-driven
+ * expand), so there is nothing here for prefers-reduced-motion to disable.
+ */
+
+.home-page {
+  min-height: 100vh;
+  padding-bottom: var(--sp-8);
+}
+
+.home-shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 0 var(--pad-x);
+}
+
+/* ================================ Hero =================================== */
+
+.home-hero {
+  display: block;
+  width: 100%;
+  padding: var(--sp-6) var(--pad-x) var(--sp-7);
+  /* CLS-safe: loading / missing / ready all share this floor so the page
+     doesn't jump once the fetch resolves. */
+  min-height: 280px;
+  box-sizing: border-box;
+}
+.home-hero--loading,
+.home-hero--missing {
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.home-hero--stale {
+  opacity: 0.94;
+}
+
+.home-hero__inner {
+  max-width: var(--shell);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.home-hero__eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-hero__reading {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin-top: var(--sp-4);
+}
+.home-hero__value {
+  font-size: clamp(64px, 10vw, 128px);
+  line-height: 0.9;
+}
+.home-hero__value--muted {
+  opacity: 0.55;
+}
+.home-hero__unit {
+  font-size: 0.28em;
+  margin-left: var(--sp-2);
+  vertical-align: super;
+  font-weight: 600;
+}
+.home-hero__tier {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-3);
+}
+.home-hero__tier-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.home-hero__badge {
+  margin-left: var(--sp-2);
+}
+
+.home-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.88;
+}
+.home-hero__stale-flag {
+  font-weight: 700;
+}
+
+.home-hero__action {
+  margin: var(--sp-2) 0 0;
+  font-family: var(--sans);
+  font-size: 15px;
+  max-width: 56ch;
+}
+
+.home-hero__value-skeleton {
+  margin: var(--sp-4) 0;
+}
+
+/* ============================= 24h strip ================================= */
+
+.home-strip {
+  margin-top: var(--sp-7);
+}
+.home-strip__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  flex-wrap: wrap;
+}
+.home-strip__no-band {
+  color: var(--ink-2);
+}
+.home-strip__svg {
+  width: 100%;
+  height: 140px;
+  display: block;
+}
+.home-strip__band {
+  fill: color-mix(in srgb, var(--orange) 14%, transparent);
+  stroke: none;
+}
+.home-strip__line {
+  stroke: var(--ink-0);
+  stroke-width: 2;
+}
+.home-strip__cursor {
+  stroke: var(--orange);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}
+.home-strip__empty {
+  padding: var(--sp-5) 0;
+}
+.home-strip__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-2);
+}
+
+/* ========================== Why now / Act on it =========================== */
+
+.home-below-fold {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-5);
+  margin-top: var(--sp-7);
+}
+@media (min-width: 640px) {
+  .home-below-fold {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-6);
+  }
+  /* Left/right per the approved mockup on wide viewports — DOM order stays
+     CTA-then-why-now (see Home.tsx doc comment) so mobile tab/reading order
+     is unaffected by this. */
+  .home-why-now {
+    order: 1;
+  }
+  .home-act-on-it {
+    order: 2;
+  }
+}
+
+.home-why-now__list {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.home-why-now__item {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-1);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--rule);
+}
+.home-why-now__item--unknown {
+  border-left-style: dashed;
+  color: var(--ink-2);
+}
+.home-why-now__unknown-tag {
+  display: inline-block;
+  margin-right: var(--sp-2);
+  color: var(--ink-3);
+}
+
+.home-act-on-it__ctas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.home-act-on-it__primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--r-pill);
+  background: var(--ink-0);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.home-act-on-it__primary:hover {
+  background: var(--orange);
+}
+.home-act-on-it__primary:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+/* ============================== Flight link ================================ */
+
+.home-flight-link {
+  max-width: var(--shell);
+  margin: var(--sp-7) auto 0;
+  padding: 0 var(--pad-x);
+}
+.home-flight-link a {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.home-flight-link a:hover,
+.home-flight-link a:focus-visible {
+  color: var(--ink-0);
+}
