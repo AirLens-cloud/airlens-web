@@ -17,13 +17,14 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
-import { useGlobeStore } from '../store/globeStore'
+import { useGlobeStore, type CompareSlot, type GlobeViewMode } from '../store/globeStore'
 import { usePlatform } from '../hooks/usePlatform'
 import { isWebGLSupported } from '../lib/webgl'
 import { logger } from '../lib/logger'
 import { GLOBE_CONFIG } from '../lib/config/globe'
 import { TIMELINE_ENABLED } from '../lib/config/globeOverlays'
 import { dqssScoreToGrade } from '../lib/config/globeOntology'
+import { pm25ToGrade } from '../lib/globe/gradeColor'
 import { ATMOSPHERIC_MODES } from '../lib/config/atmosphericModes'
 import { fetchTimelineManifest } from '../api/timeline'
 import type { AtmosphericMode } from '../types/globe'
@@ -37,6 +38,10 @@ import GlobeLegend from '../components/globe/chrome/GlobeLegend'
 import GlobeLayerToggles from '../components/globe/chrome/GlobeLayerToggles'
 import GlobeGridTooltip from '../components/globe/chrome/GlobeGridTooltip'
 import GlobeTimeline from '../components/globe/chrome/GlobeTimeline'
+import ViewModeSwitch, { type ViewModeSwitchItem } from '../components/globe/chrome/ViewModeSwitch'
+import CompareTray from '../components/globe/chrome/CompareTray'
+import GlobeMapView from '../components/globe/views/GlobeMapView'
+import GlobeTableView from '../components/globe/views/GlobeTableView'
 import '../styles/globe-stage.css'
 
 // Only the engine is code-split. GlobeFallback is a static SVG that the
@@ -90,6 +95,24 @@ export default function Globe() {
   const { timelineFrames, timelineStale } = useGlobeStore(
     useShallow((s) => ({ timelineFrames: s.timelineFrames, timelineStale: s.timelineStale })),
   )
+  const selectedStation = useGlobeStore((s) => s.selectedStation)
+  const globeViewMode = useGlobeStore((s) => s.globeViewMode)
+  const setGlobeViewMode = useGlobeStore((s) => s.setGlobeViewMode)
+  const compareSlots = useGlobeStore((s) => s.compareSlots)
+  const pinCompareSlot = useGlobeStore((s) => s.pinCompareSlot)
+  const removeCompareSlot = useGlobeStore((s) => s.removeCompareSlot)
+
+  // WebGL2 missing: Globe can never draw, so the switch redirects to Map once
+  // rather than leaving the deck on a lens it cannot render. This runs only
+  // when `webgl` changes (it's probe-cached for the component's lifetime, so
+  // in practice once) — it must not fight a later manual switch, and it
+  // never fires again after the first redirect.
+  useEffect(() => {
+    if (!webgl && useGlobeStore.getState().globeViewMode === 'globe') {
+      setGlobeViewMode('map', 'webgl-fallback')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webgl])
 
   // TIMELINE_ENABLED is a build-time constant: with the timeline compiled out
   // there is no manifest to wait on, so the check starts already settled.
@@ -137,6 +160,17 @@ export default function Globe() {
   const handleModeSelect = useCallback(
     (id: string) => setAtmosphericMode(id as AtmosphericMode),
     [setAtmosphericMode],
+  )
+
+  const viewModeItems = useMemo<ViewModeSwitchItem[]>(() => [
+    { id: 'globe', label: 'GLOBE', disabled: !webgl, disabledReason: webgl ? undefined : 'WebGL2 is not supported in this environment' },
+    { id: 'map', label: 'MAP' },
+    { id: 'table', label: 'TABLE' },
+  ], [webgl])
+
+  const handleViewModeSelect = useCallback(
+    (id: GlobeViewMode) => setGlobeViewMode(id, 'manual'),
+    [setGlobeViewMode],
   )
 
   const handleStageKeyDown = useCallback(
@@ -198,6 +232,27 @@ export default function Globe() {
   const chromeStatus = toChromeStatus(view.status)
   const modeNumber = ATMOSPHERIC_MODES.find((m) => m.id === view.mode)?.number ?? '—'
 
+  // What "Pin current scene" would add to the Compare tray right now — every
+  // focused reading this deck produces is a PM2.5 µg/m³ value, so the same
+  // grade cut the grid snapshot's own ranking uses applies here too.
+  const currentCompareSlot: CompareSlot | null = useMemo(() => {
+    if (!focus || focus.value == null) return null
+    return {
+      id: selectedStation?.station_uid ?? `${view.mode}:${focus.label}:${view.validTime ?? 'now'}`,
+      label: focus.label,
+      value: focus.value,
+      unit: focus.unit,
+      layerLabel: view.label,
+      timeLabel: view.validTime != null ? utcLabel(view.validTime) : 'NOW',
+      grade: pm25ToGrade(focus.value),
+      nature: view.nature,
+    }
+  }, [focus, selectedStation, view.mode, view.label, view.validTime, view.nature])
+
+  const handlePinCurrent = useCallback(() => {
+    if (currentCompareSlot) pinCompareSlot(currentCompareSlot)
+  }, [currentCompareSlot, pinCompareSlot])
+
   return (
     <div
       className="obs-surface globe-page"
@@ -217,26 +272,36 @@ export default function Globe() {
         mode={view.mode}
       />
 
+      <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
+
       <section className="globe-stage">
         <div className="globe-stage-main">
-          {webgl ? (
-            <div
-              className="globe-3d-shell"
-              tabIndex={0}
-              role="application"
-              aria-label="Globe — arrow keys rotate, +/− zoom, 1–5 switch data mode, Esc clears the selection"
-              onKeyDown={handleStageKeyDown}
-            >
-              <Suspense fallback={null}>
-                <Globe3DScene interactiveCountries />
-              </Suspense>
-            </div>
+          {globeViewMode === 'table' ? (
+            <GlobeTableView />
+          ) : globeViewMode === 'map' ? (
+            <GlobeMapView />
           ) : (
-            <GlobeFallback />
-          )}
+            <>
+              {webgl ? (
+                <div
+                  className="globe-3d-shell"
+                  tabIndex={0}
+                  role="application"
+                  aria-label="Globe — arrow keys rotate, +/− zoom, 1–5 switch data mode, Esc clears the selection"
+                  onKeyDown={handleStageKeyDown}
+                >
+                  <Suspense fallback={null}>
+                    <Globe3DScene interactiveCountries />
+                  </Suspense>
+                </div>
+              ) : (
+                <GlobeFallback />
+              )}
 
-          <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
-          <GlobeLegend />
+              <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
+              <GlobeLegend />
+            </>
+          )}
         </div>
 
         <aside className="globe-stage-rail" aria-label="Observation deck controls">
@@ -263,6 +328,13 @@ export default function Globe() {
           <GlobeTimeline />
         </aside>
       </section>
+
+      <CompareTray
+        slots={compareSlots}
+        currentSlot={currentCompareSlot}
+        onPinCurrent={handlePinCurrent}
+        onRemove={removeCompareSlot}
+      />
 
       <GlobeGridTooltip />
     </div>
