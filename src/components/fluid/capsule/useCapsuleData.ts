@@ -36,6 +36,13 @@ export interface CapsuleSeriesPoint {
 export interface CapsuleDataReady {
   status: 'ready'
   city: string
+  /** Featured city's coordinates and ISO country code — already present on
+   * `ForecastCity` (the fetch this hook already makes), just not previously
+   * surfaced. Added for the Home hero's "explore on the Globe" deep link
+   * and location context; not a new fetch or a forked data path. */
+  lat: number
+  lon: number
+  countryCode: string
   current: number
   tier: AqiTier
   /** null when the source publishes no p10/p90 — a deterministic forecast has
@@ -138,6 +145,9 @@ export function useCapsuleData(): CapsuleDataState {
         setState({
           status: 'ready',
           city: city.name,
+          lat: city.lat,
+          lon: city.lon,
+          countryCode: city.country_code,
           current: now.pm25,
           tier,
           range: sawBand ? { lo, hi } : null,

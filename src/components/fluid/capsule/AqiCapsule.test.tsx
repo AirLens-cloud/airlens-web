@@ -12,6 +12,9 @@ import { useCapsuleData } from './useCapsuleData'
 const READY: CapsuleDataReady = {
   status: 'ready',
   city: 'Seoul',
+  lat: 37.5665,
+  lon: 126.978,
+  countryCode: 'KR',
   current: 42,
   tier: 'moderate',
   range: { lo: 30, hi: 55 },

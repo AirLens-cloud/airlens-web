@@ -66,6 +66,9 @@ describe('useCapsuleData', () => {
     // Assert
     if (result.current.status !== 'ready') throw new Error('expected ready')
     expect(result.current.city).toBe('Seoul')
+    expect(result.current.lat).toBe(37.5)
+    expect(result.current.lon).toBe(127)
+    expect(result.current.countryCode).toBe('KR')
     expect(result.current.current).toBe(20)
     expect(result.current.tier).toBe('moderate')
     expect(result.current.series24h).toHaveLength(24)

@@ -49,6 +49,9 @@ export type { WfSkeletonProps } from './WfSkeleton'
 export { default as WfDataState } from './WfDataState'
 export type { WfDataStateProps } from './WfDataState'
 
+export { default as WfDisabledCta } from './WfDisabledCta'
+export type { WfDisabledCtaProps } from './WfDisabledCta'
+
 export { default as ScopeChip } from './ScopeChip'
 export type { ScopeChipVariant } from './ScopeChip'
 export { default as ScopeChipGroup } from './ScopeChipGroup'

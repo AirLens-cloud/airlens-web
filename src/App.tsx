@@ -4,6 +4,7 @@ import LandingFlight from './pages/LandingFlight'
 import Globe from './pages/Globe'
 import { Suspense, lazy } from 'react'
 import Weather from './pages/Weather'
+import Home from './pages/Home'
 import FluidChrome from './app/FluidChrome'
 
 /**
@@ -56,7 +57,14 @@ function App() {
       </FluidChrome>
     )
   }
-  return <DataProbe />
+  if (typeof window !== 'undefined' && window.location.pathname === '/probe') {
+    return <DataProbe />
+  }
+  // Home (`/`) IS the briefing surface — it renders its own current-reading
+  // hero, so it is not wrapped in FluidChrome (that would mount a second,
+  // redundant AqiCapsule readout on top of it). Any other unmatched path
+  // falls back to Home too, same as DataProbe did before this route moved.
+  return <Home />
 }
 
 export default App

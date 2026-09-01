@@ -11,6 +11,7 @@ vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-
 vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /> }))
 vi.mock('./pages/Weather', () => ({ default: () => <div data-testid="page-weather" /> }))
+vi.mock('./pages/Home', () => ({ default: () => <div data-testid="page-home" /> }))
 vi.mock('./pages/Insights', () => ({ default: () => <div data-testid="page-insights" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
   default: ({ variant }: { variant?: string }) => (
@@ -39,13 +40,34 @@ describe('App — FluidChrome routing', () => {
     expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
   })
 
-  it('does not mount the fluid chrome overlay on the default DataProbe route', () => {
+  it('renders Home (not FluidChrome) on the root route', () => {
     // Arrange
     setPath('/')
     // Act
     const { queryByTestId } = render(<App />)
+    // Assert — Home is its own briefing surface, not wrapped in FluidChrome
+    // (which would mount a second, redundant AqiCapsule readout on top of it).
+    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+    expect(queryByTestId('page-home')).not.toBeNull()
+  })
+
+  it('renders DataProbe on /probe (moved off the root route)', () => {
+    // Arrange
+    setPath('/probe')
+    // Act
+    const { queryByTestId } = render(<App />)
     // Assert
     expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+    expect(queryByTestId('page-data-probe')).not.toBeNull()
+  })
+
+  it('falls back to Home for an unmatched path', () => {
+    // Arrange
+    setPath('/some-unknown-path')
+    // Act
+    const { queryByTestId } = render(<App />)
+    // Assert
+    expect(queryByTestId('page-home')).not.toBeNull()
   })
 
   it('mounts the fluid chrome overlay on /landing', () => {
