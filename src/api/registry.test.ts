@@ -1,0 +1,120 @@
+/**
+ * api/registry.ts — live status + last-good retention (AAA).
+ *
+ * The property under test: a poll that cannot reach a feed does not
+ * overwrite what the previous successful poll established (ported from
+ * `hooks/useDataHealth.ts`'s "last-good over fabricated-bad" rule).
+ * `forecast` is used for this because its probe (`fetchForecast`) has no
+ * module-level cache of its own — unlike the grid/fires feeds, a re-run
+ * genuinely hits the mocked network again rather than returning stale
+ * in-memory state from an unrelated module.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { fetchFeedRegistry, __resetRegistryCache } from './registry'
+
+// Fixtures must be fresh relative to the real clock — every feed's status is
+// judged against its freshnessSlaH from `Date.now()`, so a hardcoded past
+// date would silently read as `stale` regardless of what a test intends.
+const FRESH = new Date(Date.now() - 5 * 60_000).toISOString()
+
+function gridBody() {
+  return { updated_at: FRESH, points: [{ lat: 1, lon: 1, pm25: 10 }] }
+}
+function timelineBody() {
+  return {
+    variable: 'pm2_5',
+    source: 'gefs-aerosols',
+    refTime: FRESH,
+    generatedAt: FRESH,
+    stepHours: 3,
+    windowHours: 24,
+    resolution: 2,
+    frames: [{ validTime: FRESH, leadHours: 3, cycle: '2026080100', file: 'pm25-x.json' }],
+  }
+}
+function firesBody() {
+  return { fires: [{ lat: 1, lon: 1 }], refTime: FRESH, count: 1 }
+}
+function windRecord() {
+  return {
+    header: { nx: 2, ny: 2, lo1: 0, la1: 90, dx: 180, dy: 180, generatedAt: FRESH, refTime: FRESH },
+    data: [0, 0, 0, 0],
+  }
+}
+function forecastBody() {
+  return {
+    generated_at: FRESH,
+    model_version: 'v1',
+    cities: [{ name: 'Seoul', lat: 37.5, lon: 127, country_code: 'KR', hourly: [] }],
+  }
+}
+
+function installFetch(opts: { forecastFails?: boolean } = {}) {
+  const spy = vi.fn(async (url: string) => {
+    if (opts.forecastFails && url.includes('forecast.json')) {
+      return { ok: false, status: 500 } as Response
+    }
+    if (url.includes('current-pm25-grid.json')) return { ok: true, status: 200, json: async () => gridBody() } as unknown as Response
+    if (url.includes('timeline/manifest.json')) return { ok: true, status: 200, json: async () => timelineBody() } as unknown as Response
+    if (url.includes('active-fires.json')) return { ok: true, status: 200, json: async () => firesBody() } as unknown as Response
+    if (url.includes('wind-surface.json')) return { ok: true, status: 200, json: async () => [windRecord(), windRecord()] } as unknown as Response
+    if (url.includes('forecast.json')) return { ok: true, status: 200, json: async () => forecastBody() } as unknown as Response
+    return { ok: false, status: 404 } as Response
+  })
+  vi.stubGlobal('fetch', spy)
+  return spy
+}
+
+beforeEach(() => {
+  vi.unstubAllGlobals()
+  __resetRegistryCache()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('fetchFeedRegistry', () => {
+  it('derives status/lastSuccess/license from a live poll, never a code constant', async () => {
+    // Arrange
+    installFetch()
+    // Act
+    const registry = await fetchFeedRegistry()
+    const forecast = registry.feeds.find((f) => f.id === 'forecast')
+    // Assert
+    expect(forecast?.status).toBe('ready')
+    expect(forecast?.lastSuccess).toBe(FRESH)
+    expect(forecast?.license).toBe('Not published — no source registry exists yet')
+    expect(registry.feeds).toHaveLength(5)
+  })
+
+  it('keeps the last-good state when a later poll cannot reach the feed', async () => {
+    // Arrange — first poll succeeds for every feed.
+    installFetch()
+    const first = await fetchFeedRegistry()
+    const firstForecast = first.feeds.find((f) => f.id === 'forecast')
+    expect(firstForecast?.status).toBe('ready')
+
+    // Act — second poll: the forecast source is unreachable.
+    installFetch({ forecastFails: true })
+    const second = await fetchFeedRegistry()
+    const secondForecast = second.feeds.find((f) => f.id === 'forecast')
+
+    // Assert — the confirmed timestamp survives; the row is not rewritten
+    // to "unavailable" just because this one poll could not refresh it.
+    expect(secondForecast?.lastSuccess).toBe(firstForecast?.lastSuccess)
+    expect(secondForecast?.status).not.toBe('unavailable')
+    expect(secondForecast?.note).toMatch(/could not reach/)
+  })
+
+  it('reports unavailable, not a fabricated timestamp, when no poll has ever succeeded', async () => {
+    // Arrange — every feed fails from the very first poll.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 }) as Response))
+    // Act
+    const registry = await fetchFeedRegistry()
+    const forecast = registry.feeds.find((f) => f.id === 'forecast')
+    // Assert
+    expect(forecast?.status).toBe('unavailable')
+    expect(forecast?.lastSuccess).toBeNull()
+  })
+})
