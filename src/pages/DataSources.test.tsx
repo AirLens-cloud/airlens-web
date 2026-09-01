@@ -76,4 +76,20 @@ describe('DataSources', () => {
     expect(screen.getAllByText('Ready').length).toBeGreaterThan(0)
     expect(screen.getByText('PM2.5 current grid')).toBeTruthy()
   })
+
+  it('opens the matching row on mount when the URL carries a #{sourceId} deep link', async () => {
+    // Arrange
+    installFetch()
+    window.location.hash = '#pm25-grid'
+    // Act
+    const { container } = render(<DataSources />)
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('feed-registry-table')).toBeTruthy())
+    const row = container.querySelector('#pm25-grid')
+    expect(row?.getAttribute('aria-expanded')).toBe('true')
+    // The detail row (coverage/attribution) only renders when a row is expanded.
+    expect(screen.getByText('COVERAGE')).toBeTruthy()
+    // Cleanup — do not leak this hash into other tests.
+    window.location.hash = ''
+  })
 })

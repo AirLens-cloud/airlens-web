@@ -197,7 +197,12 @@ function FeedRow({
         aria-expanded={expanded}
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') onToggle()
+          if (e.key === 'Enter' || e.key === ' ') {
+            // Space's default action scrolls the page for a focusable
+            // non-button element — suppress that, matching button semantics.
+            e.preventDefault()
+            onToggle()
+          }
         }}
       >
         <td>

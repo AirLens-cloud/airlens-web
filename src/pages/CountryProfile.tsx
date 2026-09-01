@@ -43,11 +43,24 @@ interface PolicySection {
   impact: PolicyImpact | null
 }
 
+/**
+ * `ready` with zero cities ("this country has no catalogued cities") and
+ * `error` ("the city catalogue could not be read") are different facts and
+ * must render differently — collapsing a `loadCityCatalog()` rejection into
+ * an empty array would present a network failure as an honest "no cities"
+ * verdict, which is the one thing this page exists to avoid (see the
+ * `policy` section's identical rejected/no-estimate split just below).
+ */
+interface CitiesSection {
+  status: 'ready' | 'error'
+  cities: WeatherCity[]
+}
+
 interface ProfileState {
   status: PageStatus
   panel: CountryPanel | null
   indexEntry: PolicyIndexEntry | null
-  cities: WeatherCity[]
+  citiesSection: CitiesSection
   policy: PolicySection
 }
 
@@ -55,7 +68,7 @@ const INITIAL: ProfileState = {
   status: 'loading',
   panel: null,
   indexEntry: null,
-  cities: [],
+  citiesSection: { status: 'ready', cities: [] },
   policy: { status: 'ready', impact: null },
 }
 
@@ -105,10 +118,11 @@ export default function CountryProfile({ code }: CountryProfileProps) {
 
       const index = indexResult.status === 'fulfilled' ? indexResult.value : []
       const indexEntry = index.find((e) => e.countryCode.toUpperCase() === cc) ?? null
-      const cities =
+
+      const citiesSection: CitiesSection =
         citiesResult.status === 'fulfilled'
-          ? citiesResult.value.filter((c) => c.countryCode.toUpperCase() === cc)
-          : []
+          ? { status: 'ready', cities: citiesResult.value.filter((c) => c.countryCode.toUpperCase() === cc) }
+          : { status: 'error', cities: [] }
 
       let policy: PolicySection
       if (impactResult.status === 'rejected') {
@@ -119,7 +133,7 @@ export default function CountryProfile({ code }: CountryProfileProps) {
         policy = { status: 'ready', impact: impactResult.value }
       }
 
-      setSettled({ code: cc, state: { status: 'ready', panel, indexEntry, cities, policy } })
+      setSettled({ code: cc, state: { status: 'ready', panel, indexEntry, citiesSection, policy } })
     }
 
     void load()
@@ -167,7 +181,7 @@ export default function CountryProfile({ code }: CountryProfileProps) {
     )
   }
 
-  const { panel, indexEntry, cities, policy } = state
+  const { panel, indexEntry, citiesSection, policy } = state
   const latest = panel!.points[panel!.points.length - 1]
   const legalStandard = indexEntry?.pm25AnnualStandard ?? null
   const maxBar = Math.max(latest.pm25, legalStandard ?? 0, WHO_PM25_ANNUAL_GUIDELINE)
@@ -201,14 +215,19 @@ export default function CountryProfile({ code }: CountryProfileProps) {
         {/* ② city distribution */}
         <section aria-labelledby="cat-cities-title">
           <h2 id="cat-cities-title" className="cat-band-title">City distribution</h2>
-          {cities.length === 0 ? (
+          {citiesSection.status === 'error' ? (
+            <p className="cat-note" data-testid="country-cities-error">
+              The city catalogue could not be read. This is a failure to read it, not a
+              statement that {cc} has no catalogued cities.
+            </p>
+          ) : citiesSection.cities.length === 0 ? (
             <p className="cat-empty" data-testid="country-no-cities">
               This country has no catalogued cities with reference observations.
             </p>
           ) : (
             <>
               <ul className="cat-city-list" data-testid="country-city-list">
-                {cities.map((c) => (
+                {citiesSection.cities.map((c) => (
                   <li key={`${c.name}-${c.lat}-${c.lon}`} className="cat-city-item">
                     {c.name}
                   </li>
@@ -216,8 +235,8 @@ export default function CountryProfile({ code }: CountryProfileProps) {
               </ul>
               <p className="cat-note">
                 This list is drawn from a 50-city global catalogue and shows only the
-                {cities.length === 1 ? ' one city' : ` ${cities.length} cities`} in it that belong to{' '}
-                {cc} — it does not represent every city in this country.
+                {citiesSection.cities.length === 1 ? ' one city' : ` ${citiesSection.cities.length} cities`} in it
+                that belong to {cc} — it does not represent every city in this country.
               </p>
             </>
           )}

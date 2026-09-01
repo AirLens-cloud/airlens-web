@@ -26,7 +26,7 @@
  * has been unreachable for a long time does surface as `stale`, never
  * silently as `ready`.
  */
-import { fetchGlobalGridSnapshot } from './gridSnapshot'
+import { fetchGlobalGridSnapshot, DEFAULT_MAX_AGE_HOURS } from './gridSnapshot'
 import { fetchTimelineManifest } from './timeline'
 import { fetchFireFeed } from './fires'
 import { fetchWindField } from './weather'
@@ -100,7 +100,7 @@ const FEEDS: FeedDef[] = [
     provider: aqGrid.source,
     tier: 'interpolated grid',
     cadence: aqGrid.cadence,
-    freshnessSlaH: 48, // gridSnapshot.ts DEFAULT_MAX_AGE_HOURS — the same threshold that module's own `.stale` flag uses.
+    freshnessSlaH: DEFAULT_MAX_AGE_HOURS, // same threshold gridSnapshot.ts's own `.stale` flag uses.
     async probe() {
       const snap = await fetchGlobalGridSnapshot({ limit: 1 })
       return { lastSuccess: snap.updatedAt, coverage: `Global, ${aqGrid.resolution} grid` }
