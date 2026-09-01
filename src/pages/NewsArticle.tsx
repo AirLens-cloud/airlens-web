@@ -10,6 +10,7 @@ import { fetchArticleBySlug } from '../api/news'
 import type { ArticleLookupResult } from '../types/news'
 import EditorialTrustBadge from '../components/content/EditorialTrustBadge'
 import ArticleEvidenceBlock from '../components/content/ArticleEvidenceBlock'
+import BoundedImage from '../components/content/BoundedImage'
 import WfBreadcrumb from '../components/wireframe/WfBreadcrumb'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import WfStamp from '../components/wireframe/WfStamp'
@@ -96,7 +97,14 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
 
       <h1 className="article-title h-2">{article.title}</h1>
 
-      {article.imageUrl ? <img className="article-hero" src={article.imageUrl} alt="" loading="lazy" /> : null}
+      <BoundedImage
+        key={article.slug}
+        src={article.imageUrl}
+        alt=""
+        index={0}
+        className="article-hero"
+        placeholderWhenAbsent={false}
+      />
 
       <section className="content-summary" aria-label="AirLens summary">
         <WfStamp label="■ AirLens summary" variant="primary" />

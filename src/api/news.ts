@@ -14,6 +14,7 @@
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources'
 import { logger } from '../lib/logger'
+import { htmlToPlainText } from '../components/content/htmlToText'
 import type { ArticleLookupResult, DispatchFeedResult, EditorialTrust, NewsArticle } from '../types/news'
 
 const NEWS_FEED_URL = `${HF_LIVE_BASE}/news-data/articles.json`
@@ -44,6 +45,12 @@ function str(v: unknown): string | null {
   return typeof v === 'string' && v.trim() !== '' ? v : null
 }
 
+/** Same as `str()`, but also derives plain text from a value that carries raw HTML (some source feeds publish `summary` as an HTML fragment). */
+function strText(v: unknown): string | null {
+  const s = str(v)
+  return s === null ? null : htmlToPlainText(s)
+}
+
 function computeEditorialTrust(row: RawNewsRow): EditorialTrust {
   const source = (str(row.source_name) ?? '').toLowerCase()
   if (source.includes('airlens')) return 'verified'
@@ -58,9 +65,9 @@ function mapRow(row: RawNewsRow): NewsArticle | null {
   return {
     slug,
     title,
-    summary: str(row.summary),
-    summaryEn: str(row.summary_en),
-    summaryKo: str(row.summary_ko),
+    summary: strText(row.summary),
+    summaryEn: strText(row.summary_en),
+    summaryKo: strText(row.summary_ko),
     sourceName: str(row.source_name),
     sourceUrl: str(row.source_url),
     articleUrl: str(row.article_url),
@@ -153,3 +160,6 @@ export async function fetchArticleBySlug(slug: string): Promise<ArticleLookupRes
   const article = feed.articles.find((a) => a.slug === slug)
   return article ? { status: 'found', article } : { status: 'not-found' }
 }
+
+/** Test-only handle — keeps the mapper private to runtime callers. */
+export const __test = { mapRow }

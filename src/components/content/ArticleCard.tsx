@@ -1,13 +1,16 @@
 import type { NewsArticle } from '../../types/news'
 import EditorialTrustBadge from './EditorialTrustBadge'
-import PlaceholderThumb from './PlaceholderThumb'
+import BoundedImage from './BoundedImage'
 import { formatDate } from './formatDate'
+import { truncateText } from './htmlToText'
 
 export interface ArticleCardProps {
   article: NewsArticle
   index: number
   onOpen: (slug: string) => void
 }
+
+const SUMMARY_CARD_MAX_CHARS = 200
 
 /**
  * Dispatch card — `dispatch-article-signal-desk.md` §4.1: meta row holds
@@ -18,7 +21,8 @@ export interface ArticleCardProps {
  */
 export default function ArticleCard({ article, index, onOpen }: ArticleCardProps) {
   const date = formatDate(article.publishedAt)
-  const summary = article.summary ?? article.summaryEn ?? article.summaryKo
+  const rawSummary = article.summary ?? article.summaryEn ?? article.summaryKo
+  const summary = rawSummary ? truncateText(rawSummary, SUMMARY_CARD_MAX_CHARS) : null
 
   return (
     <article className="content-card dispatch-card">
@@ -28,18 +32,7 @@ export default function ArticleCard({ article, index, onOpen }: ArticleCardProps
         onClick={() => onOpen(article.slug)}
         aria-label={`Open article: ${article.title}`}
       >
-        {article.imageUrl ? (
-          <img
-            className="content-thumb"
-            src={article.imageUrl}
-            alt=""
-            loading="lazy"
-            width={400}
-            height={225}
-          />
-        ) : (
-          <PlaceholderThumb index={index} />
-        )}
+        <BoundedImage src={article.imageUrl} alt="" index={index} />
         <div className="dispatch-card__body">
           <div className="dispatch-card__meta t-micro" data-testid="dispatch-card-meta">
             {article.category ? <span className="content-tag">{article.category}</span> : null}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { htmlToPlainText } from './htmlToText'
 
 export interface MarkdownBodyProps {
   body: string
@@ -31,10 +32,16 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
  * impossible by construction rather than by a sanitizer's allowlist.
  */
 export default function MarkdownBody({ body }: MarkdownBodyProps) {
+  // Field Notes are Hermes-authored markdown, not scraped HTML, but the
+  // input shape is the same string-from-feed shape `api/news.ts` hit the
+  // escaped-HTML bug on — so each paragraph gets the same entity-decode
+  // pass (no-op for the common case: `htmlToPlainText`'s fast path leaves
+  // plain text, including `**bold**` markers, untouched).
   const paragraphs = body
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter((p) => p !== '')
+    .map((p) => htmlToPlainText(p))
 
   return (
     <div className="content-body">

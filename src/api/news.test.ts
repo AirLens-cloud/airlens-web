@@ -88,6 +88,28 @@ describe('fetchDispatchFeed', () => {
   })
 })
 
+describe('fetchDispatchFeed — HTML-fragment summary (QA finding 2026-09-01)', () => {
+  it('derives plain text from a summary that carries a raw HTML fragment, with no tags or entities left', async () => {
+    mockFetch({
+      ok: true,
+      body: {
+        articles: [
+          {
+            ...ROW_A,
+            summary: '<p>Critically endangered species threatened.</p><a href="https://example.com">Read more</a>',
+          },
+        ],
+      },
+    })
+    const result = await fetchDispatchFeed()
+    expect(result.status).toBe('ready')
+    if (result.status !== 'ready') return
+    const summary = result.articles[0].summary!
+    expect(summary).not.toMatch(/<|&lt;/)
+    expect(summary).toBe('Critically endangered species threatened. Read more')
+  })
+})
+
 describe('fetchArticleBySlug', () => {
   it('returns unavailable when the feed cannot be read', async () => {
     mockFetch({ ok: false, throws: true })
