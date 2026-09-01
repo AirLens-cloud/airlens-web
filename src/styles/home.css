@@ -241,11 +241,18 @@
   gap: var(--sp-3);
   margin-top: var(--sp-3);
 }
+/* Solid primary CTA and the disabled pill below it (notePlacement="below")
+   share --control-h-md so the two-CTA row reads as one height — the disabled
+   pill's own two-line box (Lab's default) has no adjacent button to match. */
+.home-act-on-it__primary,
+.home-act-on-it__ctas .wf-disabled-cta--pill {
+  height: var(--control-h-md);
+}
 .home-act-on-it__primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 0 20px;
   border-radius: var(--r-pill);
   background: var(--ink-0);
   color: var(--bg-0); /* paired token — #fff would wash out on dark theme's cream ink-0 */
