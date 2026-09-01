@@ -253,6 +253,91 @@
   outline-offset: 2px;
 }
 
+/* ========================== Stories / Research ============================ */
+
+.home-stories-research {
+  max-width: var(--shell);
+  margin: var(--sp-7) auto 0;
+  padding: var(--sp-6) var(--pad-x) 0;
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-6);
+}
+@media (min-width: 640px) {
+  .home-stories-research {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.home-stories__list {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.home-story-card {
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--rule);
+}
+.home-story-card--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.home-story-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit;
+}
+.home-story-card__title {
+  color: var(--ink-0);
+}
+.home-story-card__link:hover .home-story-card__title,
+.home-story-card__link:focus-visible .home-story-card__title {
+  color: var(--orange);
+}
+.home-story-card__meta {
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.home-stories__empty {
+  margin: var(--sp-3) 0 0;
+  color: var(--ink-2);
+}
+.home-stories__more,
+.home-research__more {
+  display: inline-block;
+  margin-top: var(--sp-3);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.home-stories__more:hover,
+.home-stories__more:focus-visible,
+.home-research__more:hover,
+.home-research__more:focus-visible {
+  color: var(--ink-0);
+}
+
+.home-research__eyebrow {
+  margin: var(--sp-3) 0 0;
+  color: var(--ink-2);
+  letter-spacing: 0.06em;
+}
+.home-research__body {
+  margin: var(--sp-2) 0 0;
+  color: var(--ink-1);
+  max-width: 56ch;
+}
+
 /* ============================== Flight link ================================ */
 
 .home-flight-link {

@@ -3,6 +3,7 @@ import HomeHero from '../components/home/HomeHero'
 import HomeForecastStrip from '../components/home/HomeForecastStrip'
 import HomeWhyNow from '../components/home/HomeWhyNow'
 import HomeActOnIt from '../components/home/HomeActOnIt'
+import HomeStoriesResearch from '../components/home/HomeStoriesResearch'
 import { useCapsuleData } from '../components/fluid/capsule/useCapsuleData'
 import { STALE_THRESHOLD_MS } from '../lib/config/homeBriefing'
 import { track } from '../lib/analytics'
@@ -11,9 +12,10 @@ import '../styles/home.css'
 /**
  * Home — `/`. "Live Atmospheric Briefing" (approved mockup variant A,
  * "Instrument Band"): a full-width AQI-tinted hero with the current reading
- * for the forecast's "thickest air" city, a 24h PM2.5 strip, and a below-
- * the-fold why-now/act-on-it row. This IS the briefing surface — it does
- * not mount FluidChrome's floating AqiCapsule (App.tsx), which would
+ * for the forecast's "thickest air" city, a 24h PM2.5 strip, a below-
+ * the-fold why-now/act-on-it row, and (further below, spec §4 anatomy's
+ * final row) the Stories/Research block. This IS the briefing surface — it
+ * does not mount FluidChrome's floating AqiCapsule (App.tsx), which would
  * duplicate the hero's own readout on the same screen.
  *
  * Below-the-fold DOM order follows the spec's semantic sequence — WHY NOW
@@ -22,6 +24,11 @@ import '../styles/home.css'
  * placement from the approved mockup is a visual-only lift in `home.css`
  * (`order: -1` under 640px); tab order is unaffected because the CTA link
  * is the only focusable element in this row either way.
+ *
+ * `HomeStoriesResearch` renders unconditionally (outside the `data.status
+ * === 'ready'` gate) — it is editorial content (Field Notes + a Research
+ * Commons teaser), not an AQI reading, so a missing/loading hero doesn't
+ * withhold it.
  */
 export default function Home() {
   const data = useCapsuleData()
@@ -60,6 +67,8 @@ export default function Home() {
           </div>
         </div>
       ) : null}
+
+      <HomeStoriesResearch />
 
       <div className="home-flight-link">
         <a href="/landing">Take the flight →</a>
