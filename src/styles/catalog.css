@@ -14,10 +14,9 @@
 }
 
 .cat-shell {
-  width: 100%;
-  max-width: var(--shell);
-  margin: 0 auto;
-  padding: var(--sp-6) var(--pad-x) var(--sp-8);
+  /* Horizontal cap now comes from PublicPageContainer[data-tier="hub"] on
+     the .cat-page <main> this sits inside — one container, one gutter. */
+  padding-block: var(--sp-6) var(--sp-8);
   display: flex;
   flex-direction: column;
   gap: var(--sp-7);
@@ -103,6 +102,13 @@
 
 /* ── feed registry table ── */
 .cat-table-wrap {
+  /* min-width:0 overrides the flex item's default content-based minimum
+     (`.cat-shell` is a column flex container) — without it, a wide table
+     pushes this wrapper past .cat-shell's width instead of scrolling
+     inside it, which pushes the whole page into horizontal overflow at
+     narrow viewports rather than containing the scroll here. */
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 

@@ -1,3 +1,4 @@
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { ROADMAP_STATE, THREE_PRODUCTS, TWO_INFRA, OPERATING_PRINCIPLES, type RoadmapStageStatus } from '../content/aboutState'
 
@@ -21,7 +22,7 @@ const STATUS_LABEL: Record<RoadmapStageStatus, string> = {
 
 export default function About() {
   return (
-    <main className="static-page" data-tier="text">
+    <PublicPageContainer tier="text" className="static-page">
       <header className="static-page__header">
         <h1 className="h-hero">About AirLens</h1>
         <p className="static-page__thesis t-lede">
@@ -33,46 +34,50 @@ export default function About() {
 
       <section aria-label="Three products">
         <h2 className="h-3">Three products</h2>
-        <table className="about-table">
-          <caption>What each product does</caption>
-          <thead>
-            <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Surface</th>
-              <th scope="col">In one line</th>
-            </tr>
-          </thead>
-          <tbody>
-            {THREE_PRODUCTS.map((p) => (
-              <tr key={p.name}>
-                <td>{p.name}</td>
-                <td>{p.surface}</td>
-                <td>{p.description}</td>
+        <div className="about-table-wrap">
+          <table className="about-table">
+            <caption>What each product does</caption>
+            <thead>
+              <tr>
+                <th scope="col">Product</th>
+                <th scope="col">Surface</th>
+                <th scope="col">In one line</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {THREE_PRODUCTS.map((p) => (
+                <tr key={p.name}>
+                  <td>{p.name}</td>
+                  <td>{p.surface}</td>
+                  <td>{p.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section aria-label="Two infrastructures">
         <h2 className="h-3">Two infrastructures</h2>
-        <table className="about-table">
-          <caption>Who produces, who consumes</caption>
-          <thead>
-            <tr>
-              <th scope="col">Infrastructure</th>
-              <th scope="col">Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TWO_INFRA.map((i) => (
-              <tr key={i.name}>
-                <td>{i.name}</td>
-                <td>{i.role}</td>
+        <div className="about-table-wrap">
+          <table className="about-table">
+            <caption>Who produces, who consumes</caption>
+            <thead>
+              <tr>
+                <th scope="col">Infrastructure</th>
+                <th scope="col">Role</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {TWO_INFRA.map((i) => (
+                <tr key={i.name}>
+                  <td>{i.name}</td>
+                  <td>{i.role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section aria-label="Operating principles">
@@ -90,30 +95,32 @@ export default function About() {
           Each row is filled in by a person cross-checking the code and docs, not generated automatically — the
           "last verified" date exists so a stale row is visible rather than hidden.
         </p>
-        <table className="about-table">
-          <caption>Roadmap stage status (manually maintained)</caption>
-          <thead>
-            <tr>
-              <th scope="col">Stage</th>
-              <th scope="col">Outcome</th>
-              <th scope="col">Status</th>
-              <th scope="col">Last verified</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ROADMAP_STATE.map((row) => (
-              <tr key={row.stage}>
-                <td>{row.stage}</td>
-                <td>{row.outcome}</td>
-                <td className={`about-status--${row.status}`}>
-                  {STATUS_LABEL[row.status]} — {row.statusNote}
-                </td>
-                <td>{row.lastVerified}</td>
+        <div className="about-table-wrap">
+          <table className="about-table">
+            <caption>Roadmap stage status (manually maintained)</caption>
+            <thead>
+              <tr>
+                <th scope="col">Stage</th>
+                <th scope="col">Outcome</th>
+                <th scope="col">Status</th>
+                <th scope="col">Last verified</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ROADMAP_STATE.map((row) => (
+                <tr key={row.stage}>
+                  <td>{row.stage}</td>
+                  <td>{row.outcome}</td>
+                  <td className={`about-status--${row.status}`}>
+                    {STATUS_LABEL[row.status]} — {row.statusNote}
+                  </td>
+                  <td>{row.lastVerified}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
-    </main>
+    </PublicPageContainer>
   )
 }
