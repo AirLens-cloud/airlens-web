@@ -128,6 +128,17 @@ describe('Globe — G0 stage layout', () => {
     expect(stageMain?.querySelector('.compare-tray')).toBeTruthy()
     expect(container.querySelector('.globe-stage > .compare-tray')).toBeNull()
   })
+
+  it('does not render CompareTray over the Map or Table views', () => {
+    // Arrange
+    const { container } = render(<Globe />)
+    // Act / Assert — the tray is a globe-scene overlay; on Map and Table it
+    // would sit on top of clickable dots / rows without blocking their focus.
+    fireEvent.click(viewButton('MAP'))
+    expect(container.querySelector('.compare-tray')).toBeNull()
+    fireEvent.click(viewButton('TABLE'))
+    expect(container.querySelector('.compare-tray')).toBeNull()
+  })
 })
 
 function viewButton(label: string): HTMLButtonElement {

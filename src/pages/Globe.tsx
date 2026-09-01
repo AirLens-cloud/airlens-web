@@ -310,18 +310,18 @@ export default function Globe() {
               )}
 
               <GlobeLegend />
+
+              <CompareTray
+                slots={compareSlots}
+                currentSlot={currentCompareSlot}
+                onPinCurrent={handlePinCurrent}
+                onRemove={removeCompareSlot}
+              />
             </>
           )}
-
-          <CompareTray
-            slots={compareSlots}
-            currentSlot={currentCompareSlot}
-            onPinCurrent={handlePinCurrent}
-            onRemove={removeCompareSlot}
-          />
         </div>
 
-        <aside className="globe-stage-rail" aria-label="Observation deck controls">
+        <aside className="globe-stage-rail" aria-label="Observation deck evidence">
           <AtmosphericEvidenceCard
             status={chromeStatus}
             statusLabel={STATUS_LABELS[view.status]}

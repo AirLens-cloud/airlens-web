@@ -87,6 +87,9 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  /* Single source for CompareTray's worst-case footprint — consumed by the
+     tray's own max-width and by GlobeLegend's width reservation below. */
+  --compare-tray-max-w: min(320px, 42%);
 }
 
 .obs-surface .globe-3d-shell {
@@ -127,10 +130,10 @@
   z-index: 3;
   display: grid;
   gap: 7px;
-  /* Reserve CompareTray's own worst-case footprint (its max-width formula,
-     `min(320px, 42%)`) plus a 16px gap, so the two overlays never compete
-     for the same horizontal band even at the narrow end of the stage. */
-  width: min(420px, calc(100% - 2 * var(--obs-gut) - 16px - min(320px, 42%)));
+  /* Reserve CompareTray's own worst-case footprint (--compare-tray-max-w,
+     defined on .globe-stage-main) plus a 16px gap, so the two overlays never
+     compete for the same horizontal band even at the narrow end of the stage. */
+  width: min(420px, calc(100% - 2 * var(--obs-gut) - 16px - var(--compare-tray-max-w)));
   padding: 12px 14px;
 }
 
@@ -524,7 +527,7 @@
   display: grid;
   gap: var(--sp-2);
   width: auto;
-  max-width: min(320px, 42%);
+  max-width: var(--compare-tray-max-w);
   max-height: 30%;
   overflow-y: auto;
   padding: var(--sp-2) var(--sp-3);
