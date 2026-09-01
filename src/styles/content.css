@@ -167,16 +167,14 @@
   background: transparent;
   border: 1px solid var(--rule);
   border-radius: var(--r-0);
-  padding: var(--sp-4);
+  padding: 0;
   cursor: pointer;
   color: inherit;
   font: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
 }
 .blog-card__open:hover { border-color: var(--ink-0); }
 .blog-card__open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.blog-card__body { padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
 .blog-card__meta { display: flex; gap: var(--sp-2); }
 .blog-card__title { margin: 0; }
 .blog-card__dek { margin: 0; color: var(--ink-1); }
@@ -193,6 +191,15 @@
 .blogpost-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .blogpost-notfound, .blogpost-error, .blogpost-pending { color: var(--ink-1); }
 .blogpost-back { color: var(--accent); }
+
+/* ---- BlogPost media (Wave 4) — hero uses .article-hero for the bounded
+   image rule itself (aspect-ratio + object-fit:cover + max-height cap). ---- */
+.blogpost-hero { margin: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.blogpost-hero__caption { color: var(--ink-2); }
+.blogpost-hero__caption a { color: var(--accent); }
+
+.blogpost-video { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+.blogpost-video__frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 /* prefers-reduced-motion: this surface ships no hover transitions to disable
    beyond the border-color change above, which is not motion. */

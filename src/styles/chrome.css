@@ -386,19 +386,21 @@
    position:fixed, height:var(--nav-height), z-index:var(--z-nav)) covers the
    top 80px of the viewport, but Globe.tsx's own root (.obs-surface.globe-page,
    globe-stage.css) has no awareness of it and renders from y=0 — hiding the
-   .atmos-mode-rail HUD chip (globe-stage.css, top:24px) underneath it.
+   AtmosphericModeRail underneath it.
    `*{box-sizing:border-box}` (tokens.css) is what makes this a single safe
-   line: adding padding-top does NOT grow the box past its existing
-   `min-height:100vh` (the flex column's own children — including the
-   `.globe-stage{flex:1}` panel — simply redistribute inside the now-smaller
+   line: adding padding-top does NOT grow the box past its locked
+   `height:100dvh` (G0 — the flex column's own children, including the
+   `.globe-stage{flex:1}` panel, simply redistribute inside the now-smaller
    content box), so this cannot introduce a page scrollbar.
    Verified this clears every top-band HUD element, not just the rail:
-   .globe-legend is bottom-anchored (unaffected); GlobeLayerToggles and
-   GlobeTimeline render inside the normal-flow `.globe-stage-rail` side
-   column (never absolutely positioned); GlobeObsHud/ViewModeSwitch/
-   CompareTray are normal-flow siblings that shift down for free with the
-   page; GlobeGridTooltip only appears while hovering the WebGL canvas,
-   which itself now starts below the nav band. */
+   .globe-legend is bottom-anchored (unaffected); AtmosphericModeRail,
+   GlobeLayerToggles and GlobeTimeline all render inside the normal-flow
+   `.globe-stage-left` side column (never absolutely positioned);
+   GlobeObsHud/ViewModeSwitch are normal-flow siblings that shift down for
+   free with the page; CompareTray is now an absolute overlay inside
+   `.globe-stage-main` (positioned relative to that panel, which itself
+   shifts down with the page); GlobeGridTooltip only appears while hovering
+   the WebGL canvas, which itself now starts below the nav band. */
 .chrome-shell--overlay .globe-page {
   padding-top: var(--nav-height);
 }

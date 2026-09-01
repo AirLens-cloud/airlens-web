@@ -177,14 +177,20 @@ function addedLines(base) {
   try {
     diff = sh('git', ['diff', '--unified=0', `${base}...HEAD`, '--', 'src']);
   } catch (err) {
-    if (!/no merge base/.test(String(err.stderr ?? err.message))) throw err;
-    // Shallow-fetched base (e.g. a --depth=1 fetch marked the base tip shallow):
-    // deepen once, then retry. If it still fails, die with an actionable message
-    // instead of a raw stack trace.
+    if (!/no merge base|unknown revision|bad revision/.test(String(err.stderr ?? err.message ?? ''))) throw err;
+    // Missing base ref (restricted CI refspec never created origin/<base>) or a
+    // shallow fetch that cut the merge base: fetch the base into its remote ref
+    // explicitly, unshallowing if needed, then retry. If it still fails, die
+    // with an actionable message instead of a raw stack trace.
     const remoteBase = base.replace(/^origin\//, '');
     try {
       const shallow = sh('git', ['rev-parse', '--is-shallow-repository']).trim() === 'true';
-      sh('git', ['fetch', ...(shallow ? ['--unshallow'] : []), 'origin', remoteBase]);
+      sh('git', [
+        'fetch',
+        ...(shallow ? ['--unshallow'] : []),
+        'origin',
+        `+refs/heads/${remoteBase}:refs/remotes/origin/${remoteBase}`,
+      ]);
       diff = sh('git', ['diff', '--unified=0', `${base}...HEAD`, '--', 'src']);
     } catch {
       console.error(

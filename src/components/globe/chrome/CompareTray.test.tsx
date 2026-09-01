@@ -28,11 +28,21 @@ function slot(overrides: Partial<CompareSlot> = {}): CompareSlot {
 }
 
 describe('CompareTray — empty state', () => {
-  it('renders the dashed empty-slot prompt for both A and B when nothing is pinned', () => {
+  it('collapses to the header-only pill when nothing is pinned, not the dashed A/B grid', () => {
     // Arrange / Act
-    render(<CompareTray slots={[null, null]} currentSlot={null} onPinCurrent={() => {}} onRemove={() => {}} />)
+    const { container } = render(<CompareTray slots={[null, null]} currentSlot={null} onPinCurrent={() => {}} onRemove={() => {}} />)
     // Assert
-    expect(screen.getAllByText(/EMPTY — PIN A SECOND SCENE \(TIME OR PLACE\) TO COMPARE/)).toHaveLength(2)
+    expect(screen.getByText('COMPARE')).toBeTruthy()
+    expect(screen.queryByText(/EMPTY — PIN A SECOND SCENE/)).toBeNull()
+    expect(container.querySelector('.ct-slots')).toBeNull()
+    expect(container.querySelector('.compare-tray')?.classList.contains('is-empty')).toBe(true)
+  })
+
+  it('renders the dashed empty-slot prompt for the unfilled slot once one scene is pinned', () => {
+    // Arrange / Act
+    render(<CompareTray slots={[slot(), null]} currentSlot={null} onPinCurrent={() => {}} onRemove={() => {}} />)
+    // Assert
+    expect(screen.getAllByText(/EMPTY — PIN A SECOND SCENE \(TIME OR PLACE\) TO COMPARE/)).toHaveLength(1)
   })
 
   it('disables "Pin current scene" when there is nothing to pin', () => {

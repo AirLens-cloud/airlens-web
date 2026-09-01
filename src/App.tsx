@@ -108,16 +108,28 @@ export const routes: Array<Route<RouteRender>> = [
     }),
   },
   // /weather is absorbed into /today (DECISIONS-2026-08-28 D4) — this is now
-  // a redirect shim, not a page render. `Weather.tsx` itself is untouched;
-  // Today's Conditions tab reuses its section components directly. 'bare'
-  // because the redirect is instant — mounting nav chrome first would only
-  // flash it for one render before `location.replace` fires.
+  // a redirect shim, not a page render. `Weather.tsx` itself was retired in
+  // Wave 2A (dead code — `WeatherHero` and the Conditions-tab section
+  // components it used to own are now Today's directly, sharing weather.css).
+  // 'bare' because the redirect is instant — mounting nav chrome first would
+  // only flash it for one render before `location.replace` fires.
   { path: '/weather', render: () => ({ element: <WeatherRedirectShim />, chrome: 'bare' }) },
-  // Today IS the briefing/decision surface — it renders its own current-
-  // reading HUD and Answer hero, so it is not wrapped in FluidChrome (that
-  // would float a second, redundant AqiCapsule readout over it). Same
-  // reasoning as Home, below.
-  { path: '/today', render: () => ({ element: <Today />, chrome: 'site' }) },
+  // Today's own hero (WeatherHero) is a temperature/sky reading, not an AQI
+  // readout — its former always-visible PM2.5 HUD+Answer content moved into
+  // the Insight tab (Weather Storyboard v3, Wave 2A), so wrapping in
+  // FluidChrome no longer doubles up a floating AqiCapsule. Same
+  // capsuleVariant="day" pattern as /insights, below.
+  {
+    path: '/today',
+    render: () => ({
+      element: (
+        <FluidChrome capsuleVariant="day">
+          <Today />
+        </FluidChrome>
+      ),
+      chrome: 'site',
+    }),
+  },
   {
     path: '/insights',
     render: () => ({

@@ -33,6 +33,7 @@ export default function HomeActOnIt({ coords }: HomeActOnItProps) {
         <WfDisabledCta
           label="Open in Lab"
           note="Lab is in feasibility review — not yet available."
+          notePlacement="below"
           testId="home-cta-lab"
         />
       </div>

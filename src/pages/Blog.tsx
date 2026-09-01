@@ -97,8 +97,8 @@ export default function Blog({ onNavigate }: BlogProps = {}) {
 
       {feed.status === 'ready' && filtered.length > 0 && (
         <div className="blog-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
-          {filtered.map((post) => (
-            <BlogCard key={post.slug} post={post} onOpen={handleOpen} />
+          {filtered.map((post, index) => (
+            <BlogCard key={post.slug} post={post} index={index} onOpen={handleOpen} />
           ))}
         </div>
       )}

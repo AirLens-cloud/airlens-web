@@ -11,7 +11,16 @@
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources'
 import { logger } from '../lib/logger'
-import { BLOG_TOPICS, type BlogFeedResult, type BlogPost, type BlogPostLookupResult, type BlogSourceRef, type BlogTopic } from '../types/blog'
+import {
+  BLOG_TOPICS,
+  type BlogFeedResult,
+  type BlogHeroImage,
+  type BlogPost,
+  type BlogPostLookupResult,
+  type BlogSourceRef,
+  type BlogTopic,
+  type BlogVideo,
+} from '../types/blog'
 
 const BLOG_FEED_URL = `${HF_LIVE_BASE}/blog-data/posts.json`
 
@@ -24,6 +33,8 @@ interface RawBlogRow {
   source_refs?: unknown
   published_at?: unknown
   written_by?: unknown
+  hero_image?: unknown
+  video?: unknown
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -105,6 +116,38 @@ function coerceTopic(raw: unknown): BlogTopic {
   return (BLOG_TOPICS as readonly string[]).includes(t) ? (t as BlogTopic) : 'news-review'
 }
 
+const HTTPS_URL = /^https:\/\//i
+
+/**
+ * `hero_image` (Wave 4) — attribution (`source_name`/`source_url`) is
+ * mandatory, not cosmetic: a re-published image with no credit back to the
+ * originating source is the one shape this field must never take. Any
+ * partial break (missing field, non-https URL) drops the *whole* object
+ * rather than rendering an uncredited or mixed-content image.
+ */
+function mapHeroImage(raw: unknown): BlogHeroImage | null {
+  if (!isRecord(raw)) return null
+  const url = str(raw.url)
+  const sourceName = str(raw.source_name)
+  const sourceUrl = str(raw.source_url)
+  if (!url || !sourceName || !sourceUrl) return null
+  if (!HTTPS_URL.test(url) || !HTTPS_URL.test(sourceUrl)) return null
+  return { url, sourceName, sourceUrl, alt: str(raw.alt) }
+}
+
+/**
+ * `video` (Wave 4) — stores the writer's original watch URL only. Provider
+ * detection and embed-src construction happen downstream, in
+ * `lib/content/videoEmbed.ts`, never here — this mapper's only job is
+ * "is this a well-formed https URL at all".
+ */
+function mapVideo(raw: unknown): BlogVideo | null {
+  if (!isRecord(raw)) return null
+  const sourceUrl = str(raw.source_url)
+  if (!sourceUrl || !HTTPS_URL.test(sourceUrl)) return null
+  return { sourceUrl }
+}
+
 function mapPost(row: RawBlogRow): BlogPost | null {
   const slug = str(row.slug)
   const title = str(row.title)
@@ -121,10 +164,12 @@ function mapPost(row: RawBlogRow): BlogPost | null {
     publishedAt: str(row.published_at),
     readingMin: deriveReadingMinutes(dekSource),
     sourceRefsCount: sourceRefs.length,
+    heroImage: mapHeroImage(row.hero_image),
     bodyKo,
     bodyEn,
     writtenBy: str(row.written_by),
     sourceRefs,
+    video: mapVideo(row.video),
   }
 }
 
@@ -186,4 +231,4 @@ export async function fetchBlogPostBySlug(slug: string): Promise<BlogPostLookupR
 }
 
 /** Test-only handles — keep mappers private to runtime callers. */
-export const __test = { mapPost, deriveExcerpt, deriveReadingMinutes, mapSourceRefs, coerceTopic }
+export const __test = { mapPost, deriveExcerpt, deriveReadingMinutes, mapSourceRefs, coerceTopic, mapHeroImage, mapVideo }

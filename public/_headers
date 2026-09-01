@@ -23,7 +23,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
 
 # connect-src notes:
 #   airlens.cloud        — community API Worker proxy (src/lib/config/dataSources.ts
@@ -37,6 +37,19 @@
 #   joymin5655.github.io — snapshot CDN fallback, only reachable via an explicit
 #                          VITE_SNAPSHOT_CDN_BASE override (.env.example). The
 #                          shipped default is HF.
+#
+# img-src https: (Wave 4, blog media): Dispatch/Article/Blog cards and hero
+# images source `imageUrl`/`hero_image.url` from third-party news domains —
+# an unbounded set, so a per-domain allowlist isn't practical. `<img>` is not
+# a script-execution surface, and Referrer-Policy above already limits what a
+# third-party host learns from the request; the actual load-failure/hotlink
+# case is handled by `BoundedImage`'s onError fallback, not by this policy.
+#
+# frame-src (Wave 4, blog media): the only two `<iframe>` embeds this app
+# ever renders — `youtube-nocookie.com`/`player.vimeo.com`, built exclusively
+# by `lib/content/videoEmbed.ts` from a regex-captured video id (never the
+# writer's raw URL). No other frame-src origin should ever be added without
+# updating that trust boundary too.
 #
 # worker-src 'self' only: the app's one worker (idw.worker.ts) is emitted as a
 # same-origin module chunk. A worker built from a blob: URL would need blob:

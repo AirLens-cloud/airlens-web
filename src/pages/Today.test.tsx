@@ -1,8 +1,10 @@
-// Page-level smoke coverage for the /today Decision surface: tab
-// default/switch, the /weather->/today?tab=conditions shim's tab param, the
-// tier-mapped Answer sentence, the GOOGLE cell's honest "not connected" void
-// (never silently agreeing), and a partial render when one source fails
-// while the other still resolves.
+// Page-level smoke coverage for the /today briefing surface (Weather
+// Storyboard v3, Wave 2A): tab default/switch, the /weather->/today
+// redirect shim's `?tab=conditions` param, the pre-Wave-2A `?tab=decision`
+// name's back-compat mapping to Insight, the tier-mapped Answer sentence,
+// the GOOGLE cell's honest "not connected" void (never silently agreeing),
+// and a partial render when one source fails while the other still
+// resolves.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent } from '@testing-library/react'
 
@@ -71,6 +73,13 @@ function camsReady(overrides: Partial<Extract<TodayCamsState, { status: 'ready' 
   }
 }
 
+/** Insight-tab content (HUD/Answer/Why/WhatNext/Evidence) only renders once
+ * the Insight tab is selected — Conditions is the default (Wave 2A). Tests
+ * that assert on that content open directly on `?tab=insight`. */
+function openOnInsightTab() {
+  window.history.pushState({}, '', '/today?tab=insight')
+}
+
 beforeEach(() => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('reduced-motion'),
@@ -88,7 +97,7 @@ afterEach(() => {
 })
 
 describe('Today page', () => {
-  it('renders the Decision tab by default', () => {
+  it('renders the Conditions tab by default', () => {
     // Arrange
     mockGeo()
     mockWeather()
@@ -97,8 +106,8 @@ describe('Today page', () => {
     // Act
     const { container } = render(<Today />)
     // Assert
-    expect(container.querySelector('.today-decision')).not.toBeNull()
-    expect(container.querySelector('.today-conditions')).toBeNull()
+    expect(container.querySelector('.today-conditions')).not.toBeNull()
+    expect(container.querySelector('.today-decision')).toBeNull()
   })
 
   it('opens on the Conditions tab when ?tab=conditions is present (the /weather redirect shim)', () => {
@@ -115,7 +124,21 @@ describe('Today page', () => {
     expect(container.querySelector('.today-decision')).toBeNull()
   })
 
-  it('switches from Decision to Conditions on tab click', () => {
+  it('opens on the Insight tab when ?tab=decision is present (back-compat for the tab\'s pre-Wave-2A name)', () => {
+    // Arrange
+    window.history.pushState({}, '', '/today?tab=decision')
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.today-decision')).not.toBeNull()
+    expect(container.querySelector('.today-conditions')).toBeNull()
+  })
+
+  it('switches from Conditions to Insight on tab click', () => {
     // Arrange
     mockGeo()
     mockWeather()
@@ -123,14 +146,15 @@ describe('Today page', () => {
     mockCams({ status: 'missing' })
     const { getByText, container } = render(<Today />)
     // Act
-    fireEvent.click(getByText('Conditions'))
+    fireEvent.click(getByText('Insight'))
     // Assert
-    expect(container.querySelector('.today-conditions')).not.toBeNull()
-    expect(container.querySelector('.today-decision')).toBeNull()
+    expect(container.querySelector('.today-decision')).not.toBeNull()
+    expect(container.querySelector('.today-conditions')).toBeNull()
   })
 
   it('renders the tier-mapped Answer sentence for a moderate GRID reading', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -143,6 +167,7 @@ describe('Today page', () => {
 
   it('wraps the µg/m³ unit in a `.unit` span inside the Answer meta line — its ancestor is `.t-micro` (uppercase), which would otherwise render µ (U+00B5) as Greek capital Mu ("MG/M³", a 1000x unit misread jsdom cannot itself catch since text-transform is a CSS render effect, not a DOM text change)', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -156,6 +181,7 @@ describe('Today page', () => {
 
   it('wraps the µg/m³ unit in `.unit` spans inside the Evidence GRID/CAMS/AGREEMENT cells (also `.t-micro`)', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -172,6 +198,7 @@ describe('Today page', () => {
 
   it('always renders the GOOGLE cell as an honest "not connected" void — never a source that silently agreed', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -184,6 +211,7 @@ describe('Today page', () => {
 
   it('renders a partial view when GRID fails but CAMS succeeds — GRID states its own absence, CAMS still renders', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'missing' })
@@ -197,6 +225,7 @@ describe('Today page', () => {
 
   it('renders the Evidence AGREEMENT cell honestly when only one source resolved', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -210,6 +239,7 @@ describe('Today page', () => {
   it('renders a stale CAMS-primary reading as stale — GRID missing, CAMS is the only (stale) source, so "ready" would be dishonest', () => {
     // Arrange — GRID absent so CAMS becomes the primary reading; its payload
     // carries `stale: true` (e.g. the "may be stale" static forecast fallback).
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'missing' })
@@ -228,6 +258,7 @@ describe('Today page', () => {
 
   it('renders a fresh CAMS-primary reading as ready — GRID missing, CAMS stale:false', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'missing' })
@@ -242,6 +273,7 @@ describe('Today page', () => {
 
   it('renders the distance to the primary source next to its city name when known', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 12.4 })
@@ -257,6 +289,7 @@ describe('Today page', () => {
     // (distanceKm null is only reachable through the hook's own contract, but
     // Today.tsx's fallback of `null` for an unresolved primary must not print
     // "null km away" or similar).
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'missing' })
@@ -269,6 +302,7 @@ describe('Today page', () => {
 
   it('shows an honest "single source" confidence line — never a fixed "/2" — when only one of GRID/CAMS resolved', () => {
     // Arrange
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
@@ -282,6 +316,7 @@ describe('Today page', () => {
 
   it('shows the resolved-count denominator (not a fixed "/2") when both GRID and CAMS resolve and agree', () => {
     // Arrange — both PM2.5 readings land in the same tier (good, <=12).
+    openOnInsightTab()
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 8, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })

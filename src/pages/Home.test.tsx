@@ -165,6 +165,28 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero--stale')).toBeNull()
     expect(container.querySelector('.home-hero__meta')?.textContent).not.toMatch(/Stale/i)
   })
+
+  it('renders the ACT ON IT disabled CTA as a height-matched pill with its note as a separate, described caption', () => {
+    // Arrange — Wave 2C: the "Open in Lab" CTA switched to notePlacement="below"
+    // so its pill shape matches the solid "Explore this atmosphere" button
+    // instead of a taller two-line dashed box.
+    mockData(readyFixture())
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    const primary = container.querySelector('.home-act-on-it__primary')
+    const pill = container.querySelector<HTMLElement>('[data-testid="home-cta-lab"]')
+    expect(primary).not.toBeNull()
+    expect(pill).not.toBeNull()
+    expect(pill?.classList.contains('wf-disabled-cta--pill')).toBe(true)
+    // Note lives outside the button, not inside it, and is wired via aria-describedby.
+    expect(pill?.querySelector('.wf-disabled-cta__note')).toBeNull()
+    const describedById = pill?.getAttribute('aria-describedby')
+    expect(describedById).toBeTruthy()
+    // useId() ids contain `:` — bracket-attribute selector avoids CSS escaping.
+    const note = container.querySelector(`[id="${describedById}"]`)
+    expect(note?.textContent).toMatch(/feasibility review/i)
+  })
 })
 
 describe('Home page — missing state', () => {
