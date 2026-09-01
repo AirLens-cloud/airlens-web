@@ -456,17 +456,64 @@
 }
 
 /* Narrow viewport: 6-column grid (brand + 5 groups) has no room at mobile
-   widths — collapse to 2 columns, brand spanning full width above them. */
+   widths — collapse to 2 columns, brand spanning full width above them.
+   Wave 3 mobile-density pass (2026-09-02, user-confirmed direction A):
+   measured (iframe technique, true 390px) the unmodified footer at 728px
+   tall — outer padding/gap/heading margins were desktop values reused
+   verbatim, and link rows were compact (~23px, well under a 44px tap
+   target). Compact every spacing value one step down. The link row itself
+   was tried as a stacked min-height:44px block first, which grew the
+   footer to 779px instead of shrinking it (a 4-link group stacked at 44px
+   each is 176px regardless of outer padding). User-confirmed re-decision:
+   flow each group's links horizontally and let them wrap, so a 4-link
+   group typically needs 1-2 rows instead of 4 — height drops because the
+   ROW COUNT drops, not because any one row gets shorter (each row still
+   holds the full 44px tap target). */
 @media (max-width: 768px) {
+  .chrome-footer {
+    padding: var(--sp-5) var(--pad-x) var(--sp-4);
+  }
+
   .chrome-footer__grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3) var(--sp-4);
   }
 
   .chrome-footer__col--brand {
     grid-column: 1 / -1;
   }
 
+  .chrome-footer__heading {
+    font-size: 9px;
+    margin-bottom: var(--sp-2);
+  }
+
+  .chrome-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--sp-4);
+  }
+
+  .chrome-footer__links a {
+    font-size: 11.5px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .chrome-footer__tagline {
+    font-size: 11px;
+    margin-top: var(--sp-1);
+  }
+
+  .chrome-footer__feed {
+    margin-top: var(--sp-2);
+  }
+
   .chrome-footer__base {
-    flex-direction: column;
+    justify-content: flex-start;
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-3);
   }
 }
