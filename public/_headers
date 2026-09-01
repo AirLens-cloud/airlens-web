@@ -23,7 +23,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
 
 # connect-src notes:
 #   airlens.cloud        — community API Worker proxy (src/lib/config/dataSources.ts
@@ -37,6 +37,10 @@
 #   joymin5655.github.io — snapshot CDN fallback, only reachable via an explicit
 #                          VITE_SNAPSHOT_CDN_BASE override (.env.example). The
 #                          shipped default is HF.
+#
+# worker-src 'self' only: the app's one worker (idw.worker.ts) is emitted as a
+# same-origin module chunk. A worker built from a blob: URL would need blob:
+# added back here — grep for `new Blob`/`createObjectURL` before assuming.
 
 # Hashed JS/CSS chunks from Vite — content-addressed, safe to cache forever
 /assets/*.js

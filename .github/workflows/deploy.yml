@@ -56,7 +56,9 @@ jobs:
           echo "deploy credentials present (values masked)"
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        # SHA-pinned (repo policy: third-party actions pin to a commit, not a
+        # movable tag — this step receives the deploy credentials).
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -108,7 +110,10 @@ jobs:
           # Every built asset the entry HTML does not name: route chunks and
           # the static textures. Sampling these catches a partial upload.
           probe() {
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1")
+            # `|| true`: a transport failure (DNS, refused, timeout) exits curl
+            # nonzero, and under the runner's errexit that would kill the whole
+            # verify step mid-list instead of recording this one probe as 000.
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1" || true)
             if [ "$code" = "200" ]; then
               echo "  ok   $1"
             else
@@ -175,7 +180,7 @@ jobs:
           # this into a real assertion needs per-route rendering, which this
           # repo does not have.
           for route in / /globe /weather /insights /__no_such_route__; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$route")
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$route" || true)
             echo "  $code  $route"
             if [ "$code" != "200" ]; then
               echo "::error::$route returned $code — SPA fallback is broken"
