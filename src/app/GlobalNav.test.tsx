@@ -45,16 +45,18 @@ describe('GlobalNav — desktop disclosure', () => {
   })
 
   it('opening one group closes any other open group', () => {
-    // Arrange
+    // Arrange — Map is excluded here (it renders a plain link, not a
+    // dropdown trigger — see the "no dropdown" describe block below), so
+    // this uses Insights, which does have sub-items.
     render(<GlobalNav variant="site" />)
     const today = screen.getByRole('button', { name: 'Today' })
-    const map = screen.getByRole('button', { name: 'Map' })
+    const insights = screen.getByRole('button', { name: 'Insights' })
     fireEvent.click(today)
     // Act
-    fireEvent.click(map)
+    fireEvent.click(insights)
     // Assert
     expect(today.getAttribute('aria-expanded')).toBe('false')
-    expect(map.getAttribute('aria-expanded')).toBe('true')
+    expect(insights.getAttribute('aria-expanded')).toBe('true')
   })
 
   it('Escape closes the open group and returns focus to its trigger', () => {
@@ -95,14 +97,37 @@ describe('GlobalNav — desktop disclosure', () => {
   })
 })
 
+describe('GlobalNav — Map has no dropdown (mockup §02: direct link, no disclosure)', () => {
+  it('renders Map as a plain link, not a dropdown trigger button', () => {
+    // Arrange / Act
+    render(<GlobalNav variant="site" />)
+    // Assert
+    const mapLink = screen.getByRole('link', { name: 'Map' })
+    expect(mapLink.getAttribute('href')).toBe('/globe')
+    expect(screen.queryByRole('button', { name: 'Map' })).toBeNull()
+  })
+
+  it('clicking Map does not open a dropdown or affect other groups', () => {
+    // Arrange
+    render(<GlobalNav variant="site" />)
+    const mapLink = screen.getByRole('link', { name: 'Map' })
+    // Act
+    fireEvent.click(mapLink)
+    // Assert — no dropdown items appear, and no chevron/expanded state exists to flip.
+    expect(mapLink.getAttribute('aria-expanded')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Overview' })).toBeNull()
+  })
+})
+
 describe('GlobalNav — aria-current', () => {
   it('marks the active group trigger with aria-current="true"', () => {
     // Arrange
     setPath('/globe')
     // Act
     render(<GlobalNav variant="site" />)
-    // Assert
-    expect(screen.getByRole('button', { name: 'Map' }).getAttribute('aria-current')).toBe('true')
+    // Assert — Map is a link, not a button (no dropdown — see below), but
+    // still carries the same active-group aria-current="true" marker.
+    expect(screen.getByRole('link', { name: 'Map' }).getAttribute('aria-current')).toBe('true')
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBeNull()
   })
 
@@ -123,7 +148,7 @@ describe('GlobalNav — aria-current', () => {
     // Act
     render(<GlobalNav variant="site" />)
     // Assert
-    expect(screen.getByRole('button', { name: 'Map' }).getAttribute('aria-current')).toBe('true')
+    expect(screen.getByRole('link', { name: 'Map' }).getAttribute('aria-current')).toBe('true')
   })
 })
 

@@ -163,6 +163,25 @@ function NavGroupDisclosure({
   onKeyDown,
   triggerRef,
 }: NavGroupDisclosureProps) {
+  // Mockup decision (§02, "Map은 드롭다운 없는 직링크"): a group with no
+  // sub-items has nothing to disclose — its Overview entry and the group's
+  // own href are identical, so a dropdown would cost a second click to reach
+  // the one destination the trigger already points at. Renders as a plain
+  // link at the same list position instead of a button + dropdown.
+  if (group.items.length === 0) {
+    return (
+      <li className="chrome-nav__group">
+        <a
+          className="chrome-nav__trigger"
+          href={group.href}
+          aria-current={active ? 'true' : undefined}
+        >
+          {group.label}
+        </a>
+      </li>
+    )
+  }
+
   const dropdownId = `chrome-nav-dropdown-${group.key}`
   // "Overview" is always first — the trigger button itself only toggles the
   // dropdown (D2), so the group's own landing page needs an explicit entry.
