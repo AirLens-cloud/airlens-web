@@ -123,6 +123,12 @@
   text-decoration: none;
 }
 
+/* Wave 4 Δ3 — the custom icon set's nav glyph (GlobalNav.tsx), rendered at
+   the mockup's §01 nav-link scale (16px) just left of the label text. */
+.chrome-nav__glyph {
+  flex-shrink: 0;
+}
+
 .chrome-nav__trigger:hover {
   background: var(--tint-hover);
 }

@@ -1,6 +1,24 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
 import AirLensMark from '../components/AirLensMark'
+import {
+  DataTrustIcon,
+  InsightsIcon,
+  LearnIcon,
+  MapIcon,
+  TodayIcon,
+  type IconProps,
+} from '../components/icons'
 import { NAV_GROUPS, getActiveGroupKey, navGroupItems, type NavGroup } from './nav'
+
+/** Maps each `NAV_GROUPS` key to its mockup §01 nav glyph (data-only `nav.ts`
+ *  can't hold JSX, so the key -> icon lookup lives at the render layer). */
+const NAV_GROUP_ICONS: Record<string, ComponentType<IconProps>> = {
+  today: TodayIcon,
+  map: MapIcon,
+  insights: InsightsIcon,
+  trust: DataTrustIcon,
+  learn: LearnIcon,
+}
 
 export type GlobalNavVariant = 'site' | 'overlay'
 
@@ -168,6 +186,8 @@ function NavGroupDisclosure({
   // own href are identical, so a dropdown would cost a second click to reach
   // the one destination the trigger already points at. Renders as a plain
   // link at the same list position instead of a button + dropdown.
+  const GroupIcon = NAV_GROUP_ICONS[group.key]
+
   if (group.items.length === 0) {
     return (
       <li className="chrome-nav__group">
@@ -176,6 +196,7 @@ function NavGroupDisclosure({
           href={group.href}
           aria-current={active ? 'true' : undefined}
         >
+          {GroupIcon && <GroupIcon size={16} className="chrome-nav__glyph" />}
           {group.label}
         </a>
       </li>
@@ -198,6 +219,7 @@ function NavGroupDisclosure({
         ref={triggerRef}
         onClick={onToggle}
       >
+        {GroupIcon && <GroupIcon size={16} className="chrome-nav__glyph" />}
         {group.label}
         <span className="chrome-nav__chevron" aria-hidden="true" />
       </button>
