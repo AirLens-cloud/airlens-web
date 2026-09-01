@@ -633,7 +633,18 @@
      either one enough room to be legible on a phone-width canvas. Stacking
      them into separate top/bottom strips (instead of sharing one corner
      each) removes the collision instead of fighting for a shared band. */
-  .obs-surface .globe-legend { bottom: 12px; left: 12px; width: calc(100% - 24px); }
+  .obs-surface .globe-legend {
+    bottom: 12px;
+    left: 12px;
+    width: calc(100% - 24px);
+    /* The tray owns the top strip (12px inset + its 30% max-height cap) and
+       the canvas row's height swings with the two bottom sheets' content, so
+       fixed opposite-corner anchors alone can collide on short panels. Capping
+       the legend at 70% − 48px guarantees ≥24px between the strips at ANY
+       panel height; overflow scrolls inside the legend instead. */
+    max-height: calc(70% - 48px);
+    overflow-y: auto;
+  }
   .obs-surface .globe-stage-main .compare-tray {
     top: 12px;
     right: 12px;
