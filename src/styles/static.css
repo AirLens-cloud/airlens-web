@@ -200,19 +200,29 @@
 
 /* ==================== About ==================== */
 
+/* `overflow-x:auto` + `display:block` directly on <table> broke the native
+   table layout algorithm (its <tr>/<td> children keep UA-default
+   table-row/table-cell display, so the anonymous table box model no longer
+   matches) — that combination didn't reliably clip/scroll, it let content
+   push the surrounding shell wide instead (measured: Status column text
+   clipped at the viewport edge, even at 1280px desktop). A wrapper div now
+   owns the scroll container; the table itself keeps its default `table`
+   display. */
+.about-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  margin: var(--sp-3) 0 var(--sp-6);
+}
 .about-table {
   width: 100%;
   border-collapse: collapse;
-  margin: var(--sp-3) 0 var(--sp-6);
-  overflow-x: auto;
-  display: block;
 }
 .about-table th,
 .about-table td {
   text-align: left;
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--rule);
-  white-space: nowrap;
 }
 .about-table caption {
   text-align: left;

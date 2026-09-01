@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import '../styles/static.css'
 import { matchLegacyRedirect } from '../content/legacyRedirects'
 import { FAQ_ITEMS } from '../content/faq'
@@ -66,14 +66,14 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
 
   return (
     <main className="static-page" data-tier="text">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">This page can’t be found</h1>
         <p className="static-page__thesis t-lede">
           You requested <code className="notfound__path">{requestedPath}</code>.
         </p>
       </header>
 
-      <section className="notfound__section" aria-label="Search">
+      <section className="notfound__section fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} aria-label="Search">
         <h2 className="h-3">Search</h2>
         <div className="notfound__search">
           <label htmlFor="notfound-search" className="a11y-only">Search pages, terms, and sources</label>
@@ -100,7 +100,7 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
         ) : null}
       </section>
 
-      <section className="notfound__section" aria-label="Data health">
+      <section className="notfound__section fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="Data health">
         <h2 className="h-3">Data health</h2>
         <p className="t-body">
           Check whether AirLens’s data feeds are currently responding.
@@ -109,7 +109,7 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
       </section>
 
       {legacy ? (
-        <section className="notfound__section" aria-label="Legacy route">
+        <section className="notfound__section fluid-enter" style={{ '--enter-i': 3 } as CSSProperties} aria-label="Legacy route">
           <h2 className="h-3">About this old link</h2>
           <table className="notfound__legacy-table">
             <thead>
@@ -137,7 +137,7 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
       ) : null}
 
       {cursorHref ? (
-        <section className="notfound__section" aria-label="Restore scene">
+        <section className="notfound__section fluid-enter" style={{ '--enter-i': 4 } as CSSProperties} aria-label="Restore scene">
           <h2 className="h-3">Restore your scene</h2>
           <p className="t-body">
             This link included a scene reference. You can open the same scene on the Globe instead.

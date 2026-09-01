@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import HomeHero from '../components/home/HomeHero'
 import HomeForecastStrip from '../components/home/HomeForecastStrip'
 import HomeWhyNow from '../components/home/HomeWhyNow'
@@ -56,10 +56,12 @@ export default function Home() {
 
   return (
     <main className="home-page">
-      <HomeHero data={data} nowMs={renderedAtMs} />
+      <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+        <HomeHero data={data} nowMs={renderedAtMs} />
+      </div>
 
       {data.status === 'ready' ? (
-        <div className="home-shell">
+        <div className="home-shell fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <HomeForecastStrip series={data.series24h} city={data.city} />
           <div className="home-below-fold">
             <HomeWhyNow series={data.series24h} />
@@ -68,7 +70,9 @@ export default function Home() {
         </div>
       ) : null}
 
-      <HomeStoriesResearch />
+      <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+        <HomeStoriesResearch />
+      </div>
 
       <div className="home-flight-link">
         <a href="/landing">Take the flight →</a>

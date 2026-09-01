@@ -1,0 +1,592 @@
+/* chrome.css — GlobalNav + SiteChrome (PR-N1). SiteFooter lands in PR-N2.
+ * `chrome-*` is a new namespace (not folded into wireframe.css's `wf-*` or
+ * any page-scoped prefix) — this is global site chrome, not a page. Tokens
+ * only: --accent (orange), --ink-* / --bg-* pairs, --nav-height, 8pt spacing.
+ * Square doctrine: radius 0 everywhere except the beta pill. */
+
+.chrome-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.chrome-main {
+  flex: 1;
+}
+
+/* ---- Skip link — visible only when focused ---- */
+.chrome-nav__skip {
+  position: absolute;
+  top: -100%;
+  left: var(--sp-2);
+  z-index: var(--z-modal);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-0);
+  color: var(--ink-0);
+  border: 1px solid var(--rule-strong);
+  font-family: var(--sans);
+  font-size: 14px; /* design-lint-ok: typography — nav-chrome control label, not prose (matches .chrome-nav__trigger) */
+  text-decoration: none;
+}
+
+.chrome-nav__skip:focus {
+  top: var(--sp-2);
+}
+
+/* ---- Header bar ---- */
+.chrome-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  height: var(--nav-height);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* /globe's overlay variant floats over the WebGL stage on a transparent,
+   always-dark bar (Globe's chrome is night-fixed per design-taxonomy's
+   sky-glass catalog — it does not follow light/dark theme). */
+.chrome-nav--overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: var(--glass-night-fill);
+  backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-night-border);
+  color: #ffffff;
+}
+
+.chrome-nav--overlay .chrome-nav__trigger,
+.chrome-nav--overlay .chrome-nav__wordmark {
+  color: #ffffff;
+}
+
+.chrome-nav__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  height: 100%;
+  padding: 0 var(--pad-x);
+}
+
+.chrome-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-0);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.chrome-nav__wordmark {
+  font-family: var(--mono);
+  font-size: 14px; /* design-lint-ok: typography — brand wordmark, not prose */
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Primary nav / groups ---- */
+.chrome-nav__primary {
+  flex: 1;
+  min-width: 0;
+}
+
+.chrome-nav__groups {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chrome-nav__group {
+  position: relative;
+}
+
+.chrome-nav__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--control-h-md);
+  padding: 0 var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink-0);
+  font-family: var(--sans);
+  font-size: 14px; /* design-lint-ok: typography — nav trigger control label, not prose */
+  cursor: pointer;
+  border-radius: var(--r-0);
+  /* Shared by the dropdown <button> and the no-dropdown group's plain <a>
+     (GlobalNav.tsx — a zero-item group like Map renders a direct link, no
+     underline needed on either element). */
+  text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.chrome-nav__trigger:active {
+  transform: scale(0.96);
+}
+
+/* Wave 4 Δ3 — the custom icon set's nav glyph (GlobalNav.tsx), rendered at
+   the mockup's §01 nav-link scale (16px) just left of the label text. */
+.chrome-nav__glyph {
+  flex-shrink: 0;
+}
+
+.chrome-nav__trigger:hover {
+  background: var(--tint-hover);
+}
+
+.chrome-nav__trigger[aria-current='true'] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chrome-nav__trigger[aria-expanded='true'] {
+  background: var(--tint-hover);
+}
+
+.chrome-nav__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.chrome-nav__trigger[aria-expanded='true'] .chrome-nav__chevron {
+  transform: rotate(225deg) translateY(2px);
+}
+
+/* Wave 5 Δ5 (B2) — always mounted now (GlobalNav.tsx), toggled by
+   `data-open` instead of mount/unmount, so it can materialize instead of
+   hard-cutting. transform-origin sits at the trigger corner (top left — the
+   dropdown is left-aligned under its trigger). 220ms is a literal, not a
+   `--dur-*` token: it is this one transition's own measured figure per the
+   Δ5 motion contract table, not a value other surfaces are expected to
+   share (matches this file's existing literal-buffer convention, see the
+   .fluid-chrome__overlay comment above). */
+.chrome-nav__dropdown {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  left: 0;
+  min-width: 200px;
+  margin: 0;
+  padding: var(--sp-2) 0;
+  list-style: none;
+  background: var(--bg-0);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow-pop);
+  transform-origin: top left;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  filter: blur(4px);
+  pointer-events: none;
+  transition:
+    opacity 220ms var(--ease-fluid),
+    transform 220ms var(--ease-fluid),
+    filter 220ms var(--ease-fluid);
+}
+
+.chrome-nav__dropdown[data-open='true'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome-nav__dropdown {
+    transform: none;
+    filter: none;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+}
+
+.chrome-nav__dropdown-item a {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  color: var(--ink-1);
+  text-decoration: none;
+  font-family: var(--sans);
+  font-size: 14px; /* design-lint-ok: typography — nav dropdown item, not prose */
+  min-height: 44px;
+}
+
+.chrome-nav__dropdown-item a:hover,
+.chrome-nav__dropdown-item a[aria-current='page'] {
+  background: var(--tint-hover);
+  color: var(--ink-0);
+}
+
+.chrome-nav__beta {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  font-size: 10px; /* design-lint-ok: typography — micro badge pill, not prose */
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Mobile toggle (hamburger) ---- */
+.chrome-nav__mobile-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-lg);
+  height: var(--control-h-lg);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.chrome-nav__mobile-toggle:active {
+  transform: scale(0.96);
+}
+
+.chrome-nav__hamburger,
+.chrome-nav__hamburger::before,
+.chrome-nav__hamburger::after {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+
+.chrome-nav__hamburger {
+  position: relative;
+}
+
+.chrome-nav__hamburger::before,
+.chrome-nav__hamburger::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.chrome-nav__hamburger::before {
+  top: -6px;
+}
+
+.chrome-nav__hamburger::after {
+  top: 6px;
+}
+
+/* ---- Narrow viewport: full-screen accordion panel instead of dropdowns.
+   Breakpoint matches `NAV_DESKTOP` (src/lib/breakpoints.ts, BP.XL = 1024). */
+@media (max-width: 1023px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 1024 (NAV_DESKTOP), not a new breakpoint */
+  .chrome-nav__mobile-toggle {
+    display: flex;
+  }
+
+  .chrome-nav__primary {
+    display: none;
+  }
+
+  .chrome-nav__primary[data-mobile-open='true'] {
+    display: block;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    background: var(--bg-0);
+    padding: var(--sp-4) var(--pad-x);
+  }
+
+  .chrome-nav--overlay .chrome-nav__primary[data-mobile-open='true'] {
+    background: var(--glass-night-opaque);
+  }
+
+  .chrome-nav__groups {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .chrome-nav__group {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .chrome-nav--overlay .chrome-nav__group {
+    border-bottom-color: var(--glass-night-border);
+  }
+
+  .chrome-nav__trigger {
+    width: 100%;
+    height: var(--control-h-lg);
+    justify-content: space-between;
+  }
+
+  /* Wave 5 Δ5 (B2) judgment: on mobile this is an in-flow accordion panel,
+     not an overlay dropdown — opacity/transform materialize (desktop rule
+     above) would leave a collapsed-but-still-opacity:0 gap now that the
+     panel is always mounted (was previously unmounted via `{open && <ul>}`
+     for the same collapse effect). Show/hide immediately via `display`
+     instead of animating; no transition on mobile. */
+  .chrome-nav__dropdown {
+    position: static;
+    border: 0;
+    box-shadow: none;
+    padding: 0 0 var(--sp-2);
+    transform: none;
+    filter: none;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
+    display: none;
+  }
+
+  .chrome-nav__dropdown[data-open='true'] {
+    display: block;
+  }
+}
+
+/* ---- Capsule collision (design brief §"Globe overlay"): any chrome variant
+   that renders GlobalNav (site or overlay) needs the fixed AQI capsule
+   (`fluid-capsule.css`) pushed below the nav bar instead of overlapping it.
+   'bare' pages (/landing) have no nav, so they keep the original anchor. */
+.chrome-shell--site .fluid-chrome__overlay,
+.chrome-shell--overlay .fluid-chrome__overlay {
+  --fluid-chrome-top: calc(var(--nav-height) + var(--sp-3));
+}
+
+/* Capsule/HUD collision (Wave 3 mobile pass): on /globe, GlobalNav renders
+   FluidChrome's overlay div as a sibling of `.globe-page`, but the normal-
+   flow header stack above the canvas (`.gobs-hud` + `.view-mode-switch`,
+   both wrap/grow taller at narrow widths) reaches well past the capsule's
+   default anchor. Measured (headless, real viewport, viewport-top-relative):
+   at 390px the stack runs to 229px (`.gobs-hud` wraps to 2 lines, then the
+   view/compare row wraps too); at 1280px only to 171px. The collapsed
+   capsule (56px tall) previously sat at 92..148 — inside both ranges.
+   Anchor below the 390px (worst-case) stack height instead of the nav bar
+   alone; at wide viewports this just floats it a bit deeper into the canvas,
+   which is harmless (it's an overlay on the visualization either way).
+   The buffer below was originally spelled as --sp-8 + --sp-8 + --sp-6 (a
+   convenient way to write 160px, not a claim that this offset should track
+   spacing-token changes) — the mobile-density pass's tokens.css redefines
+   --sp-8 at ≤768px, and that survey deliberately excluded this line: the
+   229px stack height is the HUD's own text/line-wrap geometry, unrelated
+   to --sp-8. Written as a literal so a future --sp-8 edit can't silently
+   erode the measured 11px clearance (240 vs 229) again; --nav-height stays
+   a variable because the capsule genuinely needs to sit that much lower
+   when the nav bar itself is taller (or shorter, at mobile). */
+.chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay {
+  --fluid-chrome-top: calc(var(--nav-height) + 160px);
+}
+
+/* Blocker fix (review round 1): /globe's overlay nav (chrome-nav--overlay,
+   position:fixed, height:var(--nav-height), z-index:var(--z-nav)) covers the
+   top 80px of the viewport, but Globe.tsx's own root (.obs-surface.globe-page,
+   globe-stage.css) has no awareness of it and renders from y=0 — hiding the
+   .atmos-mode-rail HUD chip (globe-stage.css, top:24px) underneath it.
+   `*{box-sizing:border-box}` (tokens.css) is what makes this a single safe
+   line: adding padding-top does NOT grow the box past its existing
+   `min-height:100vh` (the flex column's own children — including the
+   `.globe-stage{flex:1}` panel — simply redistribute inside the now-smaller
+   content box), so this cannot introduce a page scrollbar.
+   Verified this clears every top-band HUD element, not just the rail:
+   .globe-legend is bottom-anchored (unaffected); GlobeLayerToggles and
+   GlobeTimeline render inside the normal-flow `.globe-stage-rail` side
+   column (never absolutely positioned); GlobeObsHud/ViewModeSwitch/
+   CompareTray are normal-flow siblings that shift down for free with the
+   page; GlobeGridTooltip only appears while hovering the WebGL canvas,
+   which itself now starts below the nav band. */
+.chrome-shell--overlay .globe-page {
+  padding-top: var(--nav-height);
+}
+
+/* ---- SiteFooter (PR-N2) — renders on `chrome: 'site'` routes only
+   (App.tsx via SiteChrome.tsx); absent on 'overlay' (/globe, a 100vh
+   immersive stage with no scroll-to-footer) and 'bare' (/landing, /design,
+   /probe). Structure follows the approved mockup's footer draft (§02):
+   brand column + 5 NAV_GROUPS columns + a base bar (copyright/About/FAQ +
+   LEGAL_DOCS). Namespaced chrome-footer-* to match this file's chrome-nav-*
+   convention, not the mockup's f-* prefix. Tokens only — --shell/--pad-x
+   are this repo's exact match for the mockup's literal 1280px/clamp(20,3vw,40)
+   values, so no new tokens were needed. */
+.chrome-footer {
+  border-top: 1px solid var(--rule-strong);
+  background: var(--bg-1);
+  padding: var(--sp-7) var(--pad-x) var(--sp-5);
+}
+
+.chrome-footer__grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(5, 1fr);
+  gap: var(--sp-5);
+  max-width: var(--shell);
+  margin: 0 auto;
+}
+
+.chrome-footer__heading {
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — footer column label, not prose (matches .chrome-nav__beta scale) */
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-3);
+}
+
+.chrome-footer__heading a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chrome-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chrome-footer__links a {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12.5px; /* design-lint-ok: typography — footer link row, not prose */
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: var(--sp-1) 0;
+}
+
+.chrome-footer__links a:hover {
+  color: var(--ink-0);
+}
+
+.chrome-footer__col--brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.chrome-footer__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-0);
+  text-decoration: none;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 14px; /* design-lint-ok: typography — brand wordmark, not prose (matches .chrome-nav__wordmark) */
+}
+
+.chrome-footer__tagline {
+  font-family: var(--sans);
+  font-size: 12px; /* design-lint-ok: typography — footer brand copy, not prose */
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: var(--sp-2) 0 0;
+  max-width: 26ch;
+}
+
+.chrome-footer__feed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: var(--sp-3) 0 0;
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — status indicator label, not prose (matches --viz-live: status dot only) */
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+
+.chrome-footer__feed-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--viz-live);
+}
+
+.chrome-footer__base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  max-width: var(--shell);
+  margin: var(--sp-5) auto 0;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px; /* design-lint-ok: typography — legal/copyright fine print, not prose */
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.chrome-footer__base a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chrome-footer__base a:hover {
+  color: var(--ink-1);
+}
+
+/* Narrow viewport: 6-column grid (brand + 5 groups) has no room at mobile
+   widths — collapse to 2 columns, brand spanning full width above them.
+   Wave 3 mobile-density pass (2026-09-02, user-confirmed direction A):
+   measured (iframe technique, true 390px) the unmodified footer at 728px
+   tall — outer padding/gap/heading margins were desktop values reused
+   verbatim, and link rows were compact (~23px, well under a 44px tap
+   target). Compact every spacing value one step down. The link row itself
+   was tried as a stacked min-height:44px block first, which grew the
+   footer to 779px instead of shrinking it (a 4-link group stacked at 44px
+   each is 176px regardless of outer padding). User-confirmed re-decision:
+   flow each group's links horizontally and let them wrap, so a 4-link
+   group typically needs 1-2 rows instead of 4 — height drops because the
+   ROW COUNT drops, not because any one row gets shorter (each row still
+   holds the full 44px tap target). */
+@media (max-width: 768px) {
+  .chrome-footer {
+    padding: var(--sp-5) var(--pad-x) var(--sp-4);
+  }
+
+  .chrome-footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3) var(--sp-4);
+  }
+
+  .chrome-footer__col--brand {
+    grid-column: 1 / -1;
+  }
+
+  .chrome-footer__heading {
+    font-size: 9px; /* design-lint-ok: typography — mobile-density step-down of the same footer column label the base rule already sets literally */
+    margin-bottom: var(--sp-2);
+  }
+
+  .chrome-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--sp-4);
+  }
+
+  .chrome-footer__links a {
+    font-size: 11.5px; /* design-lint-ok: typography — mobile-density step-down of the same footer link row the base rule already sets literally */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
+  .chrome-footer__tagline {
+    font-size: 11px; /* design-lint-ok: typography — mobile-density step-down of the same footer brand copy the base rule already sets literally */
+    margin-top: var(--sp-1);
+  }
+
+  .chrome-footer__feed {
+    margin-top: var(--sp-2);
+  }
+
+  .chrome-footer__base {
+    justify-content: flex-start;
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-3);
+  }
+}

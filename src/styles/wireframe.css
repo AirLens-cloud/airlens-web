@@ -10,7 +10,36 @@
  *   2. `.sky-strip[data-aqi=...]` gained the same two tiers with interpolated
  *      gradients (source only had 4) so SkyStrip's data-aqi prop (now sharing
  *      AqiTier) has a background for every value.
+ *
+ * `.public-page-container[data-tier]` (Wave 1 — design-foundation) uses
+ * `margin-inline`/`padding-inline` instead of the source's `margin`/`padding`
+ * shorthand — same computed box, logical properties to match this file's
+ * existing style — and adds an explicit `width: 100%` to `wide` for parity
+ * with the other two tiers (the source relies on the default block width
+ * there).
  */
+
+/* ---- PublicPageContainer — 3-tier layout contract ---- */
+/* text: reading-heavy (Faq / Glossary / DataSources / Legal / About) */
+/* hub:  editorial/hub (Insights / Catalog / Research / Blog) */
+/* wide: full-bleed (Home / Globe) */
+.public-page-container[data-tier="text"] {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding-inline: var(--pad-x);
+}
+.public-page-container[data-tier="hub"] {
+  width: 100%;
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: var(--pad-x);
+}
+.public-page-container[data-tier="wide"] {
+  width: 100%;
+  max-width: 100vw;
+  padding-inline: 0;
+}
 
 /* ---- Breadcrumb base typography (WfBreadcrumb composes `.crumb` + `.wf-crumb`) ---- */
 .crumb { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 8px; }
@@ -130,7 +159,28 @@
 .wf-ornament__bracket { color: var(--ink-1); font-weight: 600; }
 
 /* ---- WfButton ---- */
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--r-pill); font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; border: 0; transition: .2s; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--r-pill);
+  font-family: var(--mono);
+  font-size: 11px; /* design-lint-ok: typography — mono button label control text, not prose (pre-existing value, reflowed onto its own line by this diff) */
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 0;
+  /* Explicit properties (was a bare `.2s`) — Δ5 adds the press transform at
+     its own faster --dur-press, everything else keeps the prior 200ms fade. */
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-press) var(--ease-out);
+}
+.btn:active { transform: scale(0.96); }
 .btn-ink { background: var(--ink-0); color: #fff; }
 .btn-ink:hover { background: var(--orange); }
 .btn-outline { background: transparent; color: var(--ink-0); border: 2px solid var(--ink-0); }

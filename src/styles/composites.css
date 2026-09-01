@@ -199,14 +199,140 @@
 }
 .fab:hover {
   background: var(--orange); border-color: var(--orange); color: #fff;
-  transform: translateY(-2px);
   box-shadow: 0 10px 28px -10px rgba(17,20,24,.32), 2px 2px 0 var(--ink-0);
 }
+/* Δ5 — no hover lift (removed translateY above); press feedback only. */
+.fab:active { transform: scale(0.96); }
 .fab-open { background: var(--bg-0); color: var(--ink-0); border-color: var(--ink-0); }
 .fab-open:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
 .fab-eyebrow { line-height: 1; }
 .fab-glyph { display: inline-flex; }
 .fab-glyph svg { width: 16px; height: 16px; }
+
+/* ---- ChatWidget dock + ChatPanel (mockup §06b "템플릿 E", Wave 4 Block 3, Δ4) ---- */
+.chat-dock {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: var(--z-fab);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+}
+/* Wave 5 Δ5 (B3) — ChatFAB.tsx's spring/drag wrapper around ChatPanel.
+   Gesture-table surface (ζ0.8/r0.30 bounce, per the Δ5 motion contract) —
+   `translateY` is written imperatively by the spring (ChatFAB.tsx), opacity
+   is a plain CSS transition on `data-open` so reduced-motion (below) can
+   keep the 200ms crossfade even while the spring snaps position instantly.
+   The drag handle is the panel header only (`.chat-head`, ChatFAB.tsx), so
+   `touch-action: none` lives there — on the whole wrapper it would swallow
+   message-list touch scrolling once history is ported. */
+.chat-panel-spring {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-fluid);
+}
+.chat-panel-spring[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.chat-panel {
+  width: 420px;
+  max-width: calc(100vw - 2 * var(--sp-5));
+  max-height: min(560px, calc(100vh - 120px));
+  display: flex; flex-direction: column;
+  background: var(--bg-0);
+  border: 1px solid var(--ink-0);
+  z-index: var(--z-panel);
+  overflow-y: auto;
+}
+.chat-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ink-0);
+  flex-shrink: 0;
+  touch-action: none; /* drag-to-dismiss handle — see .chat-panel-spring note */
+  cursor: grab;
+}
+.chat-head-left { display: flex; align-items: center; gap: 8px; }
+.chat-tickrail { display: inline-flex; align-items: flex-end; gap: 4px; height: 12px; }
+.chat-tickrail i { display: block; width: 1.5px; background: currentColor; height: 8px; }
+.chat-tickrail i:first-child { height: 12px; }
+.chat-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 2px; cursor: pointer; color: var(--ink-0);
+}
+.chat-mast { padding: 16px 16px 4px; }
+.chat-mast .t-lede { margin: 0; font-size: 15px; }
+.chat-sug { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; }
+.chat-sug-chip {
+  font: 500 10px/1 var(--mono);
+  border: 1px solid var(--rule);
+  padding: 8px 12px;
+  color: var(--ink-2);
+}
+.chat-caveat { margin: 0; padding: 0 16px 16px; }
+.chat-input-row {
+  display: flex; gap: 8px; align-items: center;
+  border-top: 1px solid var(--ink-0);
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  font: 400 12px/1.4 var(--mono);
+  color: var(--ink-3);
+  border: none; background: none; padding: 0;
+  text-overflow: ellipsis;
+}
+.chat-input:disabled { cursor: not-allowed; }
+.chat-input::placeholder { color: var(--ink-3); }
+.chat-send {
+  font: 600 11px/1 var(--mono);
+  background: var(--bg-1);
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  padding: 8px 12px;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+.chat-send:active:not(:disabled) { transform: scale(0.96); }
+.chat-send:disabled { cursor: not-allowed; }
+
+/* ---- ChatMessageBubble / CitationCard (DesignGallery demo — synthetic data only) ---- */
+.msg { margin-bottom: 8px; max-width: 92%; }
+.msg-typing-dots {
+  display: inline-block;
+  color: var(--ink-2);
+  animation: msg-typing 1.2s var(--ease-out) infinite;
+}
+@keyframes msg-typing {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-typing-dots { animation: none; }
+}
+.msg-user { border: 1px solid var(--rule); padding: 8px 12px; margin-left: auto; max-width: 85%; border-left: 2px solid var(--orange); }
+.msg-asst { border: 1px solid var(--rule); padding: 12px; }
+.msg-eyebrow { font: 500 9px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+.msg-asst-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.msg-asst-mark { display: inline-flex; color: var(--ink-2); }
+.msg-dqss { margin-left: auto; }
+.msg-user .msg-body { margin-top: 4px; }
+/* .msg-body's font/line-height/color match .t-body exactly (see typography.css)
+   — components add the `t-body` class instead of redeclaring the same values here. */
+.msg-cites { list-style: none; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 4px; }
+.cite-link { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: baseline; text-decoration: none; color: inherit; }
+.cite-n { font: 400 10px/1 var(--mono); color: var(--ink-3); }
+/* .cite-title/.cite-src reuse .t-caption for sizing (11px/1.4/ink-2); .cite-title
+   overrides only the color to ink-1, per the readable-labels rule (design-taxonomy.md
+   News/Dispatch Surface Contract #4) — a citation's title is a label, not a decoration. */
+.cite-title { color: var(--ink-1); }
+.cite-open { color: var(--orange); justify-self: end; }
+
+@media (max-width: 768px) {
+  .chat-dock { right: var(--sp-3); bottom: var(--sp-3); left: var(--sp-3); align-items: stretch; }
+  .chat-panel { width: 100%; max-width: none; }
+}
 
 /* ---- GlobeFallback ---- */
 .globe-fallback {

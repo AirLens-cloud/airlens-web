@@ -7,7 +7,7 @@
  * reading) — Glass-box doctrine: a gallery demo must not read as live
  * telemetry (flagged by globe-specialist during the port).
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import WfButton from '../components/wireframe/WfButton'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfTabs from '../components/wireframe/WfTabs'
@@ -43,6 +43,8 @@ import DawnReport from '../components/home/observatory/DawnReport'
 import InkInstrument from '../components/home/observatory/InkInstrument'
 import NotificationPanel from '../components/notifications/NotificationPanel'
 import ChatFAB from '../components/chat/ChatFAB'
+import ChatPanel from '../components/chat/ChatPanel'
+import ChatMessageBubble from '../components/chat/ChatMessageBubble'
 import AtmosphericBackground from '../components/AtmosphericBackground'
 import type { AppNotification } from '../types/notification'
 
@@ -95,7 +97,7 @@ export default function DesignGallery() {
 
   return (
     <div data-theme={theme} className="design-gallery">
-      <header className="gallery-header">
+      <header className="gallery-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">AirLens Design Gallery</h1>
         <p className="t-caption">
           Every asset ported from AirLens-platform (Waves A/B/C). All data below is
@@ -112,9 +114,9 @@ export default function DesignGallery() {
       <Section title="Typography">
         <p className="h-hero">h-hero</p>
         <p className="h-section">h-section</p>
-        <p className="t-lede">t-lede — Inter regular, the porting brief's Crimson Pro substitute.</p>
-        <p className="t-quote">"t-quote — Inter italic, the second Crimson Pro substitute."</p>
-        <p className="t-caveat">t-caveat — mono, left border kept from the source signature.</p>
+        <p className="t-lede">t-lede — Crimson Pro regular, self-hosted (Wave 4 Block 2).</p>
+        <p className="t-quote">"t-quote — Crimson Pro italic."</p>
+        <p className="t-caveat">t-caveat — Crimson Pro italic, left border kept from the source signature.</p>
         <p className="t-data">t-data 128.4</p>
         <p className="t-caption">t-caption — secondary copy.</p>
         <p className="t-micro">t-micro — labels/eyebrows</p>
@@ -359,13 +361,31 @@ export default function DesignGallery() {
         />
       </Section>
 
-      <Section title="ChatFAB" note="Stubbed per the porting brief — panel content is a caller-supplied slot; no chat backend is wired up.">
+      <Section title="ChatFAB + ChatPanel" note="Real panel structure (Wave 4 Block 3) — input is always disabled, no chat backend is wired up.">
         <div className="gallery-fab-demo">
           <ChatFAB isOpen={chatOpen} onToggle={() => setChatOpen((v) => !v)}>
-            <div className="wf-card" style={{ padding: 16, width: 260, marginBottom: 8 }}>
-              Sample chat panel slot — no chat backend wired up in this port.
-            </div>
+            <ChatPanel onClose={() => setChatOpen(false)} />
           </ChatFAB>
+        </div>
+      </Section>
+
+      <Section title="ChatMessageBubble / CitationCard" note="Synthetic sample conversation — this page is a component demo, never a live surface (no backend produces this content).">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 420 }}>
+          <ChatMessageBubble
+            message={{ role: 'user', content: 'Why is Seoul moderate today?', timestamp: 0 }}
+          />
+          <ChatMessageBubble
+            message={{
+              role: 'assistant',
+              timestamp: 1,
+              content:
+                'Overnight stagnation trapped local emissions; PM2.5 is at 31 µg/m³ (sample data).',
+              citations: [
+                { source_title: 'Seoul grid cell · sample source', source_url: 'https://example.com/a', relevance: 0.92 },
+                { source_title: 'Wind forecast · sample source', source_url: null, relevance: null },
+              ],
+            }}
+          />
         </div>
       </Section>
 

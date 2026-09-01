@@ -9,10 +9,11 @@
  * fetch fails is withheld from the grid entirely and counted, never shown
  * with placeholder numbers.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchDatasetCatalog, type DatasetCatalog } from '../components/catalog/datasetManifests'
 import DataProductCard from '../components/catalog/DataProductCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/catalog.css'
 
 type PageStatus = 'loading' | 'ready' | 'error'
@@ -39,17 +40,17 @@ export default function Datasets() {
 
   if (status === 'loading') {
     return (
-      <main className="cat-page">
+      <PublicPageContainer tier="hub" className="cat-page">
         <div className="cat-shell">
           <WfPlaceholder height={220} label="Loading the data product catalog…" />
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (status === 'error' || !catalog) {
     return (
-      <main className="cat-page">
+      <PublicPageContainer tier="hub" className="cat-page">
         <div className="cat-shell">
           <h1 className="cat-title">Datasets</h1>
           <p className="cat-error">
@@ -57,14 +58,14 @@ export default function Datasets() {
             underlying feeds, not a statement that no products exist.
           </p>
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   return (
-    <main className="cat-page">
+    <PublicPageContainer tier="hub" className="cat-page">
       <div className="cat-shell">
-        <header className="cat-header">
+        <header className="cat-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <div>
             <h1 className="cat-title">What can you answer with this data?</h1>
             <p className="cat-subtitle">
@@ -79,7 +80,7 @@ export default function Datasets() {
             not an error — it is what "trustworthy right now" actually contains.
           </p>
         ) : (
-          <div className="cat-card-grid" data-testid="dataset-grid">
+          <div className="cat-card-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} data-testid="dataset-grid">
             {catalog.products.map((p) => (
               <DataProductCard key={p.id} product={p} />
             ))}
@@ -93,6 +94,6 @@ export default function Datasets() {
             : ''}
         </p>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

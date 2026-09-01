@@ -14,7 +14,7 @@
  *     The store setter is already a strict no-op in that case; disabling the
  *     control says so instead of swallowing the click.
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { useGlobeStore, type CompareSlot, type GlobeViewMode } from '../store/globeStore'
@@ -254,23 +254,25 @@ export default function Globe() {
   }, [currentCompareSlot, pinCompareSlot])
 
   return (
-    <div
+    <main
       className="obs-surface globe-page"
       data-platform={platform.kind}
       data-touch={platform.isTouch ? 'on' : 'off'}
     >
-      <GlobeObsHud
-        status={chromeStatus}
-        label={view.label}
-        unit={view.unit || null}
-        range={view.range ? [view.range[0], view.range[1]] : null}
-        leadHours={view.leadHours}
-        nature={view.nature}
-        motion={view.motion}
-        source={view.source}
-        validTime={view.validTime}
-        mode={view.mode}
-      />
+      <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+        <GlobeObsHud
+          status={chromeStatus}
+          label={view.label}
+          unit={view.unit || null}
+          range={view.range ? [view.range[0], view.range[1]] : null}
+          leadHours={view.leadHours}
+          nature={view.nature}
+          motion={view.motion}
+          source={view.source}
+          validTime={view.validTime}
+          mode={view.mode}
+        />
+      </div>
 
       <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
 
@@ -337,6 +339,6 @@ export default function Globe() {
       />
 
       <GlobeGridTooltip />
-    </div>
+    </main>
   )
 }

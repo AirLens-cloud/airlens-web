@@ -20,10 +20,11 @@
 }
 
 .ins-shell {
-  width: 100%;
-  max-width: var(--shell);
-  margin: 0 auto;
-  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  /* Horizontal cap (width/max-width/margin/padding-inline) now comes from
+     PublicPageContainer[data-tier="hub"] on the .ins-page <main> this sits
+     inside — one container, one gutter (design-taxonomy §News/Dispatch
+     Contract #1). This class keeps only vertical rhythm + internal layout. */
+  padding-block: var(--sp-6) var(--sp-8);
   display: flex;
   flex-direction: column;
   gap: var(--sp-7);
@@ -375,7 +376,7 @@
 .ins-foot { border-top: 1px solid var(--rule); padding-top: var(--sp-4); color: var(--ink-2); }
 
 @media (max-width: 768px) {
-  .ins-shell { padding: var(--sp-5) var(--sp-4) var(--sp-7); gap: var(--sp-6); }
+  .ins-shell { padding-block: var(--sp-5) var(--sp-7); gap: var(--sp-6); }
   .ins-headline-stats { gap: var(--sp-4); }
   .ins-map-frame { height: clamp(280px, 46vh, 380px); }
   .ins-lane { grid-template-columns: 1fr auto; }

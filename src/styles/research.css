@@ -21,10 +21,9 @@
 
 .lrn-shell,
 .rsc-shell {
-  width: 100%;
-  max-width: var(--shell);
-  margin: 0 auto;
-  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  /* Horizontal cap now comes from PublicPageContainer[data-tier="hub"] on
+     the .lrn-page/.rsc-page <main> this sits inside. */
+  padding-block: var(--sp-6) var(--sp-8);
   display: flex;
   flex-direction: column;
   gap: var(--sp-7);
@@ -111,10 +110,10 @@
 
 /* ── /lab ── */
 .lab-page {
-  width: 100%;
-  max-width: var(--shell);
-  margin: 0 auto;
-  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  /* Horizontal cap now comes from PublicPageContainer[data-tier="hub"] on
+     this element itself (Lab.tsx wraps <main class="lab-page"> directly
+     with PublicPageContainer, no separate outer -page class). */
+  padding-block: var(--sp-6) var(--sp-8);
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);

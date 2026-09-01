@@ -5,7 +5,7 @@
  * No router in this repo (`App.tsx` comment) — `slug` arrives as a prop from
  * the caller's pathname parse, per this task's ownership split.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchArticleBySlug } from '../api/news'
 import type { ArticleLookupResult } from '../types/news'
 import EditorialTrustBadge from '../components/content/EditorialTrustBadge'
@@ -15,6 +15,7 @@ import WfBreadcrumb from '../components/wireframe/WfBreadcrumb'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import WfStamp from '../components/wireframe/WfStamp'
 import { formatDate } from '../components/content/formatDate'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 export interface NewsArticleProps {
@@ -42,35 +43,35 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
 
   if (result.status === 'loading') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <WfSkeleton variant="line" width="60%" />
         <WfSkeleton variant="block" height={40} />
         <WfSkeleton variant="block" height={300} />
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'not-found') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <p className="article-notfound t-body">Article not found.</p>
         <a className="article-back t-micro" href="/dispatch">
           ← Back to Dispatch
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'unavailable') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <p className="article-error t-body" role="alert">
           The news feed could not be read. This is a read failure, not evidence that this article doesn't exist.
         </p>
         <a className="article-back t-micro" href="/dispatch">
           ← Back to Dispatch
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -79,7 +80,7 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
   const summary = article.summaryEn ?? article.summaryKo ?? article.summary
 
   return (
-    <main className="article-page">
+    <PublicPageContainer tier="hub" className="article-page">
       <WfBreadcrumb
         items={[
           { key: 'dispatch', label: 'Dispatch', href: '/dispatch' },
@@ -95,18 +96,20 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
         {date ? <span className="content-tag">{date}</span> : null}
       </div>
 
-      <h1 className="article-title h-2">{article.title}</h1>
+      <h1 className="article-title h-2 fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>{article.title}</h1>
 
-      <BoundedImage
-        key={article.slug}
-        src={article.imageUrl}
-        alt=""
-        index={0}
-        className="article-hero"
-        placeholderWhenAbsent={false}
-      />
+      <div className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+        <BoundedImage
+          key={article.slug}
+          src={article.imageUrl}
+          alt=""
+          index={0}
+          className="article-hero"
+          placeholderWhenAbsent={false}
+        />
+      </div>
 
-      <section className="content-summary" aria-label="AirLens summary">
+      <section className="content-summary fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="AirLens summary">
         <WfStamp label="■ AirLens summary" variant="primary" />
         {summary ? (
           <>
@@ -126,11 +129,13 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
         ) : null}
       </section>
 
-      <ArticleEvidenceBlock countryCode={article.countryCode} />
+      <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
+        <ArticleEvidenceBlock countryCode={article.countryCode} />
+      </div>
 
       <a className="article-back t-micro" href="/dispatch">
         ← Back to Dispatch
       </a>
-    </main>
+    </PublicPageContainer>
   )
 }

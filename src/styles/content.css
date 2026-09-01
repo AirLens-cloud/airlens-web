@@ -15,9 +15,10 @@
   --trust-external: var(--ink-2);
   --trust-community: #3d6b99;
 
-  max-width: var(--shell);
-  margin: 0 auto;
-  padding: var(--sp-6) var(--pad-x);
+  /* Horizontal cap now comes from PublicPageContainer[data-tier="hub"] on
+     the <main> this sits inside (see insights.css .ins-shell / research.css
+     .lrn-shell,.rsc-shell for the same pattern). */
+  padding-block: var(--sp-6);
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);

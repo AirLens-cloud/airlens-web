@@ -75,6 +75,17 @@
   font-size: clamp(64px, 10vw, 128px);
   line-height: 0.9;
 }
+/* Wave 3 mobile-density pass: this clamp's floor (64px) pins at 390px the
+   same way .t-numeric's did — 10vw is only 39px there, well under the
+   floor. Component-local (not tokens.css's --fs-numeric): this is the only
+   place a hero readout uses this exact 64/10vw/128 clamp, so there's
+   nothing to consolidate yet — promote to a shared token if a second
+   consumer shows up. */
+@media (max-width: 768px) {
+  .home-hero__value {
+    font-size: clamp(40px, 13vw, 64px);
+  }
+}
 .home-hero__value--muted {
   opacity: 0.55;
 }

@@ -16,7 +16,7 @@
  * to. There is no router in this repo, so it is read and written with
  * `URLSearchParams` + `history.replaceState` directly.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import AttHeadline from '../components/insights/AttHeadline'
 import LaneCrossCheck from '../components/insights/LaneCrossCheck'
 import PolicyLimitBars from '../components/insights/PolicyLimitBars'
@@ -26,6 +26,7 @@ import PolicyTrendLines from '../components/insights/PolicyTrendLines'
 import CityPredictionCard from '../components/insights/CityPredictionCard'
 import NewsSentimentCard from '../components/insights/NewsSentimentCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import { COUNTRY_CENTERS } from '../lib/config/countryCenters'
 import {
   useInsightsCatalogue,
@@ -105,11 +106,11 @@ export default function Insights() {
 
   if (catalogue.status === 'loading') {
     return (
-      <main className="ins-page obs-surface">
+      <PublicPageContainer tier="hub" className="ins-page obs-surface">
         <div className="ins-shell">
           <WfPlaceholder height={220} label="Loading the analysed country set…" />
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -117,7 +118,7 @@ export default function Insights() {
   // the copy has to say which one happened.
   if (catalogue.status === 'error' || !selected) {
     return (
-      <main className="ins-page obs-surface">
+      <PublicPageContainer tier="hub" className="ins-page obs-surface">
         <div className="ins-shell">
           <h1 className="ins-headline-title">Insights</h1>
           <p className="ins-empty">
@@ -126,12 +127,12 @@ export default function Insights() {
               : 'The policy-impact result set loaded, and it is empty: no country has a published SDID estimate right now.'}
           </p>
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   return (
-    <main className="ins-page obs-surface">
+    <PublicPageContainer tier="hub" className="ins-page obs-surface">
       <div className="ins-shell">
         <nav className="ins-picker" aria-label="Country">
           <label className="m ins-picker-label">
@@ -155,14 +156,16 @@ export default function Insights() {
         </nav>
 
         {/* 1 — headline */}
-        <AttHeadline
-          countryName={selected.name}
-          flag={selected.flag}
-          summary={selected.summary}
-          impact={detail.impact}
-          estimatedCount={estimatedCount}
-          totalCount={catalogue.countries.length}
-        />
+        <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+          <AttHeadline
+            countryName={selected.name}
+            flag={selected.flag}
+            summary={selected.summary}
+            impact={detail.impact}
+            estimatedCount={estimatedCount}
+            totalCount={catalogue.countries.length}
+          />
+        </div>
 
         {detail.status === 'error' ? (
           <p className="ins-empty">
@@ -173,33 +176,37 @@ export default function Insights() {
         ) : null}
 
         {/* 2 — cross-check + national standards */}
-        <div className="ins-duo">
+        <div className="ins-duo fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <LaneCrossCheck impact={detail.impact} />
           <PolicyLimitBars countries={peers} selectedCode={selected.countryCode} />
         </div>
 
-        {/* 3 — the map, full width */}
+        {/* 3 — the map, full width. The enter wrapper sits OUTSIDE the loading
+            branch on purpose: switching country flips detail back to 'loading'
+            for a beat, and a wrapper inside the branch would replay the
+            route-entry stagger on every reselection (review finding). */}
+        <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={360} label="Loading the regional panel…" />
         ) : mapAnchor ? (
-          <PolicyMap
-            // The map owns a `pickedYear`, and a year picked for the previous
-            // country is not a year this one observed. Today the remount is
-            // already guaranteed by the branch above: switching country changes
-            // the detail key, which returns `status: 'loading'` for a frame and
-            // swaps in the placeholder, unmounting the map. This `key` is the
-            // second lock — it keeps the guarantee if that loading branch is
-            // ever removed or made to hold the previous render.
-            key={selected.countryCode}
-            panels={detail.peerPanels}
-            selectedCode={selected.countryCode}
-            selectedName={selected.name}
-            regionName={selected.region}
-            focusYear={detail.impact?.status === 'ok' ? (selected.summary.treatmentYear ?? null) : null}
-            peersWithoutAnchor={detail.peersWithoutAnchor}
-            peersOmitted={detail.peersOmitted}
-            peersUnreadable={detail.peersUnreadable}
-          />
+            <PolicyMap
+              // The map owns a `pickedYear`, and a year picked for the previous
+              // country is not a year this one observed. Today the remount is
+              // already guaranteed by the branch above: switching country changes
+              // the detail key, which returns `status: 'loading'` for a frame and
+              // swaps in the placeholder, unmounting the map. This `key` is the
+              // second lock — it keeps the guarantee if that loading branch is
+              // ever removed or made to hold the previous render.
+              key={selected.countryCode}
+              panels={detail.peerPanels}
+              selectedCode={selected.countryCode}
+              selectedName={selected.name}
+              regionName={selected.region}
+              focusYear={detail.impact?.status === 'ok' ? (selected.summary.treatmentYear ?? null) : null}
+              peersWithoutAnchor={detail.peersWithoutAnchor}
+              peersOmitted={detail.peersOmitted}
+              peersUnreadable={detail.peersUnreadable}
+            />
         ) : (
           <section className="ins-map-band">
             <h2 className="ins-band-title">Observed PM2.5</h2>
@@ -209,29 +216,34 @@ export default function Insights() {
             </p>
           </section>
         )}
+        </div>
 
         {/* 4 — synthetic control */}
+        <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the synthetic-control curve…" />
         ) : (
-          <SdidChart
-            series={detail.impact?.sdid_series}
-            treatmentYear={selected.summary.treatmentYear}
-          />
+            <SdidChart
+              series={detail.impact?.sdid_series}
+              treatmentYear={selected.summary.treatmentYear}
+            />
         )}
+        </div>
 
         {/* 5 — observed trend with the measured spread */}
+        <div className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the observed series…" />
         ) : (
-          <PolicyTrendLines
-            panels={detail.panel ? [detail.panel, ...detail.peerPanels.filter((p) => p.countryCode !== selected.countryCode)] : detail.peerPanels}
-            selectedCode={selected.countryCode}
-          />
+            <PolicyTrendLines
+              panels={detail.panel ? [detail.panel, ...detail.peerPanels.filter((p) => p.countryCode !== selected.countryCode)] : detail.peerPanels}
+              selectedCode={selected.countryCode}
+            />
         )}
+        </div>
 
         {/* 6 — model prediction | sentiment lane */}
-        <div className="ins-duo">
+        <div className="ins-duo fluid-enter" style={{ '--enter-i': 5 } as CSSProperties}>
           <CityPredictionCard lat={mapAnchor?.[0]} lon={mapAnchor?.[1]} />
           <NewsSentimentCard countryName={selected.name} />
         </div>
@@ -248,6 +260,6 @@ export default function Insights() {
           </p>
         </footer>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

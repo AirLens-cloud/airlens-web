@@ -31,6 +31,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Design lint (coherence axes vs base)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Single-ref fetch so "origin/$BASE_REF" resolves locally — the
+          # default shallow checkout only has the PR's own tip. If the base
+          # is still unreachable for a three-dot diff (a stale-based branch
+          # whose merge base fell outside this fetch), design-lint.mjs's own
+          # fallback re-fetches with --unshallow and retries; this step does
+          # not do a full/unshallow fetch itself.
+          git fetch origin "$BASE_REF" || true
+          npm run lint:design -- --base "origin/$BASE_REF"
+
       - name: Test
         run: npm run test:run
 

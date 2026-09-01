@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import WfGlassCard from '../wireframe/WfGlassCard'
 import WfTag from '../wireframe/WfTag'
 import WfSkeleton from '../wireframe/WfSkeleton'
@@ -7,6 +8,8 @@ import { dataState } from '../../types/dataState'
 import { ACTION_SENTENCE, STALE_THRESHOLD_MS, TIER_LABEL, TIER_TINT_BAND } from '../../lib/config/homeBriefing'
 import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
 import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
+import { useSpring } from '../../motion/useSpring'
+import type { SpringConfig } from '../../motion/spring'
 
 export interface HomeHeroProps {
   data: CapsuleDataState
@@ -15,6 +18,10 @@ export interface HomeHeroProps {
    * component body is an impure render, which this keeps out of. */
   nowMs: number
 }
+
+/** Slower/gentler than the base Δ5 contract (ζ1.0·r0.35) — a headline number
+ * reads better settling over half a second than snapping in 350ms. */
+const VALUE_SPRING: SpringConfig = { damping: 1.0, response: 0.5 }
 
 /**
  * HomeHero — the "Instrument Band" (approved mockup variant A): a full-width
@@ -27,6 +34,40 @@ export interface HomeHeroProps {
  * rather than implying this is "your" air.
  */
 export default function HomeHero({ data, nowMs }: HomeHeroProps) {
+  // Hooks run unconditionally (Rules of Hooks) ahead of the loading/missing
+  // early returns below — `targetValue` is a 0 sentinel until `data` is
+  // actually `'ready'`, mirroring the sentinel pattern `useSmoothedProgress`
+  // uses for its own mount sync.
+  const isReady = data.status === 'ready'
+  const targetValue = isReady ? data.current : 0
+  const valueSpring = useSpring(targetValue, VALUE_SPRING)
+  const [displayedValue, setDisplayedValue] = useState(targetValue)
+  const hasSyncedRef = useRef(false)
+
+  // The `.set()`/`.jump()` calls are side effects, not state updates — same
+  // separation ChatFAB's `translateY` effect uses. The first time `data`
+  // resolves to `'ready'`, this jumps straight to the value (no animated
+  // count-up from the 0 sentinel on initial load); every value after that
+  // springs from the previously displayed number to the new one.
+  useEffect(() => {
+    if (!isReady) return
+    if (!hasSyncedRef.current) {
+      hasSyncedRef.current = true
+      valueSpring.jump(targetValue)
+      setDisplayedValue(targetValue)
+      return
+    }
+    valueSpring.set(targetValue)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, targetValue])
+
+  // Unlike CapsulePanel/ChatFAB's imperative style-ref writes, this spring
+  // drives rendered text content, so its subscriber re-renders via state.
+  useEffect(() => {
+    return valueSpring.subscribe(setDisplayedValue)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   if (data.status === 'loading') {
     return (
       <section className="home-hero home-hero--loading" aria-busy="true" aria-label="Loading current air quality">
@@ -57,7 +98,7 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
   const tierLabel = TIER_LABEL[data.tier]
   const tintBand = data.tier === 'unknown' ? undefined : TIER_TINT_BAND[data.tier]
   const actionSentence = ACTION_SENTENCE[data.tier]
-  const value = Math.round(data.current)
+  const value = Math.round(displayedValue)
 
   return (
     <WfGlassCard

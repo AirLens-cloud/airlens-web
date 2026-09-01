@@ -2,13 +2,14 @@
  * BlogPost — /blog/:slug. Field Note body. Spec:
  * `Obsidian-airlens/raw/docs/web/page-specs/blog-field-notes.md`.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchBlogPostBySlug } from '../api/blog'
 import type { BlogPostLookupResult } from '../types/blog'
 import MarkdownBody from '../components/content/MarkdownBody'
 import SourceRefsBlock from '../components/content/SourceRefsBlock'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import { formatDate } from '../components/content/formatDate'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 export interface BlogPostProps {
@@ -35,35 +36,35 @@ export default function BlogPost({ slug }: BlogPostProps) {
 
   if (result.status === 'loading') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <WfSkeleton variant="line" width="50%" />
         <WfSkeleton variant="block" height={40} />
         <WfSkeleton variant="block" height={300} />
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'not-found') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <p className="blogpost-notfound t-body">Post not found.</p>
         <a className="blogpost-back t-micro" href="/blog">
           ← Back to Field Notes
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'unavailable') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <p className="blogpost-error t-body" role="alert">
           The Field Notes archive could not be read. This is a read failure, not evidence this post doesn't exist.
         </p>
         <a className="blogpost-back t-micro" href="/blog">
           ← Back to Field Notes
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -75,8 +76,8 @@ export default function BlogPost({ slug }: BlogPostProps) {
   const body = post.bodyKo ?? post.bodyEn
 
   return (
-    <main className="blogpost-page">
-      <header className="blogpost-header">
+    <PublicPageContainer tier="hub" className="blogpost-page">
+      <header className="blogpost-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <div className="blogpost-meta t-micro">
           <span className="content-tag">{post.topic}</span>
           {date ? <span className="content-tag">{date}</span> : null}
@@ -87,16 +88,20 @@ export default function BlogPost({ slug }: BlogPostProps) {
       </header>
 
       {body ? (
-        <MarkdownBody body={body} />
+        <div className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+          <MarkdownBody body={body} />
+        </div>
       ) : (
         <p className="blogpost-pending t-caption">This post's body is still being prepared.</p>
       )}
 
-      <SourceRefsBlock refs={post.sourceRefs} />
+      <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+        <SourceRefsBlock refs={post.sourceRefs} />
+      </div>
 
       <a className="blogpost-back t-micro" href="/blog">
         ← Back to Field Notes
       </a>
-    </main>
+    </PublicPageContainer>
   )
 }

@@ -3,7 +3,7 @@
 // internals (LandingFlight's chapter scenes, AqiCapsule's own data/motion
 // wiring) are stubbed out here — they have their own dedicated coverage —
 // so this test stays scoped to App.tsx's routing decision.
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 
 vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-data-probe" /> }))
@@ -26,9 +26,22 @@ function setPath(path: string): void {
   window.history.pushState({}, '', path)
 }
 
+// Wave 5 Δ5 (B3) — 'site'-chrome routes now mount ChatWidget, whose ChatFAB
+// calls useSpring -> useReducedMotion (reads `window.matchMedia`); jsdom
+// doesn't implement it. Same stub pattern as Home.test.tsx/Today.test.tsx.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('reduced-motion'),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+})
+
 afterEach(() => {
   cleanup()
   setPath('/')
+  vi.unstubAllGlobals()
 })
 
 describe('App — FluidChrome routing', () => {
@@ -159,5 +172,71 @@ describe('App — FluidChrome routing', () => {
     // Assert
     expect(insightsVariant).toBe('day')
     expect(landingVariant).toBe('night')
+  })
+})
+
+// PR-N1: App.tsx now wraps every matched route in SiteChrome, which decides
+// whether GlobalNav mounts (and in which variant) from the route's `chrome`
+// field. This block is scoped to that wrapping decision — GlobalNav's own
+// interaction behavior (dropdowns, Escape, aria-current) is covered by
+// GlobalNav.test.tsx, not duplicated here.
+describe('App — SiteChrome routing (PR-N1)', () => {
+  it('mounts GlobalNav and SiteFooter in the site variant on Home', () => {
+    // Arrange
+    setPath('/')
+    // Act
+    const { container } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--site')).not.toBeNull()
+    expect(container.querySelector('.chrome-shell--site')).not.toBeNull()
+    expect(container.querySelector('.chrome-footer')).not.toBeNull()
+  })
+
+  it('mounts GlobalNav in the overlay variant on /globe, with no footer (100vh stage)', () => {
+    // Arrange
+    setPath('/globe')
+    // Act
+    const { container } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--overlay')).not.toBeNull()
+    expect(container.querySelector('.chrome-nav--site')).toBeNull()
+    expect(container.querySelector('.chrome-footer')).toBeNull()
+  })
+
+  it('mounts no chrome at all on /landing (bare — the immersive flight owns its own chrome)', () => {
+    // Arrange
+    setPath('/landing')
+    // Act
+    const { container, queryByTestId } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav')).toBeNull()
+    expect(container.querySelector('.chrome-shell')).toBeNull()
+    expect(queryByTestId('page-landing')).not.toBeNull()
+  })
+
+  it('mounts no chrome on /design and /probe (bare dev-only surfaces)', () => {
+    // Arrange / Act
+    setPath('/design')
+    const design = render(<App />)
+    const designChrome = design.container.querySelector('.chrome-nav')
+    cleanup()
+
+    setPath('/probe')
+    const probe = render(<App />)
+    const probeChrome = probe.container.querySelector('.chrome-nav')
+
+    // Assert
+    expect(designChrome).toBeNull()
+    expect(probeChrome).toBeNull()
+  })
+
+  it('gives NotFound the site chrome (a recovery surface, not another dead end)', () => {
+    // Arrange
+    setPath('/some-unknown-path')
+    // Act
+    const { container, queryByTestId } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--site')).not.toBeNull()
+    expect(queryByTestId('page-not-found')).not.toBeNull()
   })
 })

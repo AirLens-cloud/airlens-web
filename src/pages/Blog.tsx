@@ -2,12 +2,13 @@
  * Blog — /blog. Field Notes index. Spec:
  * `Obsidian-airlens/raw/docs/web/page-specs/blog-field-notes.md`.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { fetchBlogFeed } from '../api/blog'
 import { BLOG_TOPICS, type BlogFeedResult } from '../types/blog'
 import BlogCard from '../components/content/BlogCard'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 const TOPIC_PARAM = 'topic'
@@ -57,8 +58,8 @@ export default function Blog({ onNavigate }: BlogProps = {}) {
   const chipItems = [{ key: 'all', label: 'All' }, ...BLOG_TOPICS.map((t) => ({ key: t, label: t }))]
 
   return (
-    <main className="blog-page">
-      <header className="blog-header">
+    <PublicPageContainer tier="hub" className="blog-page">
+      <header className="blog-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="blog-title h-2">Field Notes</h1>
         <p className="blog-dek t-body">
           AirLens's own data stories, methods, and failure reports — not a summary of someone else's reporting.
@@ -95,12 +96,12 @@ export default function Blog({ onNavigate }: BlogProps = {}) {
       )}
 
       {feed.status === 'ready' && filtered.length > 0 && (
-        <div className="blog-grid">
+        <div className="blog-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           {filtered.map((post) => (
             <BlogCard key={post.slug} post={post} onOpen={handleOpen} />
           ))}
         </div>
       )}
-    </main>
+    </PublicPageContainer>
   )
 }

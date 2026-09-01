@@ -1,11 +1,21 @@
-import type { ReactNode, CSSProperties } from 'react'
+import type { ReactNode, CSSProperties, ElementType } from 'react'
 
 /**
  * Shared prop types for the wireframe primitive set.
  * Ported from AirLens-platform apps/web/src/components/wireframe/types.ts —
- * trimmed to the components actually ported (WfToggle / PublicPageContainer
- * excluded per the porting brief).
+ * trimmed to the components actually ported (WfToggle excluded per the
+ * porting brief; PublicPageContainer was ported in Wave 1 — design-foundation).
  */
+
+// PublicPageContainer
+export type ContainerTier = 'text' | 'hub' | 'wide'
+export interface PublicPageContainerProps {
+  tier: ContainerTier
+  children: ReactNode
+  as?: Extract<ElementType, 'main' | 'section' | 'div' | 'article'>
+  className?: string
+  [attr: `data-${string}` | `aria-${string}`]: string | undefined
+}
 
 // WfButton
 export type WfButtonVariant = 'primary' | 'ghost' | 'ink' | 'outline' | 'light' | 'danger'

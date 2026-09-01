@@ -1,9 +1,13 @@
 /**
  * AirLens — paper/ink wireframe primitives entry.
  * Ported from AirLens-platform apps/web/src/components/wireframe/index.ts,
- * trimmed to the components carried over in this port (WfToggle and
- * PublicPageContainer excluded — porting brief scope).
+ * trimmed to the components carried over in this port (WfToggle excluded —
+ * porting brief scope). PublicPageContainer was ported in Wave 1
+ * (design-foundation) to unify the page shell gutter contract.
  */
+
+export { default as PublicPageContainer } from './PublicPageContainer'
+export type { ContainerTier, PublicPageContainerProps } from './types'
 
 export { default as WfButton } from './WfButton'
 export type { WfButtonProps, WfButtonVariant, WfButtonFamily } from './types'

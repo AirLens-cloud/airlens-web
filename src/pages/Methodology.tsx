@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import '../styles/static.css'
 import { METHODOLOGY_SECTIONS } from '../content/methodologySections'
 import { GLOSSARY_TERMS } from '../content/glossaryTerms'
@@ -12,7 +13,7 @@ import { GLOSSARY_TERMS } from '../content/glossaryTerms'
 export default function Methodology() {
   return (
     <main className="static-page" data-tier="hub">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">Methodology</h1>
         <p className="static-page__thesis t-lede">
           How AirLens turns raw signal into what you see on screen — one section per method, each with what it
@@ -20,7 +21,7 @@ export default function Methodology() {
         </p>
       </header>
 
-      <div className="methodology-layout">
+      <div className="methodology-layout fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
         <nav aria-label="Methodology sections">
           <ol className="methodology-toc">
             {METHODOLOGY_SECTIONS.map((s) => (

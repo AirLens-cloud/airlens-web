@@ -10,6 +10,8 @@
  * (EVIDENCE_CONTRACT.md §6-1) — the empty state explains what a receipt is
  * and the fixed anatomy every future receipt will follow (spec §5.2).
  */
+import type { CSSProperties } from 'react'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/research.css'
 
 const RECEIPT_ANATOMY =
@@ -17,9 +19,9 @@ const RECEIPT_ANATOMY =
 
 export default function Research() {
   return (
-    <main className="rsc-page">
+    <PublicPageContainer tier="hub" className="rsc-page">
       <div className="rsc-shell">
-        <header className="rsc-header">
+        <header className="rsc-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <p className="rsc-header__eyebrow t-micro">RESEARCH COMMONS · REPRODUCIBLE RECEIPTS · 0 PUBLISHED</p>
           <h1 className="rsc-header__title h-2">Research Commons</h1>
           <p className="rsc-header__thesis t-lede">
@@ -28,7 +30,7 @@ export default function Research() {
           </p>
         </header>
 
-        <section className="rsc-empty" data-testid="rsc-empty">
+        <section className="rsc-empty fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} data-testid="rsc-empty">
           <p className="rsc-empty__title t-body">No receipts published yet.</p>
           <p className="rsc-empty__body t-caption">
             A receipt is a published analysis an operator has independently reproduced from its{' '}
@@ -41,11 +43,11 @@ export default function Research() {
           </p>
         </section>
 
-        <section className="rsc-anatomy" aria-label="Receipt structure">
+        <section className="rsc-anatomy fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="Receipt structure">
           <p className="rsc-anatomy__label t-micro">Receipt anatomy</p>
           <p className="rsc-anatomy__chain t-data">{RECEIPT_ANATOMY}</p>
         </section>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

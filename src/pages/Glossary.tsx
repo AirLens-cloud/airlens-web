@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import '../styles/static.css'
 import { GLOSSARY_TERMS, findGlossaryTerm, type GlossaryCategory } from '../content/glossaryTerms'
 import UnitSafeText from '../components/knowledge/UnitSafeText'
@@ -35,7 +35,7 @@ export default function Glossary() {
 
   return (
     <main className="static-page" data-tier="hub">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">Glossary</h1>
         <p className="static-page__thesis t-lede">
           What each term on AirLens actually means — every entry links to the method that produces it and the
@@ -92,7 +92,7 @@ export default function Glossary() {
           </button>
         </div>
       ) : (
-        <div className="glossary-grid">
+        <div className="glossary-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           {filtered.map((term) => {
             const expanded = expandedId === term.termId
             return (

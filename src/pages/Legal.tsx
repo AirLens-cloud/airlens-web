@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { LEGAL_DOCS, KOREAN_PENDING_NOTICE, DEPLOYED_MODELS, type LegalDocId } from '../content/legal'
 
@@ -17,11 +19,11 @@ export default function Legal({ doc }: LegalProps) {
   const current = LEGAL_DOCS.find((d) => d.id === doc) ?? LEGAL_DOCS[0]
 
   return (
-    <main className="static-page" data-tier="hub">
+    <PublicPageContainer tier="hub" className="static-page">
       <a className="static-page__back t-caption" href="/trust">← Trust Center</a>
 
       <div className="legal-layout">
-        <nav className="legal-nav" aria-label="Legal documents">
+        <nav className="legal-nav fluid-enter" style={{ '--enter-i': 0 } as CSSProperties} aria-label="Legal documents">
           <ol className="legal-nav__list">
             {[...LEGAL_DOCS].sort((a, b) => a.order - b.order).map((d) => (
               <li key={d.id}>
@@ -37,7 +39,7 @@ export default function Legal({ doc }: LegalProps) {
           </ol>
         </nav>
 
-        <article className="legal-doc" aria-labelledby="legal-doc-title">
+        <article className="legal-doc fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} aria-labelledby="legal-doc-title">
           <div className="legal-draft-badge" role="status">
             <span className="legal-draft-badge__dot" aria-hidden="true" />
             <span>V0.1 DRAFT · UNDER REVIEW</span>
@@ -95,6 +97,6 @@ export default function Legal({ doc }: LegalProps) {
           <div className="legal-doc__lang-notice t-caption">{KOREAN_PENDING_NOTICE}</div>
         </article>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }
