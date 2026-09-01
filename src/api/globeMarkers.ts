@@ -13,7 +13,7 @@
  * here either — the Globe reads it from `data_quality.json` via
  * `useDQSSData()`, which is a different quantity from a grid cell's `dqss`.
  */
-import { fetchGlobalGridSnapshot } from './gridSnapshot'
+import { fetchGlobalGridSnapshot, GLOBAL_GRID_SAMPLE_LIMIT } from './gridSnapshot'
 import { logger } from '../lib/logger'
 
 /**
@@ -31,12 +31,10 @@ export interface GlobeMarker {
   source: string
 }
 
-const MARKER_LIMIT = 5000
-
 /** Grid cells as globe markers. Any failure degrades to `[]` (data-independent load). */
 export async function fetchGlobalMarkers(): Promise<GlobeMarker[]> {
   try {
-    const snapshot = await fetchGlobalGridSnapshot({ limit: MARKER_LIMIT })
+    const snapshot = await fetchGlobalGridSnapshot({ limit: GLOBAL_GRID_SAMPLE_LIMIT })
     const markers: GlobeMarker[] = snapshot.nearbyCells.map((cell, idx) => ({
       station_id: `grid-${idx + 1}`,
       city: `Grid ${idx + 1}`,

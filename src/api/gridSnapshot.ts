@@ -36,6 +36,17 @@ const MAX_LIMIT = 5000;
 const DEFAULT_RADIUS_KM = 600;
 const MAX_RADIUS_KM = 20000;
 
+/**
+ * The no-origin sample size every "read the whole globe, no single origin"
+ * consumer must request — `api/globeMarkers.ts`'s 3D-scene markers and
+ * `hooks/useGlobeData.ts`'s `useGlobeGridSnapshot()` (Table/Map views). Both
+ * rank the same artifact with no origin, so a cell's array index is the
+ * `grid-${i+1}` identity shared across the 3D scene, Table, and Map — two
+ * independently hardcoded limits would silently desync that identity the
+ * moment one drifts from the other (code review Major-1, 2026-09-01).
+ */
+export const GLOBAL_GRID_SAMPLE_LIMIT = 5000;
+
 interface RawGridPoint {
   lat?: unknown;
   lon?: unknown;
@@ -71,7 +82,14 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-function gradeFromPm25(pm25: number): PM25Grade {
+/**
+ * Exported so `lib/globe/gradeColor.ts`'s `pm25ToGrade` (used for Compare-tray
+ * swatches on selections that never came through this module's own ranking
+ * response) can reuse this cut instead of hand-copying it — a second copy of
+ * 15/35/75 that only agrees with this one by discipline, not by construction
+ * (code review Minor-2, 2026-09-01).
+ */
+export function gradeFromPm25(pm25: number): PM25Grade {
   if (pm25 <= 15) return 'Good';
   if (pm25 <= 35) return 'Moderate';
   if (pm25 <= 75) return 'Unhealthy';
@@ -124,6 +142,33 @@ function finitePointsOf(artifact: RawGridArtifact): FinitePoint[] {
       confidence: isFiniteNumber(p.confidence) ? p.confidence : undefined,
       dqss: isFiniteNumber(p.dqss) ? p.dqss : undefined,
     });
+  }
+  return out;
+}
+
+/**
+ * Evenly-strided sample of `arr`, `limit` items, order preserved. With no
+ * origin the ranking below leaves `arr` in the artifact's own enumeration
+ * order — a plain `.slice(0, limit)` there would just take the first `limit`
+ * points, which for a lat/lon grid enumerated row-by-row from the south pole
+ * (verified against the live artifact: point 0 is lat -90, and every 360
+ * points is one latitude row) means "first 5000 of 65160" is only latitudes
+ * -90..-76 — a dense band along the south edge and nothing else, not a
+ * global sample. Striding across the full array instead touches every
+ * latitude row regardless of `limit`.
+ */
+function evenSample<T>(arr: T[], limit: number): T[] {
+  if (arr.length <= limit) return arr;
+  if (limit <= 1) return [arr[0]];
+  // Anchored at both ends (index 0 and arr.length-1), not just striding
+  // forward from 0 — a plain `arr.length / limit` stride runs out before
+  // reaching the far end (with 181 rows and limit 10 it stops at row 162,
+  // short of the north pole), which is the same "one hemisphere missing"
+  // shape as the original bug, just smaller.
+  const step = (arr.length - 1) / (limit - 1);
+  const out: T[] = [];
+  for (let i = 0; i < limit; i++) {
+    out.push(arr[Math.round(i * step)]);
   }
   return out;
 }
@@ -205,7 +250,13 @@ export async function fetchGlobalGridSnapshot(
     .filter((p) => !origin || (p.distanceKm ?? 0) <= radiusKm)
     .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
 
-  const nearbyCells = ranked.slice(0, limit);
+  // With an origin, closest-first is exactly what "nearby" means — take the
+  // top `limit`. With no origin there's nothing to rank by (every distance
+  // is 0), so a plain slice would just be "the first `limit` rows of however
+  // the artifact happens to be enumerated" — spread the sample across the
+  // whole array instead, so a full-globe consumer (Table/Map/3D grid
+  // markers) actually sees the whole globe.
+  const nearbyCells = origin ? ranked.slice(0, limit) : evenSample(ranked, limit);
   if (nearbyCells.length === 0) throw new Error('No grid cells in requested radius');
 
   const primary = nearbyCells[0];

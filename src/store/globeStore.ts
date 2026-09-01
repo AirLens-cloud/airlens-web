@@ -5,6 +5,29 @@ import { detectQualityTier, getQualityPreset } from '../lib/adaptiveQuality';
 import { GLOBE_SCENES } from '../lib/config/globeScenes';
 import type { SensorType, StationAttribution, HoveredStation, SelectedCountry, DQSSProvenance, DataMode, OverlayType, ProjectionType, VisualizationType, ViewMode, VisualizationMode, ActivePanel, HUDStyle, NullschoolThemePreset, EarthStyle, AQDataSource, GridHoverInfo, FlyToTarget, WindLevel, WindFieldStatus, WindFieldMeta, SelectedPrediction, HoveredPrediction, FireCoverage, AtmosphericMode } from '../types/globe';
 import type { TimelineFrameMeta } from '../api/timeline';
+import type { PM25Grade } from '../types/data';
+
+/** Which renderer the stage shows for the shared grid/mark payload — same cursor, three ways to read it. */
+export type GlobeViewMode = 'globe' | 'map' | 'table';
+/** Why the view switched — 'manual' is a user click, 'webgl-fallback' is the stage routing around a WebGL2 probe failure. */
+export type ViewSwitchReason = 'manual' | 'webgl-fallback';
+
+/**
+ * A frozen snapshot of one selection pinned into the Compare tray. Values are
+ * copied at pin time, not live-linked — comparing "then vs now" is the point.
+ */
+export interface CompareSlot {
+  /** Stable identity for the pinned selection (station_uid / grid id / country code). */
+  id: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  layerLabel: string;
+  timeLabel: string;
+  grade: PM25Grade | null;
+  /** Epistemic nature of the pinned reading — surfaces the "different data nature" warning (§4.2). */
+  nature: string;
+}
 
 export interface SelectedStation {
   lat: number;
@@ -220,6 +243,17 @@ interface GlobeStore {
   setQualityTier: (tier: QualityTier) => void;
   setHoveredStation: (s: HoveredStation | null) => void;
   setViewCenterLocation: (v: string | null) => void;
+
+  // ── ViewModeSwitch (Globe/Map/Table) ── named apart from the pre-existing
+  // `viewMode`/`setViewMode` above (citizen/expert display density) — same
+  // word, unrelated concept, so this one gets its own name to avoid clobbering it.
+  globeViewMode: GlobeViewMode;
+  setGlobeViewMode: (mode: GlobeViewMode, reason?: ViewSwitchReason) => void;
+
+  // ── Compare tray — max 2 pinned slots, A then B ──
+  compareSlots: readonly [CompareSlot | null, CompareSlot | null];
+  pinCompareSlot: (slot: CompareSlot) => void;
+  removeCompareSlot: (index: 0 | 1) => void;
 }
 
 const _initialTier = detectQualityTier();
@@ -482,4 +516,35 @@ export const useGlobeStore = create<GlobeStore>((set, get) => ({
   },
   setHoveredStation: (s) => set({ hoveredStation: s }),
   setViewCenterLocation: (v) => set({ viewCenterLocation: v }),
+
+  // ── ViewModeSwitch (Globe/Map/Table) ──
+  globeViewMode: 'globe',
+  setGlobeViewMode: (mode, reason = 'manual') => {
+    const from = get().globeViewMode;
+    if (from === mode) return;
+    set({ globeViewMode: mode });
+    track('globe_view_switch', { from, to: mode, reason });
+  },
+
+  // ── Compare tray ──
+  compareSlots: [null, null],
+  pinCompareSlot: (slot) => {
+    set((state) => {
+      const [a, b] = state.compareSlots;
+      // First empty slot wins; with both full, a fresh pin replaces B so A
+      // (usually the scene the user is actively looking at) stays put.
+      if (!a) return { compareSlots: [slot, b] };
+      return { compareSlots: [a, slot] };
+    });
+    track('evidence_compare_add', { id: slot.id });
+    track('globe_compare_opened', {});
+  },
+  removeCompareSlot: (index) => {
+    set((state) => {
+      const next: [CompareSlot | null, CompareSlot | null] = [...state.compareSlots];
+      next[index] = null;
+      return { compareSlots: next };
+    });
+    track('evidence_compare_remove', { slot: index === 0 ? 'a' : 'b' });
+  },
 }));

@@ -11,10 +11,12 @@
  */
 import { useCachedResource } from './useCachedResource';
 import { fetchGlobalMarkers } from '../api/globeMarkers';
+import { fetchGlobalGridSnapshot, GLOBAL_GRID_SAMPLE_LIMIT } from '../api/gridSnapshot';
 import { fetchCityPredictions } from '../api/predictions';
 import { GLOBE_CONFIG } from '../lib/config/globe';
 import { wrapDeltaLon } from '../lib/earth/geo';
 import type { CityPrediction } from '../types/ml';
+import type { GlobalGridSnapshot } from '../types/data';
 import type {
   DQSSStation, DQSSScoreMap, DQSSCache,
   DataQualityMeta, DataQualityResponse, DQSSProvenance,
@@ -35,6 +37,25 @@ export function useGlobeMarkers(): unknown[] {
     fetchGlobalMarkers,
     CACHE_TTL_MS,
     EMPTY_MARKERS,
+  );
+}
+
+// ── Global grid snapshot (Table/Map views) ──
+
+/**
+ * `GLOBAL_GRID_SAMPLE_LIMIT` (`api/gridSnapshot.ts`) is the shared constant —
+ * with no origin, both this call and `fetchGlobalMarkers` (`api/globeMarkers.ts`)
+ * rank the same artifact into the same order, so a cell's index here lines up
+ * 1:1 with the `grid-${i+1}` identity the 3D scene's markers already use. No
+ * new network fetch: `fetchGlobalGridSnapshot` dedupes the underlying
+ * artifact fetch through its own module cache.
+ */
+export function useGlobeGridSnapshot(): GlobalGridSnapshot | null {
+  return useCachedResource<GlobalGridSnapshot | null>(
+    'globe:grid-snapshot',
+    () => fetchGlobalGridSnapshot({ limit: GLOBAL_GRID_SAMPLE_LIMIT }),
+    CACHE_TTL_MS,
+    null,
   );
 }
 

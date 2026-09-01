@@ -15,11 +15,25 @@ vi.mock('../api/timeline', async (importOriginal) => {
   return { ...actual, fetchTimelineManifest: () => fetchTimelineManifest() }
 })
 
+// WebGL support is a real probe against jsdom's canvas, which always answers
+// "no" — every test defaults it to `true` in beforeEach so the existing mode
+// gating tests below stay on the Globe (3D) view they were written against.
+// Tests about the webgl-fallback routing itself override this per-test.
+const isWebGLSupportedMock = vi.fn<() => boolean>()
+vi.mock('../lib/webgl', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/webgl')>()
+  return { ...actual, isWebGLSupported: () => isWebGLSupportedMock() }
+})
+
 // The engine and the 2D fallback are lazy chunks with their own coverage; the
 // stage renders `null` for both under Suspense here, which is what we want —
 // these tests are about the chrome's gating decisions.
 vi.mock('../components/globe/three/Globe3DScene', () => ({ default: () => null, orbitControlsRef: { current: null } }))
 vi.mock('../components/globe/GlobeFallback', () => ({ default: () => <div data-testid="globe-fallback" /> }))
+// Map/Table have their own data-fetching coverage (GlobeTableView.test.tsx) —
+// stubbed here so these page-level tests never issue a real grid-snapshot fetch.
+vi.mock('../components/globe/views/GlobeMapView', () => ({ default: () => <div data-testid="globe-map-view" /> }))
+vi.mock('../components/globe/views/GlobeTableView', () => ({ default: () => <div data-testid="globe-table-view" /> }))
 
 import Globe from './Globe'
 
@@ -37,6 +51,7 @@ const FORECAST_MANIFEST: TimelineData = {
 beforeEach(() => {
   useGlobeStore.setState(INITIAL, true)
   fetchTimelineManifest.mockResolvedValue(null)
+  isWebGLSupportedMock.mockReturnValue(true)
   // jsdom ships no matchMedia; usePlatform needs one to answer touch/motion.
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
@@ -101,5 +116,52 @@ describe('Globe — mode gating', () => {
     render(<Globe />)
     // Assert
     await waitFor(() => expect(modeButton('LIVE').getAttribute('aria-pressed')).toBe('true'))
+  })
+})
+
+function viewButton(label: string): HTMLButtonElement {
+  return screen.getByRole('radio', { name: new RegExp(`^${label}`, 'i') }) as HTMLButtonElement
+}
+
+describe('Globe — view mode switch', () => {
+  it('defaults to the Globe (3D) view when WebGL2 is available', () => {
+    // Arrange / Act
+    render(<Globe />)
+    // Assert
+    expect(viewButton('GLOBE').getAttribute('aria-checked')).toBe('true')
+    expect(screen.queryByTestId('globe-map-view')).toBeNull()
+    expect(screen.queryByTestId('globe-table-view')).toBeNull()
+  })
+
+  it('switches to Map when the Map button is clicked, keeping the same page mounted', () => {
+    // Arrange
+    render(<Globe />)
+    // Act
+    fireEvent.click(viewButton('MAP'))
+    // Assert
+    expect(useGlobeStore.getState().globeViewMode).toBe('map')
+    expect(screen.getByTestId('globe-map-view')).toBeTruthy()
+    expect(viewButton('MAP').getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('switches to Table when the Table button is clicked', () => {
+    // Arrange
+    render(<Globe />)
+    // Act
+    fireEvent.click(viewButton('TABLE'))
+    // Assert
+    expect(useGlobeStore.getState().globeViewMode).toBe('table')
+    expect(screen.getByTestId('globe-table-view')).toBeTruthy()
+  })
+
+  it('auto-routes to Map and disables the Globe button when WebGL2 is unavailable', async () => {
+    // Arrange — the stage cannot draw a sphere it has no WebGL context for.
+    isWebGLSupportedMock.mockReturnValue(false)
+    // Act
+    render(<Globe />)
+    // Assert
+    await waitFor(() => expect(useGlobeStore.getState().globeViewMode).toBe('map'))
+    expect(screen.getByTestId('globe-map-view')).toBeTruthy()
+    expect(viewButton('GLOBE').disabled).toBe(true)
   })
 })
