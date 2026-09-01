@@ -1,0 +1,39 @@
+airlens-web — AirLens web product (ground-up rebuild)
+Copyright (C) 2026 joymin5655
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See the LICENSE file for the full text.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+
+Dual licensing
+--------------
+
+airlens-web follows the same two-track licensing as the AirLens monorepo
+(github.com/joymin5655/AirLens):
+
+  1. Open source — GNU AGPL-3.0-or-later (this repository, the LICENSE file).
+     The AGPL's Section 13 requires that if you run a modified version to
+     provide a service over a network, you must offer the corresponding source
+     of your modified version to its users.
+
+  2. Commercial — a separate commercial license is available from the copyright
+     holder for organizations that cannot meet the AGPL's network-copyleft
+     obligations. Contact the copyright holder to arrange commercial terms.
+
+Choosing the commercial track does not affect anyone else's rights under the
+AGPL; the two tracks coexist.
+
+
+Provenance
+----------
+
+Several modules were ported from the AirLens monorepo (see README "Ported
+modules"); the copyright holder of both repositories is the same. Dataset and
+data-source licenses are documented separately in ATTRIBUTION.md — they apply
+to data, not to this codebase.
