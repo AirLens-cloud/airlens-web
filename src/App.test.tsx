@@ -13,6 +13,7 @@ vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /
 vi.mock('./pages/Today', () => ({ default: () => <div data-testid="page-today" /> }))
 vi.mock('./pages/Home', () => ({ default: () => <div data-testid="page-home" /> }))
 vi.mock('./pages/Insights', () => ({ default: () => <div data-testid="page-insights" /> }))
+vi.mock('./pages/NotFound', () => ({ default: () => <div data-testid="page-not-found" /> }))
 vi.mock('./components/fluid/capsule/AqiCapsule', () => ({
   default: ({ variant }: { variant?: string }) => (
     <div data-testid="mock-capsule" data-variant={variant ?? 'night'} />
@@ -61,13 +62,14 @@ describe('App — FluidChrome routing', () => {
     expect(queryByTestId('page-data-probe')).not.toBeNull()
   })
 
-  it('falls back to Home for an unmatched path', () => {
+  it('renders NotFound for an unmatched path (no more silent fallback to Home)', () => {
     // Arrange
     setPath('/some-unknown-path')
     // Act
     const { queryByTestId } = render(<App />)
     // Assert
-    expect(queryByTestId('page-home')).not.toBeNull()
+    expect(queryByTestId('page-home')).toBeNull()
+    expect(queryByTestId('page-not-found')).not.toBeNull()
   })
 
   it('mounts the fluid chrome overlay on /landing', () => {
