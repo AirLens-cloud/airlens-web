@@ -154,6 +154,14 @@
   transform: rotate(225deg) translateY(2px);
 }
 
+/* Wave 5 Δ5 (B2) — always mounted now (GlobalNav.tsx), toggled by
+   `data-open` instead of mount/unmount, so it can materialize instead of
+   hard-cutting. transform-origin sits at the trigger corner (top left — the
+   dropdown is left-aligned under its trigger). 220ms is a literal, not a
+   `--dur-*` token: it is this one transition's own measured figure per the
+   Δ5 motion contract table, not a value other surfaces are expected to
+   share (matches this file's existing literal-buffer convention, see the
+   .fluid-chrome__overlay comment above). */
 .chrome-nav__dropdown {
   position: absolute;
   top: calc(100% + var(--sp-1));
@@ -165,6 +173,30 @@
   background: var(--bg-0);
   border: 1px solid var(--rule);
   box-shadow: var(--shadow-pop);
+  transform-origin: top left;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  filter: blur(4px);
+  pointer-events: none;
+  transition:
+    opacity 220ms var(--ease-fluid),
+    transform 220ms var(--ease-fluid),
+    filter 220ms var(--ease-fluid);
+}
+
+.chrome-nav__dropdown[data-open='true'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome-nav__dropdown {
+    transform: none;
+    filter: none;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
 }
 
 .chrome-nav__dropdown-item a {
@@ -283,11 +315,27 @@
     justify-content: space-between;
   }
 
+  /* Wave 5 Δ5 (B2) judgment: on mobile this is an in-flow accordion panel,
+     not an overlay dropdown — opacity/transform materialize (desktop rule
+     above) would leave a collapsed-but-still-opacity:0 gap now that the
+     panel is always mounted (was previously unmounted via `{open && <ul>}`
+     for the same collapse effect). Show/hide immediately via `display`
+     instead of animating; no transition on mobile. */
   .chrome-nav__dropdown {
     position: static;
     border: 0;
     box-shadow: none;
     padding: 0 0 var(--sp-2);
+    transform: none;
+    filter: none;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
+    display: none;
+  }
+
+  .chrome-nav__dropdown[data-open='true'] {
+    display: block;
   }
 }
 

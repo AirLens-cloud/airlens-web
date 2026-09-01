@@ -223,21 +223,33 @@ function NavGroupDisclosure({
         {group.label}
         <span className="chrome-nav__chevron" aria-hidden="true" />
       </button>
-      {open && (
-        <ul className="chrome-nav__dropdown" id={dropdownId}>
-          {allItems.map((item) => (
-            <li key={item.href} className="chrome-nav__dropdown-item">
-              <a
-                href={item.href}
-                aria-current={item.href === pathname ? 'page' : undefined}
-              >
-                {item.label}
-                {item.beta && <span className="chrome-nav__beta">Beta</span>}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Wave 5 Δ5 (B2) — always mounted (was `{open && <ul>}`) so it can
+          transition open/closed instead of hard-cutting in and out.
+          `inert` keeps the closed panel out of the tab order and (per the
+          HTML spec) out of the accessibility tree — `aria-hidden` is set
+          alongside it because jsdom (GlobalNav.test.tsx) doesn't apply
+          `inert`'s accessibility-tree effect, so role queries would
+          otherwise see every group's items at once instead of just the
+          open one; a real browser's `inert` alone already covers this. */}
+      <ul
+        className="chrome-nav__dropdown"
+        id={dropdownId}
+        data-open={open}
+        inert={!open}
+        aria-hidden={!open}
+      >
+        {allItems.map((item) => (
+          <li key={item.href} className="chrome-nav__dropdown-item">
+            <a
+              href={item.href}
+              aria-current={item.href === pathname ? 'page' : undefined}
+            >
+              {item.label}
+              {item.beta && <span className="chrome-nav__beta">Beta</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
     </li>
   )
 }
