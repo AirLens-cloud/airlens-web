@@ -199,9 +199,10 @@
 }
 .fab:hover {
   background: var(--orange); border-color: var(--orange); color: #fff;
-  transform: translateY(-2px);
   box-shadow: 0 10px 28px -10px rgba(17,20,24,.32), 2px 2px 0 var(--ink-0);
 }
+/* Δ5 — no hover lift (removed translateY above); press feedback only. */
+.fab:active { transform: scale(0.96); }
 .fab-open { background: var(--bg-0); color: var(--ink-0); border-color: var(--ink-0); }
 .fab-open:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
 .fab-eyebrow { line-height: 1; }
@@ -289,7 +290,9 @@
   color: var(--ink-2);
   border: 1px solid var(--rule);
   padding: 8px 12px;
+  transition: transform var(--dur-press) var(--ease-out);
 }
+.chat-send:active:not(:disabled) { transform: scale(0.96); }
 .chat-send:disabled { cursor: not-allowed; }
 
 /* ---- ChatMessageBubble / CitationCard (DesignGallery demo — synthetic data only) ---- */

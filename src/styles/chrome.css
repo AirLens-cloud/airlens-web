@@ -121,6 +121,11 @@
      (GlobalNav.tsx — a zero-item group like Map renders a direct link, no
      underline needed on either element). */
   text-decoration: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.chrome-nav__trigger:active {
+  transform: scale(0.96);
 }
 
 /* Wave 4 Δ3 — the custom icon set's nav glyph (GlobalNav.tsx), rendered at
@@ -238,6 +243,11 @@
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.chrome-nav__mobile-toggle:active {
+  transform: scale(0.96);
 }
 
 .chrome-nav__hamburger,
