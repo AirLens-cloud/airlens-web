@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action v2 lists the PR's commits via the API on pull_request runs.
+  pull-requests: read
 
 jobs:
   build-lint-test:
@@ -15,6 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          # Full history for all branches — the design-lint step's three-dot
+          # diff needs origin/<base> AND a reachable merge base; the default
+          # shallow checkout only fetches the PR merge ref at depth 1.
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -36,13 +42,10 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          # Single-ref fetch so "origin/$BASE_REF" resolves locally — the
-          # default shallow checkout only has the PR's own tip. If the base
-          # is still unreachable for a three-dot diff (a stale-based branch
-          # whose merge base fell outside this fetch), design-lint.mjs's own
-          # fallback re-fetches with --unshallow and retries; this step does
-          # not do a full/unshallow fetch itself.
-          git fetch origin "$BASE_REF" || true
+          # fetch-depth: 0 above provides origin/$BASE_REF and the merge base.
+          # (A bare `git fetch origin $BASE_REF` would NOT create the
+          # refs/remotes/origin/<base> ref here — actions/checkout restricts
+          # the remote refspec to the PR merge ref.)
           npm run lint:design -- --base "origin/$BASE_REF"
 
       - name: Test
