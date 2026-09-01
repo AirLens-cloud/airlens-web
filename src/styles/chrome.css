@@ -1,0 +1,312 @@
+/* chrome.css — GlobalNav + SiteChrome (PR-N1). SiteFooter lands in PR-N2.
+ * `chrome-*` is a new namespace (not folded into wireframe.css's `wf-*` or
+ * any page-scoped prefix) — this is global site chrome, not a page. Tokens
+ * only: --accent (orange), --ink-* / --bg-* pairs, --nav-height, 8pt spacing.
+ * Square doctrine: radius 0 everywhere except the beta pill. */
+
+.chrome-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.chrome-main {
+  flex: 1;
+}
+
+/* ---- Skip link — visible only when focused ---- */
+.chrome-nav__skip {
+  position: absolute;
+  top: -100%;
+  left: var(--sp-2);
+  z-index: var(--z-modal);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-0);
+  color: var(--ink-0);
+  border: 1px solid var(--rule-strong);
+  font-family: var(--sans);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.chrome-nav__skip:focus {
+  top: var(--sp-2);
+}
+
+/* ---- Header bar ---- */
+.chrome-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  height: var(--nav-height);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* /globe's overlay variant floats over the WebGL stage on a transparent,
+   always-dark bar (Globe's chrome is night-fixed per design-taxonomy's
+   sky-glass catalog — it does not follow light/dark theme). */
+.chrome-nav--overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: var(--glass-night-fill);
+  backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-night-border);
+  color: #ffffff;
+}
+
+.chrome-nav--overlay .chrome-nav__trigger,
+.chrome-nav--overlay .chrome-nav__wordmark {
+  color: #ffffff;
+}
+
+.chrome-nav__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  height: 100%;
+  padding: 0 var(--pad-x);
+}
+
+.chrome-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-0);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.chrome-nav__wordmark {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Primary nav / groups ---- */
+.chrome-nav__primary {
+  flex: 1;
+  min-width: 0;
+}
+
+.chrome-nav__groups {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chrome-nav__group {
+  position: relative;
+}
+
+.chrome-nav__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--control-h-md);
+  padding: 0 var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink-0);
+  font-family: var(--sans);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--r-0);
+}
+
+.chrome-nav__trigger:hover {
+  background: var(--tint-hover);
+}
+
+.chrome-nav__trigger[aria-current='true'] {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chrome-nav__trigger[aria-expanded='true'] {
+  background: var(--tint-hover);
+}
+
+.chrome-nav__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.chrome-nav__trigger[aria-expanded='true'] .chrome-nav__chevron {
+  transform: rotate(225deg) translateY(2px);
+}
+
+.chrome-nav__dropdown {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  left: 0;
+  min-width: 200px;
+  margin: 0;
+  padding: var(--sp-2) 0;
+  list-style: none;
+  background: var(--bg-0);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow-pop);
+}
+
+.chrome-nav__dropdown-item a {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  color: var(--ink-1);
+  text-decoration: none;
+  font-family: var(--sans);
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.chrome-nav__dropdown-item a:hover,
+.chrome-nav__dropdown-item a[aria-current='page'] {
+  background: var(--tint-hover);
+  color: var(--ink-0);
+}
+
+.chrome-nav__beta {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Mobile toggle (hamburger) ---- */
+.chrome-nav__mobile-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-lg);
+  height: var(--control-h-lg);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chrome-nav__hamburger,
+.chrome-nav__hamburger::before,
+.chrome-nav__hamburger::after {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+
+.chrome-nav__hamburger {
+  position: relative;
+}
+
+.chrome-nav__hamburger::before,
+.chrome-nav__hamburger::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+
+.chrome-nav__hamburger::before {
+  top: -6px;
+}
+
+.chrome-nav__hamburger::after {
+  top: 6px;
+}
+
+/* ---- Narrow viewport: full-screen accordion panel instead of dropdowns.
+   Breakpoint matches `NAV_DESKTOP` (src/lib/breakpoints.ts, BP.XL = 1024). */
+@media (max-width: 1023px) {
+  .chrome-nav__mobile-toggle {
+    display: flex;
+  }
+
+  .chrome-nav__primary {
+    display: none;
+  }
+
+  .chrome-nav__primary[data-mobile-open='true'] {
+    display: block;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    background: var(--bg-0);
+    padding: var(--sp-4) var(--pad-x);
+  }
+
+  .chrome-nav--overlay .chrome-nav__primary[data-mobile-open='true'] {
+    background: var(--glass-night-opaque);
+  }
+
+  .chrome-nav__groups {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .chrome-nav__group {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .chrome-nav--overlay .chrome-nav__group {
+    border-bottom-color: var(--glass-night-border);
+  }
+
+  .chrome-nav__trigger {
+    width: 100%;
+    height: var(--control-h-lg);
+    justify-content: space-between;
+  }
+
+  .chrome-nav__dropdown {
+    position: static;
+    border: 0;
+    box-shadow: none;
+    padding: 0 0 var(--sp-2);
+  }
+}
+
+/* ---- Capsule collision (design brief §"Globe overlay"): any chrome variant
+   that renders GlobalNav (site or overlay) needs the fixed AQI capsule
+   (`fluid-capsule.css`) pushed below the nav bar instead of overlapping it.
+   'bare' pages (/landing) have no nav, so they keep the original anchor. */
+.chrome-shell--site .fluid-chrome__overlay,
+.chrome-shell--overlay .fluid-chrome__overlay {
+  --fluid-chrome-top: calc(var(--nav-height) + var(--sp-3));
+}
+
+/* Blocker fix (review round 1): /globe's overlay nav (chrome-nav--overlay,
+   position:fixed, height:var(--nav-height), z-index:var(--z-nav)) covers the
+   top 80px of the viewport, but Globe.tsx's own root (.obs-surface.globe-page,
+   globe-stage.css) has no awareness of it and renders from y=0 — hiding the
+   .atmos-mode-rail HUD chip (globe-stage.css, top:24px) underneath it.
+   `*{box-sizing:border-box}` (tokens.css) is what makes this a single safe
+   line: adding padding-top does NOT grow the box past its existing
+   `min-height:100vh` (the flex column's own children — including the
+   `.globe-stage{flex:1}` panel — simply redistribute inside the now-smaller
+   content box), so this cannot introduce a page scrollbar.
+   Verified this clears every top-band HUD element, not just the rail:
+   .globe-legend is bottom-anchored (unaffected); GlobeLayerToggles and
+   GlobeTimeline render inside the normal-flow `.globe-stage-rail` side
+   column (never absolutely positioned); GlobeObsHud/ViewModeSwitch/
+   CompareTray are normal-flow siblings that shift down for free with the
+   page; GlobeGridTooltip only appears while hovering the WebGL canvas,
+   which itself now starts below the nav band. */
+.chrome-shell--overlay .globe-page {
+  padding-top: var(--nav-height);
+}

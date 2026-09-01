@@ -254,7 +254,7 @@ export default function Globe() {
   }, [currentCompareSlot, pinCompareSlot])
 
   return (
-    <div
+    <main
       className="obs-surface globe-page"
       data-platform={platform.kind}
       data-touch={platform.isTouch ? 'on' : 'off'}
@@ -337,6 +337,6 @@ export default function Globe() {
       />
 
       <GlobeGridTooltip />
-    </div>
+    </main>
   )
 }
