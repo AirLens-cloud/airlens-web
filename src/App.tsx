@@ -6,7 +6,7 @@ import { Suspense, lazy, useEffect, type JSX } from 'react'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import FluidChrome from './app/FluidChrome'
-import { matchRoute } from './app/router'
+import { matchRoute, type Route } from './app/router'
 import Dispatch from './pages/Dispatch'
 import NewsArticle from './pages/NewsArticle'
 import Blog from './pages/Blog'
@@ -56,7 +56,7 @@ const Insights = lazy(() => import('./pages/Insights'))
  * surfaces — /landing, /globe, /insights — every other page (briefing
  * surfaces and static content alike) renders unwrapped, same as Home/Today.
  */
-const routes: Array<{ path: string; render: (params: Record<string, string>) => JSX.Element }> = [
+const routes: Array<Route<JSX.Element>> = [
   { path: '/design', render: () => <DesignGallery /> },
   {
     path: '/landing',

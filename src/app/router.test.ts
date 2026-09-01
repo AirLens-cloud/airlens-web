@@ -79,4 +79,46 @@ describe('matchRoute', () => {
     // Assert
     expect(result).toBeNull()
   })
+
+  it('falls through to the next route instead of throwing when a :param segment is malformed percent-encoding', () => {
+    // Arrange — browsers leave an invalid escape like `%off` as-is in
+    // `location.pathname` rather than rejecting it; a naive
+    // `decodeURIComponent` on the captured :param segment would throw a
+    // `URIError` here instead of letting the matcher try the next route.
+    const routes = [
+      { path: '/blog/:slug', render: (p: Record<string, string>) => `slug:${p.slug}` },
+      { path: '/blog/50%off', render: () => 'literal-fallback' },
+    ]
+    // Act
+    const result = matchRoute('/blog/50%off', routes)
+    // Assert
+    expect(result).toBe('literal-fallback')
+  })
+
+  it('returns null instead of throwing when no route can handle malformed percent-encoding', () => {
+    // Arrange
+    const routes = [{ path: '/blog/:slug', render: (p: Record<string, string>) => p.slug }]
+    // Act / Assert
+    expect(() => matchRoute('/blog/50%off', routes)).not.toThrow()
+    expect(matchRoute('/blog/50%off', routes)).toBeNull()
+  })
+
+  it('escapes regex metacharacters in literal path segments', () => {
+    // Arrange — without escaping, the `.` in `/robots.txt` is a regex
+    // wildcard and would wrongly also match `/robotsXtxt`.
+    const routes = [{ path: '/robots.txt', render: () => 'robots' }]
+    // Act
+    const result = matchRoute('/robotsXtxt', routes)
+    // Assert
+    expect(result).toBeNull()
+  })
+
+  it('still matches the literal dot in the path it was defined for', () => {
+    // Arrange
+    const routes = [{ path: '/robots.txt', render: () => 'robots' }]
+    // Act
+    const result = matchRoute('/robots.txt', routes)
+    // Assert
+    expect(result).toBe('robots')
+  })
 })

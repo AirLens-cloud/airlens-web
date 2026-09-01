@@ -21,10 +21,31 @@ function compile(path: string): { pattern: RegExp; keys: string[] } {
         keys.push(segment.slice(1))
         return '([^/]+)'
       }
-      return segment
+      // Escape regex metacharacters in literal segments — otherwise e.g.
+      // `/robots.txt` (the `.` is a wildcard) would also match `/robotsXtxt`.
+      return segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     })
     .join('/')
   return { pattern: new RegExp(`^${pattern}$`), keys }
+}
+
+/**
+ * Decodes each captured `:param` segment. Returns `null` if any segment is
+ * malformed percent-encoding (e.g. a lone `%` — browsers leave an invalid
+ * escape as-is in `location.pathname` rather than rejecting it), so the
+ * caller can fall through to the next route instead of letting
+ * `decodeURIComponent` throw a `URIError` up into the render.
+ */
+function decodeParams(match: RegExpExecArray, keys: string[]): Record<string, string> | null {
+  const params: Record<string, string> = {}
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      params[keys[i]] = decodeURIComponent(match[i + 1] ?? '')
+    } catch {
+      return null
+    }
+  }
+  return params
 }
 
 /**
@@ -36,10 +57,8 @@ export function matchRoute<T>(pathname: string, routes: Array<Route<T>>): T | nu
     const { pattern, keys } = compile(route.path)
     const match = pattern.exec(pathname)
     if (!match) continue
-    const params: Record<string, string> = {}
-    keys.forEach((key, i) => {
-      params[key] = decodeURIComponent(match[i + 1] ?? '')
-    })
+    const params = decodeParams(match, keys)
+    if (!params) continue // malformed percent-encoding — try the next route
     return route.render(params)
   }
   return null
