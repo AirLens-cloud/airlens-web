@@ -119,6 +119,17 @@ describe('Globe — mode gating', () => {
   })
 })
 
+describe('Globe — G0 stage layout', () => {
+  it('renders CompareTray inside the canvas panel, not as a page-level bar', () => {
+    // Arrange / Act
+    const { container } = render(<Globe />)
+    // Assert
+    const stageMain = container.querySelector('.globe-stage-main')
+    expect(stageMain?.querySelector('.compare-tray')).toBeTruthy()
+    expect(container.querySelector('.globe-stage > .compare-tray')).toBeNull()
+  })
+})
+
 function viewButton(label: string): HTMLButtonElement {
   return screen.getByRole('radio', { name: new RegExp(`^${label}`, 'i') }) as HTMLButtonElement
 }

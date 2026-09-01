@@ -18,21 +18,74 @@
 .obs-surface.globe-page {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* height, not min-height — G0 locks /globe to exactly one viewport. The
+     `100vh` line is a fallback for browsers without dvh support; the second
+     declaration wins wherever dvh is understood (invalid values are ignored,
+     so unsupporting browsers just keep the first). box-sizing:border-box is
+     global (tokens.css), so the padding-top chrome.css adds for the overlay
+     nav shrinks the content box instead of growing past it. */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--obs-void);
   color: var(--obs-ink);
 }
 
 .obs-surface .globe-stage {
   display: grid;
-  grid-template-columns: 1fr clamp(320px, 30vw, 380px);
+  grid-template-columns: clamp(200px, 18vw, 240px) minmax(0, 1fr) clamp(320px, 30vw, 380px);
   flex: 1;
   min-height: 0;
 }
 
+.obs-surface .globe-stage-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  border-right: 1px solid var(--obs-void-line);
+  background: var(--obs-void-2);
+}
+
+/* Rendered in-flow now (not floated over the canvas) — the component's own
+   base rule (composites.css) sets a fixed 220px width for its old overlay
+   use; here it should fill the column instead. */
+.obs-surface .globe-stage-left .atmos-mode-rail {
+  width: 100%;
+}
+
+.obs-surface .globe-stage-left-controls {
+  display: grid;
+  gap: 8px;
+}
+
+.obs-surface .globe-stage-left-controls > summary {
+  padding: 4px 2px;
+  color: var(--obs-hud-dim);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.obs-surface .globe-stage-left-controls > summary::-webkit-details-marker {
+  display: none;
+}
+
+.obs-surface .globe-stage-left-controls > summary::before {
+  content: '▸ ';
+}
+
+.obs-surface .globe-stage-left-controls[open] > summary::before {
+  content: '▾ ';
+}
+
 .obs-surface .globe-stage-main {
   position: relative;
-  min-height: 60vh;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -54,15 +107,6 @@
   overflow-y: auto;
   border-left: 1px solid var(--obs-void-line);
   background: var(--obs-void-2);
-}
-
-/* The rail component is authored as a flow element; on the stage it floats
-   over the sphere at the left edge. */
-.obs-surface .globe-stage-main > .atmos-mode-rail {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 3;
 }
 
 /* ── GlobeLegend ─────────────────────────────────────────────────────────── */
@@ -445,12 +489,34 @@
 
 /* ── CompareTray ─────────────────────────────────────────────────────────── */
 
-.obs-surface .compare-tray {
+/* No longer a bottom bar strip below the stage — it renders inside
+   .globe-stage-main as a bottom-right overlay, same glass treatment as the
+   mode rail / legend (rgba values match .atmos-mode-rail in composites.css).
+   Bounded width/height + its own overflow-y keeps a long compare payload
+   from growing into the sphere or off the canvas. Risk: at narrow desktop
+   widths (~900-1000px, just above the mobile breakpoint) the 3-column
+   stage's main track can shrink enough that this and the bottom-center
+   GlobeLegend occupy overlapping horizontal bands — both are anchored to
+   the same bottom edge. Needs a real-browser check across that width
+   range; not verifiable from CSS alone. */
+.obs-surface .globe-stage-main .compare-tray {
+  position: absolute;
+  right: var(--obs-gut);
+  bottom: var(--obs-gut);
+  z-index: 4;
   display: grid;
-  gap: 10px;
-  padding: 14px var(--obs-gut);
-  border-top: 1px solid var(--obs-void-line);
-  background: var(--obs-void-2);
+  gap: 8px;
+  width: auto;
+  max-width: min(320px, 42%);
+  max-height: 30%;
+  overflow-y: auto;
+  padding: 10px 12px;
+  color: var(--obs-ink);
+  background: rgba(5, 9, 16, .74);
+  border: 1px solid rgba(232, 236, 244, .14);
+  box-shadow: 0 20px 60px rgba(17, 20, 24, .24), inset 0 1px rgba(255, 255, 255, .04);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
 }
 
 .obs-surface .ct-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -515,11 +581,35 @@
 /* ── Narrow viewports ────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .obs-surface .globe-stage { grid-template-columns: 1fr; }
-  .obs-surface .globe-stage-main { min-height: 56vh; }
-  .obs-surface .globe-stage-rail { border-left: 0; border-top: 1px solid var(--obs-void-line); }
-  .obs-surface .globe-stage-main > .atmos-mode-rail { top: 12px; left: 12px; width: 172px; }
+  /* Canvas on top, both rails collapse into stacked bottom sheets below it —
+     order (not DOM position) puts .globe-stage-main first regardless of its
+     middle position in markup. Each sheet caps at 40dvh + scrolls
+     internally, so however tall their content gets, the `minmax(0, 1fr)`
+     main row absorbs the rest — the outer 100dvh + overflow:hidden lock
+     (`.obs-surface.globe-page`) never gets a reason to grow past one
+     viewport. .globe-stage-main keeps min-height:0 (unset here on purpose)
+     so it can shrink instead of forcing an overflow. */
+  .obs-surface .globe-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .obs-surface .globe-stage-main { order: 1; }
+  .obs-surface .globe-stage-rail {
+    order: 2;
+    max-height: 40dvh;
+    overflow-y: auto;
+    border-left: 0;
+    border-top: 1px solid var(--obs-void-line);
+  }
+  .obs-surface .globe-stage-left {
+    order: 3;
+    max-height: 40dvh;
+    overflow-y: auto;
+    border-right: 0;
+    border-top: 1px solid var(--obs-void-line);
+  }
   .obs-surface .globe-legend { bottom: 12px; width: calc(100% - 24px); }
+  .obs-surface .globe-stage-main .compare-tray { max-width: min(280px, 60%); }
   .obs-surface .view-mode-switch { padding: 8px 12px; }
   .obs-surface .ct-slots { grid-template-columns: 1fr; }
 }

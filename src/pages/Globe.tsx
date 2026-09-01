@@ -277,6 +277,15 @@ export default function Globe() {
       <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
 
       <section className="globe-stage">
+        <aside className="globe-stage-left" aria-label="Atmospheric lens and layers">
+          <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
+          <details className="globe-stage-left-controls" open>
+            <summary>Layers &amp; timeline</summary>
+            <GlobeLayerToggles />
+            <GlobeTimeline />
+          </details>
+        </aside>
+
         <div className="globe-stage-main">
           {globeViewMode === 'table' ? (
             <GlobeTableView />
@@ -300,10 +309,16 @@ export default function Globe() {
                 <GlobeFallback />
               )}
 
-              <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
               <GlobeLegend />
             </>
           )}
+
+          <CompareTray
+            slots={compareSlots}
+            currentSlot={currentCompareSlot}
+            onPinCurrent={handlePinCurrent}
+            onRemove={removeCompareSlot}
+          />
         </div>
 
         <aside className="globe-stage-rail" aria-label="Observation deck controls">
@@ -326,17 +341,8 @@ export default function Globe() {
             provenance={[...view.provenance]}
             coverage={view.coverage}
           />
-          <GlobeLayerToggles />
-          <GlobeTimeline />
         </aside>
       </section>
-
-      <CompareTray
-        slots={compareSlots}
-        currentSlot={currentCompareSlot}
-        onPinCurrent={handlePinCurrent}
-        onRemove={removeCompareSlot}
-      />
 
       <GlobeGridTooltip />
     </main>
