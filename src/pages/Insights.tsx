@@ -181,11 +181,14 @@ export default function Insights() {
           <PolicyLimitBars countries={peers} selectedCode={selected.countryCode} />
         </div>
 
-        {/* 3 — the map, full width */}
+        {/* 3 — the map, full width. The enter wrapper sits OUTSIDE the loading
+            branch on purpose: switching country flips detail back to 'loading'
+            for a beat, and a wrapper inside the branch would replay the
+            route-entry stagger on every reselection (review finding). */}
+        <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={360} label="Loading the regional panel…" />
         ) : mapAnchor ? (
-          <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
             <PolicyMap
               // The map owns a `pickedYear`, and a year picked for the previous
               // country is not a year this one observed. Today the remount is
@@ -204,9 +207,8 @@ export default function Insights() {
               peersOmitted={detail.peersOmitted}
               peersUnreadable={detail.peersUnreadable}
             />
-          </div>
         ) : (
-          <section className="ins-map-band fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+          <section className="ins-map-band">
             <h2 className="ins-band-title">Observed PM2.5</h2>
             <p className="ins-empty">
               {selected.name} has no map coordinate in this build, so it cannot
@@ -214,30 +216,31 @@ export default function Insights() {
             </p>
           </section>
         )}
+        </div>
 
         {/* 4 — synthetic control */}
+        <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the synthetic-control curve…" />
         ) : (
-          <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
             <SdidChart
               series={detail.impact?.sdid_series}
               treatmentYear={selected.summary.treatmentYear}
             />
-          </div>
         )}
+        </div>
 
         {/* 5 — observed trend with the measured spread */}
+        <div className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the observed series…" />
         ) : (
-          <div className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
             <PolicyTrendLines
               panels={detail.panel ? [detail.panel, ...detail.peerPanels.filter((p) => p.countryCode !== selected.countryCode)] : detail.peerPanels}
               selectedCode={selected.countryCode}
             />
-          </div>
         )}
+        </div>
 
         {/* 6 — model prediction | sentiment lane */}
         <div className="ins-duo fluid-enter" style={{ '--enter-i': 5 } as CSSProperties}>

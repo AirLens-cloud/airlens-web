@@ -222,12 +222,12 @@
    `translateY` is written imperatively by the spring (ChatFAB.tsx), opacity
    is a plain CSS transition on `data-open` so reduced-motion (below) can
    keep the 200ms crossfade even while the spring snaps position instantly.
-   `touch-action: none` stops a vertical drag-to-dismiss from also scrolling
-   the page underneath on touch devices. */
+   The drag handle is the panel header only (`.chat-head`, ChatFAB.tsx), so
+   `touch-action: none` lives there — on the whole wrapper it would swallow
+   message-list touch scrolling once history is ported. */
 .chat-panel-spring {
   opacity: 0;
   pointer-events: none;
-  touch-action: none;
   transition: opacity var(--dur-fast) var(--ease-fluid);
 }
 .chat-panel-spring[data-open='true'] {
@@ -249,6 +249,8 @@
   padding: 12px 16px;
   border-bottom: 1px solid var(--ink-0);
   flex-shrink: 0;
+  touch-action: none; /* drag-to-dismiss handle — see .chat-panel-spring note */
+  cursor: grab;
 }
 .chat-head-left { display: flex; align-items: center; gap: 8px; }
 .chat-tickrail { display: inline-flex; align-items: flex-end; gap: 4px; height: 12px; }

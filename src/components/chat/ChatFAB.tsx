@@ -124,6 +124,10 @@ export default function ChatFAB({
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
     if (isInteractiveTarget(e.target)) return
+    // Drag handle = the panel header only. A whole-panel capture zone eats
+    // text selection on the static copy today, and would eat message-list
+    // scrolling on touch once history is ported (review finding).
+    if (!(e.target instanceof HTMLElement) || e.target.closest('.chat-head') === null) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = {
       dragging: true,
