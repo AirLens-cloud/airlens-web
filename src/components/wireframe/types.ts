@@ -14,7 +14,7 @@ export interface PublicPageContainerProps {
   children: ReactNode
   as?: Extract<ElementType, 'main' | 'section' | 'div' | 'article'>
   className?: string
-  [dataAttr: `data-${string}`]: string | undefined
+  [attr: `data-${string}` | `aria-${string}`]: string | undefined
 }
 
 // WfButton

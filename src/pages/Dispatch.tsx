@@ -14,6 +14,7 @@ import ArticleCard from '../components/content/ArticleCard'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import WfPagination from '../components/wireframe/WfPagination'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 const CATEGORY_PARAM = 'category'
@@ -80,7 +81,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
   ]
 
   return (
-    <main className="dispatch-page">
+    <PublicPageContainer tier="hub" className="dispatch-page">
       <header className="dispatch-header">
         <p className="dispatch-eyebrow t-micro">DISPATCH · SIGNAL DESK</p>
         <h1 className="dispatch-title h-2">What's happening in air quality right now</h1>
@@ -135,6 +136,6 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
           />
         </>
       )}
-    </main>
+    </PublicPageContainer>
   )
 }

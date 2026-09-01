@@ -9,6 +9,7 @@ import MarkdownBody from '../components/content/MarkdownBody'
 import SourceRefsBlock from '../components/content/SourceRefsBlock'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import { formatDate } from '../components/content/formatDate'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 export interface BlogPostProps {
@@ -35,35 +36,35 @@ export default function BlogPost({ slug }: BlogPostProps) {
 
   if (result.status === 'loading') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <WfSkeleton variant="line" width="50%" />
         <WfSkeleton variant="block" height={40} />
         <WfSkeleton variant="block" height={300} />
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'not-found') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <p className="blogpost-notfound t-body">Post not found.</p>
         <a className="blogpost-back t-micro" href="/blog">
           ← Back to Field Notes
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'unavailable') {
     return (
-      <main className="blogpost-page">
+      <PublicPageContainer tier="hub" className="blogpost-page">
         <p className="blogpost-error t-body" role="alert">
           The Field Notes archive could not be read. This is a read failure, not evidence this post doesn't exist.
         </p>
         <a className="blogpost-back t-micro" href="/blog">
           ← Back to Field Notes
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -75,7 +76,7 @@ export default function BlogPost({ slug }: BlogPostProps) {
   const body = post.bodyKo ?? post.bodyEn
 
   return (
-    <main className="blogpost-page">
+    <PublicPageContainer tier="hub" className="blogpost-page">
       <header className="blogpost-header">
         <div className="blogpost-meta t-micro">
           <span className="content-tag">{post.topic}</span>
@@ -97,6 +98,6 @@ export default function BlogPost({ slug }: BlogPostProps) {
       <a className="blogpost-back t-micro" href="/blog">
         ← Back to Field Notes
       </a>
-    </main>
+    </PublicPageContainer>
   )
 }

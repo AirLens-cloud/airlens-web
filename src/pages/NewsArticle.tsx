@@ -15,6 +15,7 @@ import WfBreadcrumb from '../components/wireframe/WfBreadcrumb'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import WfStamp from '../components/wireframe/WfStamp'
 import { formatDate } from '../components/content/formatDate'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 export interface NewsArticleProps {
@@ -42,35 +43,35 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
 
   if (result.status === 'loading') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <WfSkeleton variant="line" width="60%" />
         <WfSkeleton variant="block" height={40} />
         <WfSkeleton variant="block" height={300} />
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'not-found') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <p className="article-notfound t-body">Article not found.</p>
         <a className="article-back t-micro" href="/dispatch">
           ← Back to Dispatch
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (result.status === 'unavailable') {
     return (
-      <main className="article-page">
+      <PublicPageContainer tier="hub" className="article-page">
         <p className="article-error t-body" role="alert">
           The news feed could not be read. This is a read failure, not evidence that this article doesn't exist.
         </p>
         <a className="article-back t-micro" href="/dispatch">
           ← Back to Dispatch
         </a>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -79,7 +80,7 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
   const summary = article.summaryEn ?? article.summaryKo ?? article.summary
 
   return (
-    <main className="article-page">
+    <PublicPageContainer tier="hub" className="article-page">
       <WfBreadcrumb
         items={[
           { key: 'dispatch', label: 'Dispatch', href: '/dispatch' },
@@ -131,6 +132,6 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
       <a className="article-back t-micro" href="/dispatch">
         ← Back to Dispatch
       </a>
-    </main>
+    </PublicPageContainer>
   )
 }

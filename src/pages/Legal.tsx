@@ -1,3 +1,4 @@
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { LEGAL_DOCS, KOREAN_PENDING_NOTICE, DEPLOYED_MODELS, type LegalDocId } from '../content/legal'
 
@@ -17,7 +18,7 @@ export default function Legal({ doc }: LegalProps) {
   const current = LEGAL_DOCS.find((d) => d.id === doc) ?? LEGAL_DOCS[0]
 
   return (
-    <main className="static-page" data-tier="hub">
+    <PublicPageContainer tier="hub" className="static-page">
       <a className="static-page__back t-caption" href="/trust">← Trust Center</a>
 
       <div className="legal-layout">
@@ -95,6 +96,6 @@ export default function Legal({ doc }: LegalProps) {
           <div className="legal-doc__lang-notice t-caption">{KOREAN_PENDING_NOTICE}</div>
         </article>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

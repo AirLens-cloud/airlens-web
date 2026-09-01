@@ -8,6 +8,7 @@ import { BLOG_TOPICS, type BlogFeedResult } from '../types/blog'
 import BlogCard from '../components/content/BlogCard'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/content.css'
 
 const TOPIC_PARAM = 'topic'
@@ -57,7 +58,7 @@ export default function Blog({ onNavigate }: BlogProps = {}) {
   const chipItems = [{ key: 'all', label: 'All' }, ...BLOG_TOPICS.map((t) => ({ key: t, label: t }))]
 
   return (
-    <main className="blog-page">
+    <PublicPageContainer tier="hub" className="blog-page">
       <header className="blog-header">
         <h1 className="blog-title h-2">Field Notes</h1>
         <p className="blog-dek t-body">
@@ -101,6 +102,6 @@ export default function Blog({ onNavigate }: BlogProps = {}) {
           ))}
         </div>
       )}
-    </main>
+    </PublicPageContainer>
   )
 }

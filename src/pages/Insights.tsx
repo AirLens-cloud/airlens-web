@@ -26,6 +26,7 @@ import PolicyTrendLines from '../components/insights/PolicyTrendLines'
 import CityPredictionCard from '../components/insights/CityPredictionCard'
 import NewsSentimentCard from '../components/insights/NewsSentimentCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import { COUNTRY_CENTERS } from '../lib/config/countryCenters'
 import {
   useInsightsCatalogue,
@@ -105,11 +106,11 @@ export default function Insights() {
 
   if (catalogue.status === 'loading') {
     return (
-      <main className="ins-page obs-surface">
+      <PublicPageContainer tier="hub" className="ins-page obs-surface">
         <div className="ins-shell">
           <WfPlaceholder height={220} label="Loading the analysed country set…" />
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -117,7 +118,7 @@ export default function Insights() {
   // the copy has to say which one happened.
   if (catalogue.status === 'error' || !selected) {
     return (
-      <main className="ins-page obs-surface">
+      <PublicPageContainer tier="hub" className="ins-page obs-surface">
         <div className="ins-shell">
           <h1 className="ins-headline-title">Insights</h1>
           <p className="ins-empty">
@@ -126,12 +127,12 @@ export default function Insights() {
               : 'The policy-impact result set loaded, and it is empty: no country has a published SDID estimate right now.'}
           </p>
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   return (
-    <main className="ins-page obs-surface">
+    <PublicPageContainer tier="hub" className="ins-page obs-surface">
       <div className="ins-shell">
         <nav className="ins-picker" aria-label="Country">
           <label className="m ins-picker-label">
@@ -248,6 +249,6 @@ export default function Insights() {
           </p>
         </footer>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

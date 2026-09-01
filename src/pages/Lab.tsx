@@ -15,6 +15,7 @@
  */
 import LabRailGroup from '../components/research/LabRailGroup'
 import WfDisabledCta from '../components/wireframe/WfDisabledCta'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/research.css'
 
 const LEFT_RAIL = [
@@ -36,7 +37,7 @@ const RIGHT_RAIL = [
 
 export default function Lab() {
   return (
-    <main className="lab-page" aria-disabled="true">
+    <PublicPageContainer tier="hub" className="lab-page" aria-disabled="true">
       <header className="lab-header">
         <p className="lab-header__badge">FEASIBILITY REVIEW</p>
         <h1 className="lab-header__title h-2">Local Research Studio</h1>
@@ -89,6 +90,6 @@ export default function Lab() {
           />
         </div>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

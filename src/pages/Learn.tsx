@@ -9,6 +9,7 @@
  * "Start" button that would open a route that does not exist yet.
  */
 import ProjectCard from '../components/research/ProjectCard'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/research.css'
 
 interface Project {
@@ -59,7 +60,7 @@ const PROJECTS: Project[] = [
 
 export default function Learn() {
   return (
-    <main className="lrn-page">
+    <PublicPageContainer tier="hub" className="lrn-page">
       <div className="lrn-shell">
         <header className="lrn-header">
           <p className="lrn-header__eyebrow t-micro">LEARN · GUIDED PROJECTS · 5 PROJECTS · LAB REQUIRED FOR STEPS</p>
@@ -93,6 +94,6 @@ export default function Learn() {
           </a>
         </footer>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

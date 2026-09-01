@@ -10,6 +10,7 @@
  * (EVIDENCE_CONTRACT.md §6-1) — the empty state explains what a receipt is
  * and the fixed anatomy every future receipt will follow (spec §5.2).
  */
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/research.css'
 
 const RECEIPT_ANATOMY =
@@ -17,7 +18,7 @@ const RECEIPT_ANATOMY =
 
 export default function Research() {
   return (
-    <main className="rsc-page">
+    <PublicPageContainer tier="hub" className="rsc-page">
       <div className="rsc-shell">
         <header className="rsc-header">
           <p className="rsc-header__eyebrow t-micro">RESEARCH COMMONS · REPRODUCIBLE RECEIPTS · 0 PUBLISHED</p>
@@ -46,6 +47,6 @@ export default function Research() {
           <p className="rsc-anatomy__chain t-data">{RECEIPT_ANATOMY}</p>
         </section>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

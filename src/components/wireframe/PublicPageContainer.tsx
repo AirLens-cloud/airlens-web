@@ -21,7 +21,7 @@ export default function PublicPageContainer({
 }: PublicPageContainerProps) {
   const classes = ['public-page-container', className].filter(Boolean).join(' ')
   const forwarded = Object.fromEntries(
-    Object.entries(dataProps).filter(([key]) => key.startsWith('data-')),
+    Object.entries(dataProps).filter(([key]) => key.startsWith('data-') || key.startsWith('aria-')),
   )
   return (
     <Tag className={classes} data-tier={tier} {...forwarded}>

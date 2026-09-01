@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { FAQ_ITEMS } from '../content/faq'
 
@@ -15,7 +16,7 @@ export default function Faq() {
   const idPrefix = useId()
 
   return (
-    <main className="static-page" data-tier="text">
+    <PublicPageContainer tier="text" className="static-page">
       <header className="static-page__header">
         <h1 className="h-hero">Frequently asked questions</h1>
         <p className="static-page__thesis t-lede">
@@ -54,6 +55,6 @@ export default function Faq() {
           )
         })}
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }

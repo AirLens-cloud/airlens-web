@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react'
 import { fetchFeedRegistry, type FeedRegistry, type FeedRegistryEntry, type FeedStatus } from '../api/registry'
 import SourceStatusDot from '../components/catalog/SourceStatusDot'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
+import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/catalog.css'
 
 const POLL_MS = 5 * 60 * 1000
@@ -81,17 +82,17 @@ export default function DataSources() {
 
   if (status === 'loading') {
     return (
-      <main className="cat-page">
+      <PublicPageContainer tier="hub" className="cat-page">
         <div className="cat-shell">
           <WfPlaceholder height={220} label="Loading the feed registry…" />
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
   if (status === 'error' || !registry) {
     return (
-      <main className="cat-page">
+      <PublicPageContainer tier="hub" className="cat-page">
         <div className="cat-shell">
           <h1 className="cat-title">Data Sources</h1>
           <p className="cat-error">
@@ -99,7 +100,7 @@ export default function DataSources() {
             statement that no feeds exist — nothing is being substituted in its place.
           </p>
         </div>
-      </main>
+      </PublicPageContainer>
     )
   }
 
@@ -108,7 +109,7 @@ export default function DataSources() {
   const anyUnavailable = registry.feeds.some((f) => f.status === 'unavailable')
 
   return (
-    <main className="cat-page">
+    <PublicPageContainer tier="hub" className="cat-page">
       <div className="cat-shell">
         <header className="cat-header">
           <div>
@@ -172,7 +173,7 @@ export default function DataSources() {
           ) : null}
         </div>
       </div>
-    </main>
+    </PublicPageContainer>
   )
 }
 
