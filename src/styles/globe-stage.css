@@ -111,16 +111,27 @@
 
 /* ── GlobeLegend ─────────────────────────────────────────────────────────── */
 
+/* Bottom-left, not bottom-center — chosen over a centered legend with a
+   width formula because the two don't compose safely: CompareTray is
+   bottom-right, and at the 3-column stage's narrow end (main track can
+   shrink to ~380-480px just above the 900px breakpoint) a centered legend's
+   own footprint already claims most of that width before any tray-reserved
+   subtraction, so the two corners collide regardless. Anchoring the legend
+   to the opposite corner from the tray removes the collision at its
+   source; the width formula below is then just a safety margin for the
+   narrow end, not the whole fix. */
 .obs-surface .globe-legend {
   position: absolute;
-  bottom: 24px;
-  left: 50%;
+  bottom: var(--obs-gut);
+  left: var(--obs-gut);
   z-index: 3;
   display: grid;
   gap: 7px;
-  width: min(420px, calc(100% - 48px));
+  /* Reserve CompareTray's own worst-case footprint (its max-width formula,
+     `min(320px, 42%)`) plus a 16px gap, so the two overlays never compete
+     for the same horizontal band even at the narrow end of the stage. */
+  width: min(420px, calc(100% - 2 * var(--obs-gut) - 16px - min(320px, 42%)));
   padding: 12px 14px;
-  transform: translateX(-50%);
 }
 
 .obs-surface .lg-head {
@@ -493,24 +504,30 @@
    .globe-stage-main as a bottom-right overlay, same glass treatment as the
    mode rail / legend (rgba values match .atmos-mode-rail in composites.css).
    Bounded width/height + its own overflow-y keeps a long compare payload
-   from growing into the sphere or off the canvas. Risk: at narrow desktop
-   widths (~900-1000px, just above the mobile breakpoint) the 3-column
-   stage's main track can shrink enough that this and the bottom-center
-   GlobeLegend occupy overlapping horizontal bands — both are anchored to
-   the same bottom edge. Needs a real-browser check across that width
-   range; not verifiable from CSS alone. */
+   from growing into the sphere or off the canvas.
+   Real-browser probe (1440x900 / 1000x800 / 390x844) confirmed this
+   overlapped GlobeLegend on all three — legend moved to the opposite
+   (bottom-left) corner with a width formula that reserves this element's
+   own max footprint (see .globe-legend below); the mobile breakpoint
+   further separates them into top/bottom strips since neither anchor has
+   room to spare at that width. When zero scenes are pinned, CompareTray.tsx's
+   `isEmpty` branch skips the two-slot grid entirely (it adds an `is-empty`
+   class for future hooks, but no rule keys off it yet — plain shrink-to-fit
+   already does the work: `width: auto` on an absolutely positioned grid
+   sizes to its content, so a header-only pill is already narrower than the
+   max-width cap below without any extra CSS). */
 .obs-surface .globe-stage-main .compare-tray {
   position: absolute;
   right: var(--obs-gut);
   bottom: var(--obs-gut);
   z-index: 4;
   display: grid;
-  gap: 8px;
+  gap: var(--sp-2);
   width: auto;
   max-width: min(320px, 42%);
   max-height: 30%;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: var(--sp-2) var(--sp-3);
   color: var(--obs-ink);
   background: rgba(5, 9, 16, .74);
   border: 1px solid rgba(232, 236, 244, .14);
@@ -608,8 +625,20 @@
     border-right: 0;
     border-top: 1px solid var(--obs-void-line);
   }
-  .obs-surface .globe-legend { bottom: 12px; width: calc(100% - 24px); }
-  .obs-surface .globe-stage-main .compare-tray { max-width: min(280px, 60%); }
+  /* Both overlays go near-full-width at this size — the bottom-left anchor
+     + reserved-width formula that keeps them apart on desktop doesn't leave
+     either one enough room to be legible on a phone-width canvas. Stacking
+     them into separate top/bottom strips (instead of sharing one corner
+     each) removes the collision instead of fighting for a shared band. */
+  .obs-surface .globe-legend { bottom: 12px; left: 12px; width: calc(100% - 24px); }
+  .obs-surface .globe-stage-main .compare-tray {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
   .obs-surface .view-mode-switch { padding: 8px 12px; }
   .obs-surface .ct-slots { grid-template-columns: 1fr; }
 }

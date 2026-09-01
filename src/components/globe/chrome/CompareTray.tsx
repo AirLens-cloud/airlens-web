@@ -26,9 +26,15 @@ function slotSummary(slot: CompareSlot): string {
 export default function CompareTray({ slots, currentSlot, onPinCurrent, onRemove }: CompareTrayProps) {
   const [a, b] = slots
   const differentNature = !!a && !!b && a.nature !== b.nature
+  // Zero pinned scenes: the A/B grid is nothing but two empty-state
+  // placeholders, which as a G0 canvas overlay just eats space over the
+  // sphere for no information. Collapsing to the header-only pill is a pure
+  // function of the same `slots` prop the grid below already reads — no new
+  // state, just less to render when there's nothing to show yet.
+  const isEmpty = !a && !b
 
   return (
-    <section className="compare-tray" aria-label="Compare tray">
+    <section className={`compare-tray${isEmpty ? ' is-empty' : ''}`} aria-label="Compare tray">
       <header className="ct-head">
         <span className="ct-kicker m" aria-hidden="true">COMPARE</span>
         <button
@@ -41,35 +47,37 @@ export default function CompareTray({ slots, currentSlot, onPinCurrent, onRemove
         </button>
       </header>
 
-      <div className="ct-slots">
-        {(['A', 'B'] as const).map((letter, index) => {
-          const slot = index === 0 ? a : b
-          if (!slot) {
+      {!isEmpty && (
+        <div className="ct-slots">
+          {(['A', 'B'] as const).map((letter, index) => {
+            const slot = index === 0 ? a : b
+            if (!slot) {
+              return (
+                <div key={letter} className="ct-slot is-empty">
+                  <span className="m">{letter} · EMPTY — PIN A SECOND SCENE (TIME OR PLACE) TO COMPARE</span>
+                </div>
+              )
+            }
             return (
-              <div key={letter} className="ct-slot is-empty">
-                <span className="m">{letter} · EMPTY — PIN A SECOND SCENE (TIME OR PLACE) TO COMPARE</span>
+              <div key={letter} className="ct-slot">
+                <span className="ct-swatch" style={{ background: gradeToHex(slot.grade) }} aria-hidden="true" />
+                <div className="ct-slot-copy">
+                  <strong>{letter} · {slot.label}</strong>
+                  <span>{slotSummary(slot)}</span>
+                </div>
+                <button
+                  type="button"
+                  className="ct-remove"
+                  aria-label={`Remove ${letter}`}
+                  onClick={() => onRemove(index as 0 | 1)}
+                >
+                  Remove {letter}
+                </button>
               </div>
             )
-          }
-          return (
-            <div key={letter} className="ct-slot">
-              <span className="ct-swatch" style={{ background: gradeToHex(slot.grade) }} aria-hidden="true" />
-              <div className="ct-slot-copy">
-                <strong>{letter} · {slot.label}</strong>
-                <span>{slotSummary(slot)}</span>
-              </div>
-              <button
-                type="button"
-                className="ct-remove"
-                aria-label={`Remove ${letter}`}
-                onClick={() => onRemove(index as 0 | 1)}
-              >
-                Remove {letter}
-              </button>
-            </div>
-          )
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {a && b && (
         <p className="ct-scale-lock m" aria-hidden="true">SCALE LOCKED — SAME LEGEND, BOTH SLOTS</p>
