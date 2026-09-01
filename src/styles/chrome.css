@@ -25,7 +25,7 @@
   color: var(--ink-0);
   border: 1px solid var(--rule-strong);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 14px; /* design-lint-ok: typography — nav-chrome control label, not prose (matches .chrome-nav__trigger) */
   text-decoration: none;
 }
 
@@ -80,7 +80,7 @@
 
 .chrome-nav__wordmark {
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: 14px; /* design-lint-ok: typography — brand wordmark, not prose */
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -114,7 +114,7 @@
   background: transparent;
   color: var(--ink-0);
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 14px; /* design-lint-ok: typography — nav trigger control label, not prose */
   cursor: pointer;
   border-radius: var(--r-0);
   /* Shared by the dropdown <button> and the no-dropdown group's plain <a>
@@ -169,7 +169,7 @@
   color: var(--ink-1);
   text-decoration: none;
   font-family: var(--sans);
-  font-size: 14px;
+  font-size: 14px; /* design-lint-ok: typography — nav dropdown item, not prose */
   min-height: 44px;
 }
 
@@ -184,7 +184,7 @@
   border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--ink-on-accent);
-  font-size: 10px;
+  font-size: 10px; /* design-lint-ok: typography — micro badge pill, not prose */
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -232,7 +232,7 @@
 
 /* ---- Narrow viewport: full-screen accordion panel instead of dropdowns.
    Breakpoint matches `NAV_DESKTOP` (src/lib/breakpoints.ts, BP.XL = 1024). */
-@media (max-width: 1023px) {
+@media (max-width: 1023px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 1024 (NAV_DESKTOP), not a new breakpoint */
   .chrome-nav__mobile-toggle {
     display: flex;
   }
