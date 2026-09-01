@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import AirLensMark from '../components/AirLensMark'
-import { NAV_GROUPS, getActiveGroupKey, type NavGroup, type NavItem } from './nav'
+import { NAV_GROUPS, getActiveGroupKey, navGroupItems, type NavGroup } from './nav'
 
 export type GlobalNavVariant = 'site' | 'overlay'
 
@@ -185,7 +185,7 @@ function NavGroupDisclosure({
   const dropdownId = `chrome-nav-dropdown-${group.key}`
   // "Overview" is always first — the trigger button itself only toggles the
   // dropdown (D2), so the group's own landing page needs an explicit entry.
-  const allItems: NavItem[] = [{ label: 'Overview', href: group.href }, ...group.items]
+  const allItems = navGroupItems(group)
 
   return (
     <li className="chrome-nav__group" onKeyDown={onKeyDown}>

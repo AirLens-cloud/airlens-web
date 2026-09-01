@@ -101,6 +101,17 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
 
+/**
+ * A group's full disclosure list with "Overview" prepended (D2 — see the
+ * module doc comment above). Shared by `GlobalNav.tsx`'s dropdown and
+ * `SiteFooter.tsx`'s column so the two surfaces can't drift on this rule.
+ * Only meaningful for groups that have sub-items; a zero-item group (Map)
+ * has no separate "Overview" destination — its callers special-case that.
+ */
+export function navGroupItems(group: NavGroup): NavItem[] {
+  return [{ label: 'Overview', href: group.href }, ...group.items]
+}
+
 /** Returns the key of the group `pathname` belongs to, or `null` outside all of them. */
 export function getActiveGroupKey(pathname: string, groups: NavGroup[] = NAV_GROUPS): string | null {
   for (const group of groups) {
