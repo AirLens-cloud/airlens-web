@@ -30,7 +30,7 @@ export default function ChatMessageBubble({ message, streaming }: ChatMessageBub
     return (
       <div className="msg msg-user">
         <span className="msg-eyebrow">YOU</span>
-        <div className="msg-body">{message.content}</div>
+        <div className="msg-body t-body">{message.content}</div>
       </div>
     )
   }
@@ -45,7 +45,7 @@ export default function ChatMessageBubble({ message, streaming }: ChatMessageBub
         <DqssBadge dqss="unknown" variant="compact" className="msg-dqss" />
       </header>
 
-      <div className="msg-body">
+      <div className="msg-body t-body">
         {message.content || (streaming ? <span className="msg-typing-dots">…</span> : null)}
       </div>
 

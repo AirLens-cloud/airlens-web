@@ -29,7 +29,7 @@ export default function CitationCard({ citation, index = 0 }: CitationCardProps)
   // Retrieval relevance, not confidence. Omitted entirely when the worker had
   // no 0-1 score, rather than shown as 0% or 100%.
   const meta = (
-    <span className="cite-src">
+    <span className="cite-src t-caption">
       {url && <>— {citationHost(url)}</>}
       {relevance !== null && Number.isFinite(relevance) && (
         <> · {Math.round(relevance * 100)}% match</>
@@ -39,7 +39,7 @@ export default function CitationCard({ citation, index = 0 }: CitationCardProps)
   const body = (
     <>
       <span className="cite-n">{String(index + 1).padStart(2, '0')}</span>
-      <span className="cite-title">{citation.source_title}</span>
+      <span className="cite-title t-caption">{citation.source_title}</span>
       {meta}
     </>
   )
