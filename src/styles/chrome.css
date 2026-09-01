@@ -294,6 +294,21 @@
   --fluid-chrome-top: calc(var(--nav-height) + var(--sp-3));
 }
 
+/* Capsule/HUD collision (Wave 3 mobile pass): on /globe, GlobalNav renders
+   FluidChrome's overlay div as a sibling of `.globe-page`, but the normal-
+   flow header stack above the canvas (`.gobs-hud` + `.view-mode-switch`,
+   both wrap/grow taller at narrow widths) reaches well past the capsule's
+   default anchor. Measured (headless, real viewport, viewport-top-relative):
+   at 390px the stack runs to 229px (`.gobs-hud` wraps to 2 lines, then the
+   view/compare row wraps too); at 1280px only to 171px. The collapsed
+   capsule (56px tall) previously sat at 92..148 — inside both ranges.
+   Anchor below the 390px (worst-case) stack height instead of the nav bar
+   alone; at wide viewports this just floats it a bit deeper into the canvas,
+   which is harmless (it's an overlay on the visualization either way). */
+.chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay {
+  --fluid-chrome-top: calc(var(--nav-height) + var(--sp-8) + var(--sp-8) + var(--sp-6));
+}
+
 /* Blocker fix (review round 1): /globe's overlay nav (chrome-nav--overlay,
    position:fixed, height:var(--nav-height), z-index:var(--z-nav)) covers the
    top 80px of the viewport, but Globe.tsx's own root (.obs-surface.globe-page,
