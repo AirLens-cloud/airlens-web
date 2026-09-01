@@ -31,6 +31,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Design lint (coherence axes vs base)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Full fetch of the base ref — a shallow checkout marks the base tip
+          # shallow, so a stale-based branch loses the merge base and the
+          # three-dot diff dies with "fatal: no merge base".
+          git fetch origin "$BASE_REF" || true
+          npm run lint:design -- --base "origin/$BASE_REF"
+
       - name: Test
         run: npm run test:run
 
