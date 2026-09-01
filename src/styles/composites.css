@@ -272,11 +272,23 @@
   color: var(--ink-2);
   border: 1px solid var(--rule);
   padding: 8px 12px;
-  cursor: not-allowed;
 }
+.chat-send:disabled { cursor: not-allowed; }
 
 /* ---- ChatMessageBubble / CitationCard (DesignGallery demo — synthetic data only) ---- */
 .msg { margin-bottom: 8px; max-width: 92%; }
+.msg-typing-dots {
+  display: inline-block;
+  color: var(--ink-2);
+  animation: msg-typing 1.2s var(--ease-out) infinite;
+}
+@keyframes msg-typing {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-typing-dots { animation: none; }
+}
 .msg-user { border: 1px solid var(--rule); padding: 8px 12px; margin-left: auto; max-width: 85%; border-left: 2px solid var(--orange); }
 .msg-asst { border: 1px solid var(--rule); padding: 12px; }
 .msg-eyebrow { font: 500 9px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
