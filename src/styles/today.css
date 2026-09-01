@@ -10,6 +10,14 @@
   padding-bottom: 64px;
 }
 
+/* `text-transform: uppercase` (`.t-micro`, `.m`, etc.) mangles µ (U+00B5)
+ * into Greek capital Mu — "µg/m³" reads as "MG/M³" (a 1000x unit misread,
+ * Glass-box violation). Any unit string nested inside an uppercase-styled
+ * ancestor must be wrapped in `.unit` to break that inheritance. */
+.unit {
+  text-transform: none;
+}
+
 .today-toolbar {
   display: flex;
   align-items: center;

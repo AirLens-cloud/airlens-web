@@ -31,7 +31,7 @@ export default function TodayAnswer({ tier, pm25, city, countryCode, validTimeIs
         {pm25 !== null ? (
           <>
             {' · '}
-            {Math.round(pm25)} µg/m³ PM2.5
+            {Math.round(pm25)} <span className="unit">µg/m³</span> PM2.5
           </>
         ) : null}
         {' · '}

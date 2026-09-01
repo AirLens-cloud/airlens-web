@@ -23,7 +23,8 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
           <span className="today-cell__label m">GRID</span>
           {grid.status === 'ready' ? (
             <p className="t-micro">
-              µg/m³ · analysis/interpolated · valid {formatUtcTime(grid.updatedAt)} · source global_grid
+              <span className="unit">µg/m³</span> · analysis/interpolated · valid {formatUtcTime(grid.updatedAt)} · source
+              global_grid
               {grid.stale ? ' · stale' : ''}
             </p>
           ) : (
@@ -34,7 +35,8 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
           <span className="today-cell__label m">CAMS</span>
           {cams.status === 'ready' ? (
             <p className="t-micro">
-              µg/m³ · forecast · valid {formatUtcTime(cams.series24h[0]?.time ?? cams.updatedAt)} · source Open-Meteo CAMS
+              <span className="unit">µg/m³</span> · forecast · valid {formatUtcTime(cams.series24h[0]?.time ?? cams.updatedAt)}{' '}
+              · source Open-Meteo CAMS
             </p>
           ) : (
             <p className="t-micro">Not available.</p>
@@ -44,7 +46,8 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
           <span className="today-cell__label m">AGREEMENT</span>
           {agreement ? (
             <p className="t-micro">
-              {agreement.agree ? 'GRID and CAMS agree' : 'GRID and CAMS disagree'} within {agreement.diff.toFixed(0)} µg/m³.
+              {agreement.agree ? 'GRID and CAMS agree' : 'GRID and CAMS disagree'} within {agreement.diff.toFixed(0)}{' '}
+              <span className="unit">µg/m³</span>.
             </p>
           ) : (
             <p className="t-micro">Not enough sources to compare.</p>

@@ -61,12 +61,12 @@ function App() {
   if (typeof window !== 'undefined' && window.location.pathname === '/weather') {
     return <WeatherRedirectShim />
   }
+  // Today IS the briefing/decision surface — it renders its own current-
+  // reading HUD and Answer hero, so it is not wrapped in FluidChrome (that
+  // would float a second, redundant AqiCapsule readout over it). Same
+  // reasoning as Home, below.
   if (typeof window !== 'undefined' && window.location.pathname === '/today') {
-    return (
-      <FluidChrome>
-        <Today />
-      </FluidChrome>
-    )
+    return <Today />
   }
   if (typeof window !== 'undefined' && window.location.pathname === '/insights') {
     return (

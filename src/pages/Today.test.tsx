@@ -124,6 +124,44 @@ describe('Today page', () => {
     expect(getByText('Air is acceptable — most people can go about their day outside.')).toBeTruthy()
   })
 
+  it('wraps the µg/m³ unit in a `.unit` span inside the Answer meta line — its ancestor is `.t-micro` (uppercase), which would otherwise render µ (U+00B5) as Greek capital Mu ("MG/M³", a 1000x unit misread jsdom cannot itself catch since text-transform is a CSS render effect, not a DOM text change)', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const unitEl = container.querySelector('.today-answer__meta .unit')
+    expect(unitEl?.textContent).toBe('µg/m³')
+  })
+
+  it('wraps the µg/m³ unit in `.unit` spans inside the Evidence GRID/CAMS/AGREEMENT cells (also `.t-micro`)', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
+    mockCams({
+      status: 'ready',
+      cityName: 'Seoul',
+      countryCode: 'KR',
+      distanceKm: 1,
+      current: 22,
+      tier: 'good',
+      series24h: [{ time: '2026-08-26T00:00:00Z', p10: null, p50: 22, p90: null }],
+      updatedAt: '2026-08-26T00:00:00Z',
+    })
+    // Act
+    const { container } = render(<Today />)
+    // Assert — GRID + CAMS + AGREEMENT cells each carry one `.unit` span.
+    const units = container.querySelectorAll('.today-evidence__cells .unit')
+    expect(units.length).toBe(3)
+    for (const el of units) {
+      expect(el.textContent).toBe('µg/m³')
+    }
+  })
+
   it('always renders the GOOGLE cell as an honest "not connected" void — never a source that silently agreed', () => {
     // Arrange
     mockGeo()
