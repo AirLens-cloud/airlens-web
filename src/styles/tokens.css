@@ -15,10 +15,12 @@
  * Decisions carried over from the porting brief (2026-08-26):
  *   1. --viz-accent / obs cyan is NOT a global brand token — it lives only inside
  *      `.obs-surface` (see obs.css) as `--obs-cyan`. Brand accent is orange, always.
- *   2. Crimson Pro is not bundled — the 3 crimson-only classes (t-lede/t-quote/t-caveat)
- *      are redefined onto Inter/mono in typography.css; --crimson token below still
- *      exists (so `var(--crimson)` never resolves to `unset`) but resolves to a sans
- *      fallback stack, never to a font-face we didn't load.
+ *   2. [RESOLVED Wave 4 Block 2, 2026-09] Crimson Pro is now self-hosted
+ *      (`/fonts/crimson-pro/`, woff2 variable normal+italic, SIL OFL — see that
+ *      dir's LICENSE.md). The 3 crimson-only classes (t-lede/t-quote/t-caveat,
+ *      see typography.css) resolve to the real face again, scoped to editorial
+ *      voice surfaces only (About preamble, FAQ/caveat copy, news-summary
+ *      caveats) — body copy stays on Inter.
  *   3. Sky-glass gradients (11-phase weather backdrop) are NOT ported — glass surfaces
  *      here sit on a flat AQI tint instead (--tint-good/--tint-moderate/--tint-unhealthy/
  *      --tint-hazard, S7 values from the porting brief). See surfaces.css for the ink
@@ -105,7 +107,7 @@
   /* ---- Fonts ---- */
   --serif: "Plus Jakarta Sans", "Inter", sans-serif;
   --sans: "Inter", sans-serif;
-  --crimson: "Inter", sans-serif; /* Crimson Pro not bundled (decision #2) — sans fallback, never unset */
+  --crimson: "Crimson Pro", Georgia, serif; /* self-hosted, Wave 4 Block 2 — see typography.css @font-face */
   --mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* ---- Spacing (8pt) ---- */

@@ -112,9 +112,9 @@ export default function DesignGallery() {
       <Section title="Typography">
         <p className="h-hero">h-hero</p>
         <p className="h-section">h-section</p>
-        <p className="t-lede">t-lede — Inter regular, the porting brief's Crimson Pro substitute.</p>
-        <p className="t-quote">"t-quote — Inter italic, the second Crimson Pro substitute."</p>
-        <p className="t-caveat">t-caveat — mono, left border kept from the source signature.</p>
+        <p className="t-lede">t-lede — Crimson Pro regular, self-hosted (Wave 4 Block 2).</p>
+        <p className="t-quote">"t-quote — Crimson Pro italic."</p>
+        <p className="t-caveat">t-caveat — Crimson Pro italic, left border kept from the source signature.</p>
         <p className="t-data">t-data 128.4</p>
         <p className="t-caption">t-caption — secondary copy.</p>
         <p className="t-micro">t-micro — labels/eyebrows</p>

@@ -3,16 +3,35 @@
  *
  * Ported from AirLens-platform apps/web/src/reado.css:307-424. Class names and
  * roles are preserved 1:1 so components/copy that reference `.h-hero`, `.t-data`,
- * etc. behave identically to the source app. Three classes are redefined per the
- * porting brief (Crimson Pro is not bundled — decision #2):
+ * etc. behave identically to the source app.
  *
- *   - .t-lede  : was Crimson Pro 18px  -> Inter 400 18px/1.6
- *   - .t-quote : was Crimson Pro italic -> Inter italic (ital axis loaded in index.html)
- *   - .t-caveat: was Crimson Pro italic -> JetBrains Mono regular 12px (no italic —
- *                mono italic is not part of the loaded weight set) + ink-1. The
- *                signature left 2px border is preserved so the caveat pattern is
- *                still recognizable at a glance.
+ * Wave 4 Block 2 (2026-09) resolved porting-brief decision #2 — Crimson Pro is
+ * now self-hosted (see `/fonts/crimson-pro/`, woff2 variable normal+italic, SIL
+ * OFL) instead of the Inter/mono substitution used until this point. Restored:
+ *
+ *   - .t-lede  : Crimson Pro 400 18px/1.6 (var(--crimson))
+ *   - .t-quote : Crimson Pro italic
+ *   - .t-caveat: Crimson Pro italic + left 2px border (design-taxonomy.md spec)
+ *
+ * Scope is deliberately narrow — editorial-voice surfaces only (About preamble,
+ * FAQ/caveat copy, news-summary caveats). Body copy stays on Inter; do not widen
+ * Crimson Pro usage beyond these 3 classes without a design decision.
  */
+
+@font-face {
+  font-family: 'Crimson Pro';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/crimson-pro/crimson-pro-variable-normal.woff2') format('woff2-variations'), url('/fonts/crimson-pro/crimson-pro-variable-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Crimson Pro';
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/crimson-pro/crimson-pro-variable-italic.woff2') format('woff2-variations'), url('/fonts/crimson-pro/crimson-pro-variable-italic.woff2') format('woff2');
+}
 
 .h-hero {
   font-family: var(--serif);
@@ -44,27 +63,23 @@
   line-height: 1.6;
   color: var(--ink-1);
 }
-/* was Crimson Pro 18px — Inter fallback (decision #2) */
 .t-lede {
-  font-family: var(--sans);
+  font-family: var(--crimson);
   font-weight: 400;
   font-size: 18px;
   line-height: 1.6;
   color: var(--ink-1);
 }
-/* was Crimson Pro italic — Inter italic (ital axis loaded, decision #2) */
 .t-quote {
-  font-family: var(--sans);
+  font-family: var(--crimson);
   font-style: italic;
   font-size: clamp(20px, 2.4vw, 28px);
   line-height: 1.55;
   color: var(--ink-0);
 }
-/* was Crimson Pro italic — mono regular, no italic (decision #2). Left border
-   signature preserved so the caveat pattern reads the same at a glance. */
 .t-caveat {
-  font-family: var(--mono);
-  font-style: normal;
+  font-family: var(--crimson);
+  font-style: italic;
   font-size: 12px;
   line-height: 1.55;
   color: var(--ink-1);
