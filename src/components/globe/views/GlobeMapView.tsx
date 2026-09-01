@@ -21,36 +21,13 @@
  * rendering an empty ocean and calling it a map.
  */
 import { useMemo } from 'react'
-import type { Feature, Polygon, MultiPolygon, Position } from 'geojson'
 import { useGlobeStore } from '../../../store/globeStore'
 import { useGlobeGridSnapshot } from '../../../hooks/useGlobeData'
 import { useCountryFeatures } from '../../../hooks/useCountryData'
 import { gradeToHex } from '../../../lib/globe/gradeColor'
+import { MAP_VIEW_W, MAP_VIEW_H, project, featurePath } from '../../../lib/globe/equirectProjection'
 import GlobeFallback from '../GlobeFallback'
 import type { GlobalGridCell } from '../../../types/data'
-
-const VIEW_W = 720
-const VIEW_H = 360
-/** Circle-node budget — thousands of static SVG nodes is fine, tens of thousands is not. */
-const MARKER_LIMIT = 3000
-
-function project(lat: number, lon: number): { x: number; y: number } {
-  return { x: ((lon + 180) / 360) * VIEW_W, y: ((90 - lat) / 180) * VIEW_H }
-}
-
-function ringPath(ring: Position[]): string {
-  return ring.map(([lon, lat], i) => {
-    const { x, y } = project(lat, lon)
-    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-  }).join('') + 'Z'
-}
-
-function featurePath(feat: Feature): string {
-  const geom = feat.geometry
-  if (geom.type === 'Polygon') return (geom as Polygon).coordinates.map(ringPath).join('')
-  if (geom.type === 'MultiPolygon') return (geom as MultiPolygon).coordinates.flat().map(ringPath).join('')
-  return ''
-}
 
 export default function GlobeMapView() {
   const snapshot = useGlobeGridSnapshot()
@@ -58,8 +35,14 @@ export default function GlobeMapView() {
   const selectedStation = useGlobeStore((s) => s.selectedStation)
   const setSelectedStation = useGlobeStore((s) => s.setSelectedStation)
 
+  // No secondary cap here: `nearbyCells` (from `useGlobeGridSnapshot`) is
+  // already bounded to a globe-spanning sample by `fetchGlobalGridSnapshot`'s
+  // own limit (`api/gridSnapshot.ts`). A further `.slice(0, N)` prefix-cut on
+  // top of that would re-introduce the same bias this view was fixed for —
+  // an ordered sample's first N entries are not a second, independent random
+  // sample of it. A few thousand static SVG circles renders fine.
   const withId = useMemo(
-    () => (snapshot?.nearbyCells ?? []).slice(0, MARKER_LIMIT).map((cell, index) => ({ stationUid: `grid-${index + 1}`, cell })),
+    () => (snapshot?.nearbyCells ?? []).map((cell, index) => ({ stationUid: `grid-${index + 1}`, cell })),
     [snapshot],
   )
 
@@ -92,11 +75,11 @@ export default function GlobeMapView() {
     <div className="globe-map-view">
       <svg
         className="gmv-svg"
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
         role="img"
         aria-label="2D equirectangular map of published PM2.5 grid cells"
       >
-        <rect x={0} y={0} width={VIEW_W} height={VIEW_H} className="gmv-ocean" />
+        <rect x={0} y={0} width={MAP_VIEW_W} height={MAP_VIEW_H} className="gmv-ocean" />
         {coastlines.map(({ key, d }) => (
           <path key={key} d={d} className="gmv-coast" />
         ))}

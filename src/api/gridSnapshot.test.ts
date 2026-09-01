@@ -159,6 +159,39 @@ describe('fetchGlobalGridSnapshot — HF → static adapter', () => {
     await expect(fetchGlobalGridSnapshot({})).rejects.toThrow()
   })
 
+  it('spreads a no-origin sample across the full artifact instead of just its first rows', async () => {
+    // Arrange — 181 points sweeping every latitude row (-90..90, matching the
+    // live artifact's own row-major enumeration: this repro is what a plain
+    // `.slice(0, limit)` on `points` would clip to "the first ~14 rows near
+    // the south pole" (globe-views Map-view bug report, verified against the
+    // real HF artifact: point 0 is lat -90, 360 points per row).
+    const points = Array.from({ length: 181 }, (_, i) => ({ lat: -90 + i, lon: 0, pm25: 10 }))
+    fetchMock.mockResolvedValueOnce(okResponse({ updated_at: '2026-08-25T11:00:00.000Z', points }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act — no lat/lon origin, same shape Table/Map/the 3D grid markers request.
+    const result = await fetchGlobalGridSnapshot({ limit: 10 })
+
+    // Assert — both poles are represented, not just the low end of the array.
+    const lats = result.nearbyCells.map((c) => c.lat)
+    expect(result.nearbyCells).toHaveLength(10)
+    expect(Math.min(...lats)).toBeLessThanOrEqual(-80)
+    expect(Math.max(...lats)).toBeGreaterThanOrEqual(80)
+  })
+
+  it('still ranks origin-based lookups closest-first, unaffected by the no-origin sampling change', async () => {
+    // Arrange — same latitude sweep, but with a real origin this time.
+    const points = Array.from({ length: 181 }, (_, i) => ({ lat: -90 + i, lon: 0, pm25: 10 }))
+    fetchMock.mockResolvedValueOnce(okResponse({ updated_at: '2026-08-25T11:00:00.000Z', points }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const result = await fetchGlobalGridSnapshot({ lat: 0, lon: 0, limit: 3, radiusKm: 20000 })
+
+    // Assert — the equator-ish rows come first, exactly as haversine ranking demands.
+    expect(result.nearbyCells.map((c) => c.lat)).toEqual([0, -1, 1])
+  })
+
   it('accepts the legacy `cells` key when `points` is absent', async () => {
     // Arrange — older harvester export shape.
     fetchMock.mockResolvedValueOnce(okResponse({

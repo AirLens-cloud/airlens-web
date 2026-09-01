@@ -128,6 +128,33 @@ function finitePointsOf(artifact: RawGridArtifact): FinitePoint[] {
   return out;
 }
 
+/**
+ * Evenly-strided sample of `arr`, `limit` items, order preserved. With no
+ * origin the ranking below leaves `arr` in the artifact's own enumeration
+ * order — a plain `.slice(0, limit)` there would just take the first `limit`
+ * points, which for a lat/lon grid enumerated row-by-row from the south pole
+ * (verified against the live artifact: point 0 is lat -90, and every 360
+ * points is one latitude row) means "first 5000 of 65160" is only latitudes
+ * -90..-76 — a dense band along the south edge and nothing else, not a
+ * global sample. Striding across the full array instead touches every
+ * latitude row regardless of `limit`.
+ */
+function evenSample<T>(arr: T[], limit: number): T[] {
+  if (arr.length <= limit) return arr;
+  if (limit <= 1) return [arr[0]];
+  // Anchored at both ends (index 0 and arr.length-1), not just striding
+  // forward from 0 — a plain `arr.length / limit` stride runs out before
+  // reaching the far end (with 181 rows and limit 10 it stops at row 162,
+  // short of the north pole), which is the same "one hemisphere missing"
+  // shape as the original bug, just smaller.
+  const step = (arr.length - 1) / (limit - 1);
+  const out: T[] = [];
+  for (let i = 0; i < limit; i++) {
+    out.push(arr[Math.round(i * step)]);
+  }
+  return out;
+}
+
 async function fetchArtifact(url: string): Promise<RawGridArtifact | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
@@ -205,7 +232,13 @@ export async function fetchGlobalGridSnapshot(
     .filter((p) => !origin || (p.distanceKm ?? 0) <= radiusKm)
     .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
 
-  const nearbyCells = ranked.slice(0, limit);
+  // With an origin, closest-first is exactly what "nearby" means — take the
+  // top `limit`. With no origin there's nothing to rank by (every distance
+  // is 0), so a plain slice would just be "the first `limit` rows of however
+  // the artifact happens to be enumerated" — spread the sample across the
+  // whole array instead, so a full-globe consumer (Table/Map/3D grid
+  // markers) actually sees the whole globe.
+  const nearbyCells = origin ? ranked.slice(0, limit) : evenSample(ranked, limit);
   if (nearbyCells.length === 0) throw new Error('No grid cells in requested radius');
 
   const primary = nearbyCells[0];
