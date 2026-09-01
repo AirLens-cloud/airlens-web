@@ -42,7 +42,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       'Location used to center the map or a forecast is coarse and opt-in — it is used in the browser to pick what to show, and AirLens does not log precise coordinates against a visitor.',
       'Anything you build in the Lab (queries, saved views, exported bundles) is stored locally in your browser. Nothing in the Lab is transmitted to an AirLens server as part of normal use.',
       'If you submit a bundle to Research Commons, the submission carries only what you choose to attach — a display name and contact are optional, and no account identifier is issued or required.',
-      'Analytics, where enabled, record coarse, aggregate events (e.g. which page loaded) and never IP address or precise coordinates. Do Not Track is respected.',
+      'This build ships no analytics or tracking code at all — the analytics module in the codebase is a documented no-op with no vendor wired in, so nothing about your visit is sent anywhere to be recorded.',
       'Because there is no account, there is no "delete my account" flow to offer. Data saved in your browser is under your control — clearing site storage removes it.',
     ],
   },

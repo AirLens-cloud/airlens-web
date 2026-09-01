@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import '../styles/static.css'
-import { GLOSSARY_TERMS, type GlossaryCategory } from '../content/glossaryTerms'
+import { GLOSSARY_TERMS, findGlossaryTerm, type GlossaryCategory } from '../content/glossaryTerms'
+import UnitSafeText from '../components/knowledge/UnitSafeText'
 
 /**
  * Glossary — `/glossary`. A concept graph, not a static dictionary: every
@@ -107,14 +108,21 @@ export default function Glossary() {
                 </button>
                 {expanded ? (
                   <div className="glossary-card__expanded">
-                    <p className="t-micro" style={{ color: 'var(--ink-2)' }}>{term.example}</p>
+                    <p className="t-micro" style={{ color: 'var(--ink-2)' }}>
+                      <UnitSafeText text={term.example} />
+                    </p>
                     {term.methodRef ? (
                       <a href={`/methodology#${term.methodRef}`}>See method →</a>
                     ) : null}
                     <div className="glossary-card__related">
-                      {term.relatedTerms.map((relId) => (
-                        <a key={relId} href={`#${relId}`} className="t-tag">{relId}</a>
-                      ))}
+                      {term.relatedTerms.map((relId) => {
+                        const related = findGlossaryTerm(relId)
+                        return (
+                          <a key={relId} href={`#${relId}`} className="t-tag">
+                            {related?.term ?? relId}
+                          </a>
+                        )
+                      })}
                     </div>
                   </div>
                 ) : null}

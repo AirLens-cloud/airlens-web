@@ -58,7 +58,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     id: 'open-bundle',
-    question: 'How do I open a `.airlens` bundle?',
+    question: 'How do I open an .airlens bundle?',
     answer:
       'A bundle is a downloadable analysis package — a manifest plus figures and code — that you can import directly into the Lab to reproduce or continue an analysis.',
     links: [{ label: 'Lab', href: '/lab' }],

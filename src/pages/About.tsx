@@ -6,8 +6,11 @@ import { ROADMAP_STATE, THREE_PRODUCTS, TWO_INFRA, OPERATING_PRINCIPLES, type Ro
  * now" with a verifiable state table rather than marketing copy
  * (page-specs/about-faq-notfound.md §4). The state table is hand-maintained
  * (D8) — the "last verified" column exists so a stale row is visible instead
- * of silently drifting from reality (§4.1). No accounts/subscription/payment
- * language appears anywhere on this page (About.test.tsx pins that).
+ * of silently drifting from reality (§4.1). The Operating Principles say "no
+ * accounts" and "no payments" outright (that's the point — §2 "비협상
+ * 원칙"), but no *transactional* account/payment mechanics language (sign-up,
+ * login, password, subscription, billing) appears anywhere (About.test.tsx
+ * pins that).
  */
 
 const STATUS_LABEL: Record<RoadmapStageStatus, string> = {

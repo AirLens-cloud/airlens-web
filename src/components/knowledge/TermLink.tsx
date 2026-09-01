@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { findGlossaryTerm } from '../../content/glossaryTerms'
+import UnitSafeText from './UnitSafeText'
 
 export interface TermLinkProps {
   /** Glossary termId this link explains (see src/content/glossaryTerms.ts). */
@@ -24,6 +25,7 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
   const term = findGlossaryTerm(termId)
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const wrapperRef = useRef<HTMLSpanElement | null>(null)
   const popoverId = useId()
 
   useEffect(() => {
@@ -40,8 +42,20 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
         triggerRef.current?.focus()
       }
     }
+    // Click/tap anywhere outside this TermLink closes the popover without
+    // moving focus (Escape is still the keyboard path that returns focus to
+    // the trigger, per the trigger's aria-describedby contract above).
+    const onPointerDown = (e: PointerEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
   }, [open])
 
   if (!term) {
@@ -59,7 +73,7 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
   if (className) classes.push(className)
 
   return (
-    <span className={classes.join(' ')}>
+    <span ref={wrapperRef} className={classes.join(' ')}>
       <button
         ref={triggerRef}
         type="button"
@@ -76,7 +90,9 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
         <span id={popoverId} role="dialog" className="knowledge-termlink__popover t-caption">
           <span className="knowledge-termlink__popover-title t-tag">{term.term}</span>
           <span className="knowledge-termlink__popover-def">{term.definition}</span>
-          <span className="knowledge-termlink__popover-example t-micro">{term.example}</span>
+          <span className="knowledge-termlink__popover-example t-micro">
+            <UnitSafeText text={term.example} />
+          </span>
           <span className="knowledge-termlink__popover-links">
             <a href={`/glossary#${term.termId}`}>Full entry in Glossary →</a>
             {term.methodRef ? <a href={`/methodology#${term.methodRef}`}>See method →</a> : null}

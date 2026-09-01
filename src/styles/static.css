@@ -6,6 +6,16 @@
  * radii, or spacing here (design-taxonomy §Coherence discipline).
  */
 
+/* Shared, non-scoped guard: protects unit symbols (µg/m³, ppm, %) from an
+ * ancestor's text-transform: uppercase (.t-micro/.t-tag) — uppercasing "µg"
+ * silently turns µ into the Greek capital Μ. Same pattern as the existing
+ * `.obs-surface … .unit` rules in globe-stage.css:92,146, generalized here
+ * because knowledge-system content (TermLink, Glossary) isn't obs-scoped.
+ * See src/components/knowledge/UnitSafeText.tsx. */
+.unit {
+  text-transform: none;
+}
+
 .static-page {
   width: 100%;
   margin: 0 auto;
