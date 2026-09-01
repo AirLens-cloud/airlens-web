@@ -88,6 +88,13 @@ function mapSourceRefs(raw: unknown): BlogSourceRef[] {
     if (!isRecord(item)) return []
     const type = item.type === 'news' || item.type === 'data' ? item.type : null
     if (!type || typeof item.ref !== 'string' || typeof item.label !== 'string') return []
+    // `type: 'data'` renders `ref` directly as an external `<a href>`
+    // (`SourceRefsBlock`) — same scheme requirement as the bare-URL string
+    // branch above, so a `javascript:` (or any other non-http(s)) URI can't
+    // reach a real anchor href. `type: 'news'` builds an internal
+    // `/news/${ref}` path instead (never an href scheme), so it isn't
+    // subject to this check.
+    if (type === 'data' && !/^https?:\/\//i.test(item.ref)) return []
     return [{ type, ref: item.ref, label: item.label }]
   })
 }

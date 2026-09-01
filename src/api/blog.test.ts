@@ -114,6 +114,22 @@ describe('mapPost — field derivation', () => {
     expect(refs).toEqual([])
   })
 
+  // Review finding 2026-09-01: the bare-string branch validates the URL
+  // scheme (`/^https?:\/\//`), but the `{type,ref,label}` object branch
+  // only checked `typeof ref === 'string'` — a `javascript:` URI in the
+  // `type: 'data'` shape would pass through and reach `SourceRefsBlock`'s
+  // `<a href target="_blank">`. Dropped, not rendered, per the "unknown
+  // shapes dropped" contract this function already documents.
+  it('drops a {type:"data"} source_refs entry whose ref is not an http(s) URL (e.g. javascript: URI)', () => {
+    const refs = __test.mapSourceRefs([{ type: 'data', ref: 'javascript:alert(1)', label: 'click me' }])
+    expect(refs).toEqual([])
+  })
+
+  it('keeps a {type:"news"} source_refs entry whose ref is a slug, not a URL (no scheme required)', () => {
+    const refs = __test.mapSourceRefs([{ type: 'news', ref: 'some-article-slug', label: 'Related article' }])
+    expect(refs).toEqual([{ type: 'news', ref: 'some-article-slug', label: 'Related article' }])
+  })
+
   it('derives the dek from the opening paragraph, skipping a heading paragraph', () => {
     const excerpt = __test.deriveExcerpt('**무슨 일인가**\n\n실제 첫 문단입니다.')
     expect(excerpt).toBe('실제 첫 문단입니다.')

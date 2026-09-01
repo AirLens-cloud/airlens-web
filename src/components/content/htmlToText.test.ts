@@ -31,6 +31,36 @@ describe('htmlToPlainText', () => {
   it('returns falsy input unchanged', () => {
     expect(htmlToPlainText('')).toBe('')
   })
+
+  // Review finding 2026-09-01: an unpaired escaped tag mention (no closing
+  // tag) previously made a second `DOMParser` pass enter HTML's raw-text
+  // mode for that element with nothing to end it. With a single mention
+  // that resolved silently (jsdom implicitly closes at EOF); with a
+  // *second* mention later in the same string, the second `<script>` gets
+  // swallowed as the first one's raw-text content instead of being parsed
+  // as its own tag, and leaks through unstripped — this pins that case,
+  // confirmed red against the reverted 2-pass `DOMParser` implementation.
+  it('preserves text on both sides of an unpaired, escaped tag mention with no closing tag', () => {
+    const out = htmlToPlainText('before &lt;script&gt; after')
+    expect(out).not.toContain('<')
+    expect(out).toContain('before')
+    expect(out).toContain('after')
+    expect(out).toBe('before after')
+  })
+
+  it('strips every occurrence of a repeated, unpaired escaped tag mention (not just the first)', () => {
+    const out = htmlToPlainText('multiple &lt;script&gt; mentions &lt;script&gt; again and more text after both.')
+    expect(out).not.toContain('<')
+    expect(out).toBe('multiple mentions again and more text after both.')
+  })
+
+  it('still cleanly strips a properly closed, double-escaped fragment (no regression from the unpaired-tag fix)', () => {
+    const input = '&lt;p&gt;Critically endangered species threatened.&lt;/p&gt;&lt;a href="https://example.com"&gt;Read more&lt;/a&gt;'
+    const out = htmlToPlainText(input)
+    expect(out).not.toContain('<')
+    expect(out).not.toContain('&lt;')
+    expect(out).toBe('Critically endangered species threatened. Read more')
+  })
 })
 
 describe('truncateText', () => {

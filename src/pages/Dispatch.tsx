@@ -61,6 +61,14 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
   }, [feed, category])
   const page = filtered.slice(0, visible)
 
+  // A filter change starts a fresh result set — "loaded 12 of 3" from a
+  // stale `visible` count (carried over from a wider category) is a broken
+  // pagination affordance, not a convenience.
+  function handleCategoryChange(next: string): void {
+    setCategory(next)
+    setVisible(PAGE_SIZE)
+  }
+
   function handleOpen(slug: string): void {
     if (onNavigate) onNavigate(`/news/${slug}`)
     else if (typeof window !== 'undefined') window.location.href = `/news/${slug}`
@@ -79,7 +87,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
       </header>
 
       {feed.status !== 'loading' && feed.status !== 'unavailable' && categories.length > 0 && (
-        <WfSegmented items={chipItems} activeKey={category} onChange={setCategory} ariaLabel="Filter by category" />
+        <WfSegmented items={chipItems} activeKey={category} onChange={handleCategoryChange} ariaLabel="Filter by category" />
       )}
 
       {feed.status === 'loading' && (
@@ -104,7 +112,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
       {feed.status === 'ready' && filtered.length === 0 && (
         <p className="dispatch-empty t-caption">
           No articles match this filter.{' '}
-          <button type="button" className="dispatch-empty__reset" onClick={() => setCategory('all')}>
+          <button type="button" className="dispatch-empty__reset" onClick={() => handleCategoryChange('all')}>
             Clear filter
           </button>
         </p>

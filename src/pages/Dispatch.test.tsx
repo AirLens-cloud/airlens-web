@@ -2,7 +2,7 @@
 // contract, and the DQSS/EditorialTrust axis separation (acceptance tests
 // #1/#2/#6 of dispatch-article-signal-desk.md §11).
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, cleanup, screen } from '@testing-library/react'
+import { render, cleanup, screen, fireEvent } from '@testing-library/react'
 
 vi.mock('../api/news', () => ({ fetchDispatchFeed: vi.fn() }))
 import { fetchDispatchFeed } from '../api/news'
@@ -80,5 +80,35 @@ describe('Dispatch page', () => {
     })
     render(<Dispatch />)
     expect(await screen.findByText(/no summary generated — original link only/i)).toBeTruthy()
+  })
+
+  // Review (Minor) 2026-09-01: switching category kept the `visible` count
+  // from whatever it had grown to under the previous filter — a `visible`
+  // grown past PAGE_SIZE under "all" would dump every article of the next
+  // category straight onto the page (skipping the "Load more" cadence)
+  // whenever that category also has more than PAGE_SIZE articles.
+  it('resets pagination to the first page when the category filter changes', async () => {
+    const policyArticles = Array.from({ length: 20 }, (_, i) => article({ slug: `p${i}`, title: `Policy ${i}`, category: 'policy' }))
+    const researchArticles = Array.from({ length: 20 }, (_, i) => article({ slug: `r${i}`, title: `Research ${i}`, category: 'research' }))
+    vi.mocked(fetchDispatchFeed).mockResolvedValue({
+      status: 'ready',
+      articles: [...policyArticles, ...researchArticles],
+      categories: ['policy', 'research'],
+      refTime: null,
+    })
+    const { container } = render(<Dispatch />)
+    await screen.findByText('Policy 0')
+
+    // Grow `visible` past PAGE_SIZE (12) within "all" via one "Load more" click.
+    fireEvent.click(screen.getByRole('button', { name: /load more/i }))
+    expect(container.querySelectorAll('.dispatch-card')).toHaveLength(24)
+
+    // Switching to "research" (20 articles, itself more than PAGE_SIZE)
+    // must start back at the first page (12), not immediately dump all 20
+    // just because `visible` had grown to 24 under the previous filter.
+    fireEvent.click(screen.getByRole('button', { name: 'research' }))
+    await screen.findByText('Research 0')
+    expect(container.querySelectorAll('.dispatch-card')).toHaveLength(12)
+    expect(screen.getByRole('button', { name: /load more/i })).toBeTruthy()
   })
 })
