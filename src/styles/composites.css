@@ -216,6 +216,23 @@
   z-index: var(--z-fab);
   display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
 }
+/* Wave 5 Δ5 (B3) — ChatFAB.tsx's spring/drag wrapper around ChatPanel.
+   Gesture-table surface (ζ0.8/r0.30 bounce, per the Δ5 motion contract) —
+   `translateY` is written imperatively by the spring (ChatFAB.tsx), opacity
+   is a plain CSS transition on `data-open` so reduced-motion (below) can
+   keep the 200ms crossfade even while the spring snaps position instantly.
+   `touch-action: none` stops a vertical drag-to-dismiss from also scrolling
+   the page underneath on touch devices. */
+.chat-panel-spring {
+  opacity: 0;
+  pointer-events: none;
+  touch-action: none;
+  transition: opacity var(--dur-fast) var(--ease-fluid);
+}
+.chat-panel-spring[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
 .chat-panel {
   width: 420px;
   max-width: calc(100vw - 2 * var(--sp-5));

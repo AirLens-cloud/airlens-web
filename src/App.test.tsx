@@ -3,7 +3,7 @@
 // internals (LandingFlight's chapter scenes, AqiCapsule's own data/motion
 // wiring) are stubbed out here — they have their own dedicated coverage —
 // so this test stays scoped to App.tsx's routing decision.
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 
 vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-data-probe" /> }))
@@ -26,9 +26,22 @@ function setPath(path: string): void {
   window.history.pushState({}, '', path)
 }
 
+// Wave 5 Δ5 (B3) — 'site'-chrome routes now mount ChatWidget, whose ChatFAB
+// calls useSpring -> useReducedMotion (reads `window.matchMedia`); jsdom
+// doesn't implement it. Same stub pattern as Home.test.tsx/Today.test.tsx.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('reduced-motion'),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+})
+
 afterEach(() => {
   cleanup()
   setPath('/')
+  vi.unstubAllGlobals()
 })
 
 describe('App — FluidChrome routing', () => {

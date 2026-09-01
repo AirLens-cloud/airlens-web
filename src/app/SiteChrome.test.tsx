@@ -2,11 +2,26 @@
 // GlobalNav owns the mobile-open boolean; SiteChrome applies `inert` to the
 // page content underneath while the panel is open so Tab can't escape into
 // hidden content. Chrome-variant routing itself is covered by App.test.tsx.
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, cleanup, screen, fireEvent } from '@testing-library/react'
 import SiteChrome from './SiteChrome'
 
-afterEach(cleanup)
+// Wave 5 Δ5 (B3) — ChatWidget/ChatFAB now call useSpring -> useReducedMotion,
+// which reads `window.matchMedia`; jsdom doesn't implement it. Same stub
+// pattern as Home.test.tsx/Today.test.tsx.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('reduced-motion'),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }))
+})
+
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('SiteChrome — mobile nav focus trap', () => {
   it('is not inert by default', () => {
