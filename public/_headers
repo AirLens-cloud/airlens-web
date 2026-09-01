@@ -1,0 +1,83 @@
+# Cloudflare Pages headers.
+#
+# Inherited from AirLens-platform `apps/web/public/_headers`, trimmed to the
+# origins this repo actually talks to. The trim matters: the monorepo policy
+# carries Supabase, AdSense/DoubleClick, PostHog, Clarity, GA and Sentry hosts,
+# none of which this app loads.
+#
+# Reason this file exists now rather than at cutover: a Pages deploy replaces
+# the project's files wholesale. On the day this repo's dist is deployed to the
+# existing `airlens` project, every header that project serves today comes from
+# the monorepo's copy of this file — and would vanish. Carrying it here means
+# the cutover inherits the policy instead of regressing it.
+#
+# COOP/COEP are kept: airlens.cloud serves the same two values today with an
+# identical cross-origin Google Fonts setup (apps/web/index.html:55-62), so the
+# combination is already proven against this exact font loading pattern.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), geolocation=(self), microphone=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' blob:
+
+# connect-src notes:
+#   airlens.cloud        — community API Worker proxy (src/lib/config/dataSources.ts
+#                          COMMUNITY_API_BASE). Zone-level Worker route, so it
+#                          survives a Pages project switch untouched.
+#   huggingface.co       — live data primary (HF_LIVE_BASE). The wildcard hosts
+#                          cover LFS/Xet redirect targets: today every feed this
+#                          app reads resolves same-origin on huggingface.co
+#                          (verified 2026-08-31), but a feed crossing the LFS
+#                          threshold would start redirecting to cdn-lfs.*.
+#   joymin5655.github.io — snapshot CDN fallback, only reachable via an explicit
+#                          VITE_SNAPSHOT_CDN_BASE override (.env.example). The
+#                          shipped default is HF.
+
+# Hashed JS/CSS chunks from Vite — content-addressed, safe to cache forever
+/assets/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+# Self-hosted Observatory faces — path is stable, contents are not versioned by
+# hash, so a week rather than a year.
+/fonts/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# Globe textures — large, change rarely
+/textures/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# Geo reference data — rarely changes
+/geo/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/countries-50m.json
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# Bundled data snapshots — these are build-time copies, not the live feeds
+# (live data comes from HF at runtime), so a day is generous enough.
+/data/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+
+/mirror/data/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=3600
+
+# HTML entry point — must always revalidate to pick up new asset hashes
+/index.html
+  Cache-Control: no-cache
+
+/favicon.svg
+  Cache-Control: public, max-age=604800
+
+/icons.svg
+  Cache-Control: public, max-age=604800

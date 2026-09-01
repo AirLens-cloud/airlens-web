@@ -1,0 +1,59 @@
+name: CF account probe (read-only)
+
+# Answers one question before any cutover work can be planned: does this repo's
+# Cloudflare credential see the `airlens` Pages project — the one that serves
+# airlens.cloud from the AirLens-platform monorepo?
+#
+# A single `pages project list` settles both halves at once:
+#   - `airlens` in the output  => same Cloudflare account, and this token can
+#                                 address that project. A cutover is possible.
+#   - `airlens` absent         => different account (or a project-scoped token).
+#                                 Cutover is off the table and the plan becomes
+#                                 a custom-domain move instead. Stop and reopen
+#                                 the design rather than working around it.
+#
+# It also measures a risk that already exists: if "Cloudflare Pages: Edit" is an
+# account-level permission, this repo's token can already overwrite the
+# production project by a one-word typo in deploy.yml. Knowing which case we are
+# in is the point of running this.
+#
+# Read-only: `project list` enumerates, it does not deploy. Manual trigger only.
+# Nothing here prints a secret — wrangler is given the token via env and the
+# output is a project table.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: List Pages projects visible to this credential
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project list
+
+      - name: How to read the output above
+        run: |
+          echo "Look for a project named 'airlens' in the table above."
+          echo
+          echo "  present -> same account + this token can address it."
+          echo "             The planned cutover onto the existing project is viable,"
+          echo "             and note that this token can therefore also overwrite"
+          echo "             production by accident."
+          echo "  absent  -> different account, or a narrower token."
+          echo "             Do NOT retarget deploy.yml. Reopen the design as a"
+          echo "             custom-domain move."
