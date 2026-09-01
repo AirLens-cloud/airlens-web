@@ -1,8 +1,10 @@
 /**
  * WfDisabledCta — a call-to-action rendered as not-yet-available: dashed
- * border, muted ink, `aria-disabled` (not a real `disabled` button — it
- * still needs to be reachable by screen readers to announce *why* it's
- * inert, which a hard-disabled control cannot do). First consumer is the
+ * border, muted ink, `aria-disabled` with `tabIndex={0}` (not a real
+ * `disabled` button — it stays reachable by keyboard AND screen readers so
+ * both can discover *why* it's inert, which a hard-disabled control cannot
+ * announce). It has no handlers, so focusing it does nothing beyond reading
+ * the label and note. First consumer is the
  * Home briefing's "Open in Lab" CTA; written generically so a future
  * Datasets page CTA can reuse it without copying the markup.
  *
@@ -24,7 +26,7 @@ export default function WfDisabledCta({ label, note, className, testId }: WfDisa
       className={classes.join(' ')}
       role="button"
       aria-disabled="true"
-      tabIndex={-1}
+      tabIndex={0}
       data-testid={testId}
     >
       <span className="wf-disabled-cta__label">{label}</span>

@@ -179,19 +179,21 @@
   gap: var(--sp-5);
   margin-top: var(--sp-7);
 }
+/* Mobile-only visual lift: CTAs render above WHY NOW per the approved mockup,
+   while DOM keeps the semantic why-now-then-CTA order (see Home.tsx doc
+   comment). Tab order is unaffected — the CTA link is the row's only
+   focusable element. */
+.home-act-on-it {
+  order: -1;
+}
 @media (min-width: 640px) {
   .home-below-fold {
     grid-template-columns: 1fr 1fr;
     gap: var(--sp-6);
   }
-  /* Left/right per the approved mockup on wide viewports — DOM order stays
-     CTA-then-why-now (see Home.tsx doc comment) so mobile tab/reading order
-     is unaffected by this. */
-  .home-why-now {
-    order: 1;
-  }
+  /* Desktop follows DOM order naturally: WHY NOW left, ACT ON IT right. */
   .home-act-on-it {
-    order: 2;
+    order: 0;
   }
 }
 

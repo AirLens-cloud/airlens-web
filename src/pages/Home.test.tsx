@@ -104,6 +104,36 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-strip__band')).not.toBeNull()
   })
 
+  it('renders no band when only part of the series publishes p10/p90 (no fabricated edges)', () => {
+    // Arrange — first 12 hours publish a range, the rest do not. Filling the
+    // gap with p50 would fabricate band edges the source never published.
+    mockData(
+      readyFixture({ series24h: Array.from({ length: 24 }, (_, i) => seriesPoint(i, 42 + i, i < 12)) }),
+    )
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-strip__band')).toBeNull()
+    expect(container.querySelector('.home-strip__no-band')?.textContent).toMatch(/No uncertainty range/)
+  })
+
+  it('renders no band when the published range collapses to lo===hi', () => {
+    // Arrange — p10 === p90 === p50 everywhere: a zero-width "range" is not
+    // an uncertainty band and must not render as one.
+    mockData(
+      readyFixture({
+        series24h: Array.from({ length: 24 }, (_, i) => {
+          const p = seriesPoint(i, 42 + i, true)
+          return { ...p, p10: p.p50, p90: p.p50 }
+        }),
+      }),
+    )
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-strip__band')).toBeNull()
+  })
+
   it('shows explicit stale wording and a muted value when generated_at is older than the refresh cadence', () => {
     // Arrange — 7h old, past the 6h STALE_THRESHOLD_MS
     const staleUpdatedAt = new Date(NOW.getTime() - 7 * 3600_000).toISOString()

@@ -16,7 +16,7 @@ export default function HomeWhyNow({ series }: HomeWhyNowProps) {
   const delta = computeSixHourDelta(series)
   const peak = computePeak(series)
 
-  const direction = delta ? (delta.delta > 0.5 ? 'rose' : delta.delta < -0.5 ? 'fell' : 'held steady around') : null
+  const direction = delta ? (delta.delta > 0.5 ? 'rose' : delta.delta < -0.5 ? 'fell' : 'held steady') : null
   const sign = delta && delta.delta > 0 ? '+' : ''
 
   return (
@@ -25,7 +25,7 @@ export default function HomeWhyNow({ series }: HomeWhyNowProps) {
       <ul className="home-why-now__list">
         {delta && direction ? (
           <li className="home-why-now__item">
-            PM2.5 {direction} {direction !== 'held steady around' ? `${sign}${delta.delta.toFixed(1)} µg/m³ ` : ''}
+            PM2.5 {direction} {direction !== 'held steady' ? `${sign}${delta.delta.toFixed(1)} µg/m³ ` : ''}
             in 6h ({delta.fromValue.toFixed(1)} → {delta.toValue.toFixed(1)} µg/m³, {formatUtcTime(delta.fromTime)} →{' '}
             {formatUtcTime(delta.toTime)})
           </li>

@@ -154,6 +154,10 @@
   color: var(--ink-3);
   cursor: not-allowed;
 }
+.wf-disabled-cta:focus-visible {
+  outline: 2px solid var(--ink-2);
+  outline-offset: 2px;
+}
 .wf-disabled-cta__label {
   font-family: var(--mono);
   font-size: 11px;

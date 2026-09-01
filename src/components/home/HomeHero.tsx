@@ -59,16 +59,14 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
   const actionSentence = ACTION_SENTENCE[data.tier]
   const value = Math.round(data.current)
 
-  const ariaSummary = `Current PM2.5 in ${data.city} is ${value} micrograms per cubic meter, ${tierLabel}${
-    isStale ? '. This reading is stale' : ''
-  }.`
-
   return (
     <WfGlassCard
       as="section"
       aqi={tintBand}
       className={isStale ? 'home-hero home-hero--stale' : 'home-hero'}
-      aria-label={ariaSummary}
+      // Generic region name only — the value/tier/staleness are already in the
+      // rendered text, so a data-bearing label would be read twice by SRs.
+      aria-label="Current air quality"
     >
       <div className="home-hero__inner">
         <div className="home-hero__eyebrow">

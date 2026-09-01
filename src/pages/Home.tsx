@@ -16,11 +16,12 @@ import '../styles/home.css'
  * not mount FluidChrome's floating AqiCapsule (App.tsx), which would
  * duplicate the hero's own readout on the same screen.
  *
- * Below-the-fold DOM order is CTA-then-why-now (not why-now-then-CTA): on
- * mobile that is the desired reading/tab order (CTAs reachable early,
- * "above the fold" per the approved mockup); on >=640px viewports
- * `home.css` uses `order` to place WHY NOW on the left / ACT ON IT on the
- * right without touching this DOM order or reading order.
+ * Below-the-fold DOM order follows the spec's semantic sequence — WHY NOW
+ * (the judgment) before ACT ON IT (the action) — so screen-reader linear
+ * order and desktop visual order agree. The mobile "CTA above the fold"
+ * placement from the approved mockup is a visual-only lift in `home.css`
+ * (`order: -1` under 640px); tab order is unaffected because the CTA link
+ * is the only focusable element in this row either way.
  */
 export default function Home() {
   const data = useCapsuleData()
@@ -54,8 +55,8 @@ export default function Home() {
         <div className="home-shell">
           <HomeForecastStrip series={data.series24h} city={data.city} />
           <div className="home-below-fold">
-            <HomeActOnIt coords={coords} />
             <HomeWhyNow series={data.series24h} />
+            <HomeActOnIt coords={coords} />
           </div>
         </div>
       ) : null}

@@ -26,7 +26,9 @@ interface StripGeometry {
  */
 function buildStripGeometry(series: CapsuleSeriesPoint[], hasBand: boolean): StripGeometry | null {
   if (series.length === 0) return null
-  const values = series.flatMap((p) => [p.p10 ?? p.p50, p.p90 ?? p.p50, p.p50])
+  // When hasBand is false the band is not drawn, so unpublished p10/p90 must
+  // not influence the scale either — scale on p50 alone.
+  const values = hasBand ? series.flatMap((p) => [p.p10 ?? p.p50, p.p90 ?? p.p50, p.p50]) : series.map((p) => p.p50)
   const min = Math.min(...values)
   const max = Math.max(...values)
   const span = max - min || 1
@@ -37,6 +39,8 @@ function buildStripGeometry(series: CapsuleSeriesPoint[], hasBand: boolean): Str
 
   let bandPoints: string | null = null
   if (hasBand) {
+    // hasBand guarantees every point published p10/p90 — the `?? p.p50` here
+    // only narrows the nullable type and can never fabricate a band edge.
     const top = series.map((p, i) => `${x(i)},${y(p.p90 ?? p.p50)}`)
     const bottom = series
       .map((p, i) => [x(i), y(p.p10 ?? p.p50)] as const)
@@ -55,7 +59,11 @@ function buildStripGeometry(series: CapsuleSeriesPoint[], hasBand: boolean): Str
  * axis ticks skip any index the series doesn't reach.
  */
 export default function HomeForecastStrip({ series, city }: HomeForecastStripProps) {
-  const hasBand = series.some((p) => p.p10 !== null || p.p90 !== null)
+  // Band renders only when the source published a real range for EVERY hour —
+  // a partially published series must not have its gaps filled with p50 (that
+  // would fabricate band edges), and a lo===hi collapse is not a range.
+  const hasBand =
+    series.length > 0 && series.every((p) => p.p10 !== null && p.p90 !== null && p.p90 > p.p10)
   const geometry = buildStripGeometry(series, hasBand)
 
   const ariaLabel = geometry

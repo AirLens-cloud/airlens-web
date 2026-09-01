@@ -3,8 +3,10 @@ import { track } from '../../lib/analytics'
 
 export interface HomeActOnItProps {
   /** Featured city's coordinates, when the hero has resolved ready data —
-   * appended to the Globe deep link so it opens centered there. Omitted
-   * (plain `/globe`) when data isn't ready yet. */
+   * appended to the Globe link as forward-compat query params. Globe does
+   * not consume them yet (centering lands with the B2 AnalysisCursor work);
+   * until then the params are inert. Omitted (plain `/globe`) when data
+   * isn't ready yet. */
   coords: { lat: number; lon: number } | null
 }
 
