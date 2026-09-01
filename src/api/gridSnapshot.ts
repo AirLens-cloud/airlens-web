@@ -36,6 +36,17 @@ const MAX_LIMIT = 5000;
 const DEFAULT_RADIUS_KM = 600;
 const MAX_RADIUS_KM = 20000;
 
+/**
+ * The no-origin sample size every "read the whole globe, no single origin"
+ * consumer must request — `api/globeMarkers.ts`'s 3D-scene markers and
+ * `hooks/useGlobeData.ts`'s `useGlobeGridSnapshot()` (Table/Map views). Both
+ * rank the same artifact with no origin, so a cell's array index is the
+ * `grid-${i+1}` identity shared across the 3D scene, Table, and Map — two
+ * independently hardcoded limits would silently desync that identity the
+ * moment one drifts from the other (code review Major-1, 2026-09-01).
+ */
+export const GLOBAL_GRID_SAMPLE_LIMIT = 5000;
+
 interface RawGridPoint {
   lat?: unknown;
   lon?: unknown;
@@ -71,7 +82,14 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-function gradeFromPm25(pm25: number): PM25Grade {
+/**
+ * Exported so `lib/globe/gradeColor.ts`'s `pm25ToGrade` (used for Compare-tray
+ * swatches on selections that never came through this module's own ranking
+ * response) can reuse this cut instead of hand-copying it — a second copy of
+ * 15/35/75 that only agrees with this one by discipline, not by construction
+ * (code review Minor-2, 2026-09-01).
+ */
+export function gradeFromPm25(pm25: number): PM25Grade {
   if (pm25 <= 15) return 'Good';
   if (pm25 <= 35) return 'Moderate';
   if (pm25 <= 75) return 'Unhealthy';

@@ -5,6 +5,7 @@
  * swatches that need one grade → one color.
  */
 import { AQI_CONFIG } from '../config/aqi';
+import { gradeFromPm25 } from '../../api/gridSnapshot';
 import type { PM25Grade } from '../../types/data';
 
 const GRADE_HEX: Record<PM25Grade, string> = {
@@ -20,16 +21,11 @@ export function gradeToHex(grade: PM25Grade | null | undefined): string {
 }
 
 /**
- * Mirrors the private `gradeFromPm25` cut (15/35/75 µg/m³) in
- * `api/gridSnapshot.ts` — that function isn't exported, and the grid artifact
- * itself only carries a raw `pm25` number, not a grade. Used for swatches on
- * selections (e.g. Compare tray pins) that didn't come through the grid
- * snapshot's own ranking response. If the 15/35/75 cut ever changes, change
- * it in both places.
+ * Reuses `api/gridSnapshot.ts`'s exported `gradeFromPm25` cut (15/35/75
+ * µg/m³) — the grid artifact only carries a raw `pm25` number, not a grade,
+ * so this exists for swatches on selections (e.g. Compare tray pins) that
+ * didn't come through the grid snapshot's own ranking response. Kept under
+ * its own name here since callers (`pages/Globe.tsx`) reach for it as "grade
+ * for whatever pm25 I have," not as a gridSnapshot-specific concern.
  */
-export function pm25ToGrade(pm25: number): PM25Grade {
-  if (pm25 <= 15) return 'Good';
-  if (pm25 <= 35) return 'Moderate';
-  if (pm25 <= 75) return 'Unhealthy';
-  return 'Very Unhealthy';
-}
+export const pm25ToGrade: (pm25: number) => PM25Grade = gradeFromPm25;

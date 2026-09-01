@@ -128,7 +128,7 @@ describe('Globe — view mode switch', () => {
     // Arrange / Act
     render(<Globe />)
     // Assert
-    expect(viewButton('GLOBE').getAttribute('aria-pressed')).toBe('true')
+    expect(viewButton('GLOBE').getAttribute('aria-checked')).toBe('true')
     expect(screen.queryByTestId('globe-map-view')).toBeNull()
     expect(screen.queryByTestId('globe-table-view')).toBeNull()
   })
@@ -141,7 +141,7 @@ describe('Globe — view mode switch', () => {
     // Assert
     expect(useGlobeStore.getState().globeViewMode).toBe('map')
     expect(screen.getByTestId('globe-map-view')).toBeTruthy()
-    expect(viewButton('MAP').getAttribute('aria-pressed')).toBe('true')
+    expect(viewButton('MAP').getAttribute('aria-checked')).toBe('true')
   })
 
   it('switches to Table when the Table button is clicked', () => {
