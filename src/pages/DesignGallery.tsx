@@ -43,6 +43,8 @@ import DawnReport from '../components/home/observatory/DawnReport'
 import InkInstrument from '../components/home/observatory/InkInstrument'
 import NotificationPanel from '../components/notifications/NotificationPanel'
 import ChatFAB from '../components/chat/ChatFAB'
+import ChatPanel from '../components/chat/ChatPanel'
+import ChatMessageBubble from '../components/chat/ChatMessageBubble'
 import AtmosphericBackground from '../components/AtmosphericBackground'
 import type { AppNotification } from '../types/notification'
 
@@ -359,13 +361,31 @@ export default function DesignGallery() {
         />
       </Section>
 
-      <Section title="ChatFAB" note="Stubbed per the porting brief — panel content is a caller-supplied slot; no chat backend is wired up.">
+      <Section title="ChatFAB + ChatPanel" note="Real panel structure (Wave 4 Block 3) — input is always disabled, no chat backend is wired up.">
         <div className="gallery-fab-demo">
           <ChatFAB isOpen={chatOpen} onToggle={() => setChatOpen((v) => !v)}>
-            <div className="wf-card" style={{ padding: 16, width: 260, marginBottom: 8 }}>
-              Sample chat panel slot — no chat backend wired up in this port.
-            </div>
+            <ChatPanel onClose={() => setChatOpen(false)} />
           </ChatFAB>
+        </div>
+      </Section>
+
+      <Section title="ChatMessageBubble / CitationCard" note="Synthetic sample conversation — this page is a component demo, never a live surface (no backend produces this content).">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 420 }}>
+          <ChatMessageBubble
+            message={{ role: 'user', content: 'Why is Seoul moderate today?', timestamp: 0 }}
+          />
+          <ChatMessageBubble
+            message={{
+              role: 'assistant',
+              timestamp: 1,
+              content:
+                'Overnight stagnation trapped local emissions; PM2.5 is at 31 µg/m³ (sample data).',
+              citations: [
+                { source_title: 'Seoul grid cell · sample source', source_url: 'https://example.com/a', relevance: 0.92 },
+                { source_title: 'Wind forecast · sample source', source_url: null, relevance: null },
+              ],
+            }}
+          />
         </div>
       </Section>
 

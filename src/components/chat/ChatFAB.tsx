@@ -2,13 +2,17 @@
  * ChatFAB — the floating "ASK" action button. Ported from
  * AirLens-platform apps/web/src/components/chat/ChatFAB.tsx, stubbed per the
  * porting brief: the source's route/auth/config gating (`useLocation`,
- * `useChatStore`, `useAuthStore`, `isChatbotConfigured`) and its `<ChatPanel>`
- * body are all dropped — this port is a plain presentational FAB with
- * `isOpen`/`onToggle` props and a `children` slot for whatever panel content
- * the caller wants to show when open (a real chat panel is a follow-up item,
- * not ported in this wave). react-i18next stripped — plain-English default props.
+ * `useChatStore`, `useAuthStore`, `isChatbotConfigured`) is dropped — this
+ * port is a plain presentational FAB with `isOpen`/`onToggle` props and a
+ * `children` slot for whatever panel content the caller wants to show when
+ * open. react-i18next stripped — plain-English default props.
+ *
+ * Wave 4 Block 3 (Δ4): the toggle glyph now uses the custom icon set's
+ * `LiveIcon` (closed — the mockup's "live" concentric-circle mark) and
+ * `CloseIcon` (open), replacing the generic inline target/X svgs.
  */
 import type { ReactNode } from 'react'
+import { LiveIcon, CloseIcon } from '../icons'
 
 export interface ChatFABProps {
   isOpen: boolean
@@ -42,17 +46,7 @@ export default function ChatFAB({
       >
         <span className="fab-eyebrow">{isOpen ? closeLabel : openLabel}</span>
         <span className="fab-glyph" aria-hidden="true">
-          {isOpen ? (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 3l10 10M13 3L3 13" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 1v3M12 20v3M1 12h3M20 12h3" strokeLinecap="round" />
-            </svg>
-          )}
+          {isOpen ? <CloseIcon size={16} /> : <LiveIcon size={16} />}
         </span>
       </button>
     </>

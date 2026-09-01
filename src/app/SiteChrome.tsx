@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import GlobalNav from './GlobalNav'
 import SiteFooter from './SiteFooter'
+import ChatWidget from '../components/chat/ChatWidget'
 
 export type ChromeVariant = 'site' | 'overlay' | 'bare'
 
@@ -13,7 +14,7 @@ interface SiteChromeProps {
  * SiteChrome — mounts the global chrome around a route's rendered page
  * (PR-N1/PR-N2; see `App.tsx`'s route table for the `chrome` field per route).
  *
- *   'site'    → GlobalNav + SiteFooter
+ *   'site'    → GlobalNav + SiteFooter + ChatWidget (Field Assistant FAB, Wave 4 Block 3)
  *   'overlay' → GlobalNav only, transparent-on-dark variant, no footer
  *               (/globe — a 100vh stage; a footer would be destructive, but
  *               shipping with no nav at all leaves no way out)
@@ -44,6 +45,7 @@ export default function SiteChrome({ variant, children }: SiteChromeProps) {
         {children}
       </div>
       {variant === 'site' && <SiteFooter />}
+      {variant === 'site' && <ChatWidget />}
     </div>
   )
 }
