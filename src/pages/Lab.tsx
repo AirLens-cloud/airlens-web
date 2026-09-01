@@ -13,6 +13,7 @@
  * real controls or a real query engine here — that is L1's job, not this
  * page's.
  */
+import type { CSSProperties } from 'react'
 import LabRailGroup from '../components/research/LabRailGroup'
 import WfDisabledCta from '../components/wireframe/WfDisabledCta'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
@@ -38,7 +39,7 @@ const RIGHT_RAIL = [
 export default function Lab() {
   return (
     <PublicPageContainer tier="hub" className="lab-page" aria-disabled="true">
-      <header className="lab-header">
+      <header className="lab-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <p className="lab-header__badge">FEASIBILITY REVIEW</p>
         <h1 className="lab-header__title h-2">Local Research Studio</h1>
         <p className="lab-header__thesis t-lede">
@@ -52,7 +53,7 @@ export default function Lab() {
         (DuckDB-Wasm over Parquet ranges) has not passed yet, so every control is inert and says so.
       </p>
 
-      <div className="lab-shell">
+      <div className="lab-shell fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
         <section className="lab-rail lab-rail--left" aria-label="Filters (inert)">
           {LEFT_RAIL.map((group) => (
             <LabRailGroup key={group.label} label={group.label} placeholder={group.placeholder} />
@@ -72,7 +73,7 @@ export default function Lab() {
         </section>
       </div>
 
-      <div className="lab-drawer" aria-label="Generated code (inert)">
+      <div className="lab-drawer fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="Generated code (inert)">
         <p className="lab-drawer__label t-micro">Generated SQL / Python</p>
         <pre className="lab-drawer__code t-data">-- nothing to generate yet</pre>
         <p className="lab-drawer__label t-micro">Citation</p>

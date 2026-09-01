@@ -2,7 +2,7 @@
  * BlogPost — /blog/:slug. Field Note body. Spec:
  * `Obsidian-airlens/raw/docs/web/page-specs/blog-field-notes.md`.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchBlogPostBySlug } from '../api/blog'
 import type { BlogPostLookupResult } from '../types/blog'
 import MarkdownBody from '../components/content/MarkdownBody'
@@ -77,7 +77,7 @@ export default function BlogPost({ slug }: BlogPostProps) {
 
   return (
     <PublicPageContainer tier="hub" className="blogpost-page">
-      <header className="blogpost-header">
+      <header className="blogpost-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <div className="blogpost-meta t-micro">
           <span className="content-tag">{post.topic}</span>
           {date ? <span className="content-tag">{date}</span> : null}
@@ -88,12 +88,16 @@ export default function BlogPost({ slug }: BlogPostProps) {
       </header>
 
       {body ? (
-        <MarkdownBody body={body} />
+        <div className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+          <MarkdownBody body={body} />
+        </div>
       ) : (
         <p className="blogpost-pending t-caption">This post's body is still being prepared.</p>
       )}
 
-      <SourceRefsBlock refs={post.sourceRefs} />
+      <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+        <SourceRefsBlock refs={post.sourceRefs} />
+      </div>
 
       <a className="blogpost-back t-micro" href="/blog">
         ← Back to Field Notes

@@ -7,7 +7,7 @@
  * reading) — Glass-box doctrine: a gallery demo must not read as live
  * telemetry (flagged by globe-specialist during the port).
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import WfButton from '../components/wireframe/WfButton'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import WfTabs from '../components/wireframe/WfTabs'
@@ -97,7 +97,7 @@ export default function DesignGallery() {
 
   return (
     <div data-theme={theme} className="design-gallery">
-      <header className="gallery-header">
+      <header className="gallery-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">AirLens Design Gallery</h1>
         <p className="t-caption">
           Every asset ported from AirLens-platform (Waves A/B/C). All data below is

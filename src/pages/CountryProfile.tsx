@@ -17,7 +17,7 @@
  * this page renders those as different states rather than collapsing both
  * into one empty screen, per the spec's non-negotiable principle.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchCountrySeries } from '../api/countrySeries'
 import {
   fetchCountryPolicyImpact,
@@ -191,7 +191,7 @@ export default function CountryProfile({ code }: CountryProfileProps) {
     <PublicPageContainer tier="hub" className="cat-page">
       <div className="cat-shell">
         {/* ① country summary */}
-        <header className="cat-header">
+        <header className="cat-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <div>
             <h1 className="cat-title">
               {indexEntry?.flag ? <span aria-hidden="true">{indexEntry.flag} </span> : null}
@@ -214,7 +214,7 @@ export default function CountryProfile({ code }: CountryProfileProps) {
         ) : null}
 
         {/* ② city distribution */}
-        <section aria-labelledby="cat-cities-title">
+        <section aria-labelledby="cat-cities-title" className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <h2 id="cat-cities-title" className="cat-band-title">City distribution</h2>
           {citiesSection.status === 'error' ? (
             <p className="cat-note" data-testid="country-cities-error">
@@ -244,7 +244,7 @@ export default function CountryProfile({ code }: CountryProfileProps) {
         </section>
 
         {/* ③ source coverage / ④ policy evidence */}
-        <div className="cat-duo">
+        <div className="cat-duo fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
           <section aria-labelledby="cat-sources-title">
             <h2 id="cat-sources-title" className="cat-band-title">Source coverage</h2>
             <div className="cat-chip-row">

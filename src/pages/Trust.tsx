@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import '../styles/static.css'
 import { LEGAL_DOCS } from '../content/legal'
 
@@ -57,7 +58,7 @@ const SECTIONS = [
 export default function Trust() {
   return (
     <main className="static-page" data-tier="hub">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">Trust Center</h1>
         <p className="static-page__thesis t-lede">
           No values are rendered here — only where to verify them. Each card below routes to the page that
@@ -65,7 +66,7 @@ export default function Trust() {
         </p>
       </header>
 
-      <section className="trust-grid" aria-label="Trust Center sections">
+      <section className="trust-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} aria-label="Trust Center sections">
         {SECTIONS.map((section) => (
           <a key={section.key} className="trust-card wf-card wf-card--lift" href={section.href}>
             <h2 className="trust-card__title h-3">{section.title}</h2>
@@ -75,7 +76,7 @@ export default function Trust() {
         ))}
       </section>
 
-      <section aria-label="Legal document index">
+      <section aria-label="Legal document index" className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
         <h2 className="h-3">Legal documents</h2>
         <p className="t-caption" style={{ color: 'var(--ink-2)' }}>
           Trust Center does not replace the legal index — each document below is its own page.

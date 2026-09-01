@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { ROADMAP_STATE, THREE_PRODUCTS, TWO_INFRA, OPERATING_PRINCIPLES, type RoadmapStageStatus } from '../content/aboutState'
@@ -23,7 +24,7 @@ const STATUS_LABEL: Record<RoadmapStageStatus, string> = {
 export default function About() {
   return (
     <PublicPageContainer tier="text" className="static-page">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">About AirLens</h1>
         <p className="static-page__thesis t-lede">
           AirLens is not a site that shows you air conditions — it is an accountless Atmospheric Evidence
@@ -32,7 +33,7 @@ export default function About() {
         </p>
       </header>
 
-      <section aria-label="Three products">
+      <section aria-label="Three products" className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
         <h2 className="h-3">Three products</h2>
         <div className="about-table-wrap">
           <table className="about-table">
@@ -57,7 +58,7 @@ export default function About() {
         </div>
       </section>
 
-      <section aria-label="Two infrastructures">
+      <section aria-label="Two infrastructures" className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
         <h2 className="h-3">Two infrastructures</h2>
         <div className="about-table-wrap">
           <table className="about-table">
@@ -80,7 +81,7 @@ export default function About() {
         </div>
       </section>
 
-      <section aria-label="Operating principles">
+      <section aria-label="Operating principles" className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
         <h2 className="h-3">Operating principles</h2>
         <ul className="about-principles t-body">
           {OPERATING_PRINCIPLES.map((principle) => (
@@ -89,7 +90,7 @@ export default function About() {
         </ul>
       </section>
 
-      <section aria-label="Verifiable current state">
+      <section aria-label="Verifiable current state" className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
         <h2 className="h-3">Where things actually stand</h2>
         <p className="t-caption" style={{ color: 'var(--ink-2)' }}>
           Each row is filled in by a person cross-checking the code and docs, not generated automatically — the

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/static.css'
 import { FAQ_ITEMS } from '../content/faq'
@@ -17,7 +17,7 @@ export default function Faq() {
 
   return (
     <PublicPageContainer tier="text" className="static-page">
-      <header className="static-page__header">
+      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">Frequently asked questions</h1>
         <p className="static-page__thesis t-lede">
           Answers to what you’re trying to do — check a value, understand a forecast, verify a source, use the
@@ -25,7 +25,7 @@ export default function Faq() {
         </p>
       </header>
 
-      <div className="faq-list">
+      <div className="faq-list fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
         {FAQ_ITEMS.map((item) => {
           const open = openId === item.id
           const panelId = `${idPrefix}-${item.id}-panel`

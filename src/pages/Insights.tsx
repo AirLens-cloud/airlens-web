@@ -16,7 +16,7 @@
  * to. There is no router in this repo, so it is read and written with
  * `URLSearchParams` + `history.replaceState` directly.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import AttHeadline from '../components/insights/AttHeadline'
 import LaneCrossCheck from '../components/insights/LaneCrossCheck'
 import PolicyLimitBars from '../components/insights/PolicyLimitBars'
@@ -156,14 +156,16 @@ export default function Insights() {
         </nav>
 
         {/* 1 — headline */}
-        <AttHeadline
-          countryName={selected.name}
-          flag={selected.flag}
-          summary={selected.summary}
-          impact={detail.impact}
-          estimatedCount={estimatedCount}
-          totalCount={catalogue.countries.length}
-        />
+        <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+          <AttHeadline
+            countryName={selected.name}
+            flag={selected.flag}
+            summary={selected.summary}
+            impact={detail.impact}
+            estimatedCount={estimatedCount}
+            totalCount={catalogue.countries.length}
+          />
+        </div>
 
         {detail.status === 'error' ? (
           <p className="ins-empty">
@@ -174,7 +176,7 @@ export default function Insights() {
         ) : null}
 
         {/* 2 — cross-check + national standards */}
-        <div className="ins-duo">
+        <div className="ins-duo fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <LaneCrossCheck impact={detail.impact} />
           <PolicyLimitBars countries={peers} selectedCode={selected.countryCode} />
         </div>
@@ -183,26 +185,28 @@ export default function Insights() {
         {detail.status === 'loading' ? (
           <WfPlaceholder height={360} label="Loading the regional panel…" />
         ) : mapAnchor ? (
-          <PolicyMap
-            // The map owns a `pickedYear`, and a year picked for the previous
-            // country is not a year this one observed. Today the remount is
-            // already guaranteed by the branch above: switching country changes
-            // the detail key, which returns `status: 'loading'` for a frame and
-            // swaps in the placeholder, unmounting the map. This `key` is the
-            // second lock — it keeps the guarantee if that loading branch is
-            // ever removed or made to hold the previous render.
-            key={selected.countryCode}
-            panels={detail.peerPanels}
-            selectedCode={selected.countryCode}
-            selectedName={selected.name}
-            regionName={selected.region}
-            focusYear={detail.impact?.status === 'ok' ? (selected.summary.treatmentYear ?? null) : null}
-            peersWithoutAnchor={detail.peersWithoutAnchor}
-            peersOmitted={detail.peersOmitted}
-            peersUnreadable={detail.peersUnreadable}
-          />
+          <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+            <PolicyMap
+              // The map owns a `pickedYear`, and a year picked for the previous
+              // country is not a year this one observed. Today the remount is
+              // already guaranteed by the branch above: switching country changes
+              // the detail key, which returns `status: 'loading'` for a frame and
+              // swaps in the placeholder, unmounting the map. This `key` is the
+              // second lock — it keeps the guarantee if that loading branch is
+              // ever removed or made to hold the previous render.
+              key={selected.countryCode}
+              panels={detail.peerPanels}
+              selectedCode={selected.countryCode}
+              selectedName={selected.name}
+              regionName={selected.region}
+              focusYear={detail.impact?.status === 'ok' ? (selected.summary.treatmentYear ?? null) : null}
+              peersWithoutAnchor={detail.peersWithoutAnchor}
+              peersOmitted={detail.peersOmitted}
+              peersUnreadable={detail.peersUnreadable}
+            />
+          </div>
         ) : (
-          <section className="ins-map-band">
+          <section className="ins-map-band fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
             <h2 className="ins-band-title">Observed PM2.5</h2>
             <p className="ins-empty">
               {selected.name} has no map coordinate in this build, so it cannot
@@ -215,24 +219,28 @@ export default function Insights() {
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the synthetic-control curve…" />
         ) : (
-          <SdidChart
-            series={detail.impact?.sdid_series}
-            treatmentYear={selected.summary.treatmentYear}
-          />
+          <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
+            <SdidChart
+              series={detail.impact?.sdid_series}
+              treatmentYear={selected.summary.treatmentYear}
+            />
+          </div>
         )}
 
         {/* 5 — observed trend with the measured spread */}
         {detail.status === 'loading' ? (
           <WfPlaceholder height={320} label="Loading the observed series…" />
         ) : (
-          <PolicyTrendLines
-            panels={detail.panel ? [detail.panel, ...detail.peerPanels.filter((p) => p.countryCode !== selected.countryCode)] : detail.peerPanels}
-            selectedCode={selected.countryCode}
-          />
+          <div className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
+            <PolicyTrendLines
+              panels={detail.panel ? [detail.panel, ...detail.peerPanels.filter((p) => p.countryCode !== selected.countryCode)] : detail.peerPanels}
+              selectedCode={selected.countryCode}
+            />
+          </div>
         )}
 
         {/* 6 — model prediction | sentiment lane */}
-        <div className="ins-duo">
+        <div className="ins-duo fluid-enter" style={{ '--enter-i': 5 } as CSSProperties}>
           <CityPredictionCard lat={mapAnchor?.[0]} lon={mapAnchor?.[1]} />
           <NewsSentimentCard countryName={selected.name} />
         </div>

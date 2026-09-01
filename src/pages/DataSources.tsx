@@ -13,7 +13,7 @@
  * completed ("registry fetched Xm ago") — the spec's "자기 신선도 원칙", since
  * this page is itself a trust surface and must not hide its own staleness.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchFeedRegistry, type FeedRegistry, type FeedRegistryEntry, type FeedStatus } from '../api/registry'
 import SourceStatusDot from '../components/catalog/SourceStatusDot'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
@@ -111,7 +111,7 @@ export default function DataSources() {
   return (
     <PublicPageContainer tier="hub" className="cat-page">
       <div className="cat-shell">
-        <header className="cat-header">
+        <header className="cat-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <div>
             <h1 className="cat-title">Where every number comes from</h1>
             <p className="cat-subtitle">
@@ -144,7 +144,7 @@ export default function DataSources() {
           </p>
         ) : null}
 
-        <div className="cat-table-wrap">
+        <div className="cat-table-wrap fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <table className="cat-table" data-testid="feed-registry-table">
             <thead>
               <tr>

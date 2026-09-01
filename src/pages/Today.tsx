@@ -11,7 +11,7 @@
  * `/weather` now redirects here with `?tab=conditions` (App.tsx shim) so
  * returning visitors land on the tab they expect.
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { useTodayGrid } from '../hooks/useTodayGrid'
@@ -119,16 +119,18 @@ export default function Today() {
 
   return (
     <main className="obs-surface today-page">
-      <TodayHud
-        status={hudStatus}
-        city={primaryCity}
-        countryCode={primaryCountryCode}
-        validTimeMs={validTimeMs}
-        updatedAgeMs={updatedAgeMs}
-        natureLabel={natureLabel}
-      />
+      <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+        <TodayHud
+          status={hudStatus}
+          city={primaryCity}
+          countryCode={primaryCountryCode}
+          validTimeMs={validTimeMs}
+          updatedAgeMs={updatedAgeMs}
+          natureLabel={natureLabel}
+        />
+      </div>
 
-      <div className="today-toolbar">
+      <div className="today-toolbar fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
         <WfSegmented
           ariaLabel="Today view"
           activeKey={tab}
@@ -163,7 +165,7 @@ export default function Today() {
       </Materialize>
 
       {tab === 'decision' && (
-        <div className="today-decision">
+        <div className="today-decision fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
           <TodayAnswer
             tier={primaryTier}
             pm25={primaryPm25}
@@ -188,7 +190,7 @@ export default function Today() {
       )}
 
       {tab === 'conditions' && (
-        <div className="today-conditions wx-shell">
+        <div className="today-conditions wx-shell fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
           <HourlyForecastRail
             status={weatherData.status}
             configured={weatherData.configured}

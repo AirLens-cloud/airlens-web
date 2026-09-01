@@ -7,7 +7,7 @@
  * small enough that fetching it once and filtering in memory is honest and
  * simple rather than a premature "paginated API" this repo doesn't have.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { fetchDispatchFeed } from '../api/news'
 import type { DispatchFeedResult, NewsArticle } from '../types/news'
 import ArticleCard from '../components/content/ArticleCard'
@@ -82,7 +82,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
 
   return (
     <PublicPageContainer tier="hub" className="dispatch-page">
-      <header className="dispatch-header">
+      <header className="dispatch-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <p className="dispatch-eyebrow t-micro">DISPATCH · SIGNAL DESK</p>
         <h1 className="dispatch-title h-2">What's happening in air quality right now</h1>
       </header>
@@ -121,7 +121,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
 
       {feed.status === 'ready' && page.length > 0 && (
         <>
-          <div className="dispatch-grid">
+          <div className="dispatch-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
             {page.map((article, i) => (
               <ArticleCard key={article.slug} article={article} index={i} onOpen={handleOpen} />
             ))}

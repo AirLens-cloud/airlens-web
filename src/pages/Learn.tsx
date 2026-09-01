@@ -8,6 +8,7 @@
  * here, so each card's only action is a link to the dataset it needs, not a
  * "Start" button that would open a route that does not exist yet.
  */
+import type { CSSProperties } from 'react'
 import ProjectCard from '../components/research/ProjectCard'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import '../styles/research.css'
@@ -62,7 +63,7 @@ export default function Learn() {
   return (
     <PublicPageContainer tier="hub" className="lrn-page">
       <div className="lrn-shell">
-        <header className="lrn-header">
+        <header className="lrn-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <p className="lrn-header__eyebrow t-micro">LEARN · GUIDED PROJECTS · 5 PROJECTS · LAB REQUIRED FOR STEPS</p>
           <h1 className="lrn-header__title h-2">Guided Projects</h1>
           <p className="lrn-header__thesis t-lede">
@@ -71,7 +72,7 @@ export default function Learn() {
           </p>
         </header>
 
-        <section className="lrn-grid" aria-label="Guided projects">
+        <section className="lrn-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} aria-label="Guided projects">
           {PROJECTS.map((project) => (
             <ProjectCard
               key={project.question}
@@ -85,7 +86,7 @@ export default function Learn() {
           ))}
         </section>
 
-        <footer className="lrn-footer">
+        <footer className="lrn-footer fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
           <p className="lrn-footer__note t-caption">
             Step-by-step mode opens with the Lab — until then each card links its dataset on /datasets.
           </p>

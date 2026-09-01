@@ -9,7 +9,7 @@
  * fetch fails is withheld from the grid entirely and counted, never shown
  * with placeholder numbers.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchDatasetCatalog, type DatasetCatalog } from '../components/catalog/datasetManifests'
 import DataProductCard from '../components/catalog/DataProductCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
@@ -65,7 +65,7 @@ export default function Datasets() {
   return (
     <PublicPageContainer tier="hub" className="cat-page">
       <div className="cat-shell">
-        <header className="cat-header">
+        <header className="cat-header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <div>
             <h1 className="cat-title">What can you answer with this data?</h1>
             <p className="cat-subtitle">
@@ -80,7 +80,7 @@ export default function Datasets() {
             not an error — it is what "trustworthy right now" actually contains.
           </p>
         ) : (
-          <div className="cat-card-grid" data-testid="dataset-grid">
+          <div className="cat-card-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties} data-testid="dataset-grid">
             {catalog.products.map((p) => (
               <DataProductCard key={p.id} product={p} />
             ))}
