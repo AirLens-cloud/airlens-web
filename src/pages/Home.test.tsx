@@ -15,7 +15,14 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
   return { ...actual, useCapsuleData: vi.fn() }
 })
 
+// HomeStoriesResearch (below-the-fold, renders regardless of hero status) has
+// its own fetch/state coverage in HomeStoriesResearch.test.tsx — mocked here
+// only so this file's hero-focused tests don't trigger a real, unmocked
+// `fetch('.../blog-data/posts.json')` call on every render.
+vi.mock('../api/blog', () => ({ fetchBlogFeed: vi.fn() }))
+
 import { useCapsuleData, type CapsuleDataState, type CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
+import { fetchBlogFeed } from '../api/blog'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
 
@@ -59,6 +66,9 @@ beforeEach(() => {
     addEventListener: () => {},
     removeEventListener: () => {},
   }))
+  // Never resolves — these tests assert synchronously and don't care about
+  // HomeStoriesResearch's own states (covered in its own test file).
+  vi.mocked(fetchBlogFeed).mockReturnValue(new Promise(() => {}))
 })
 
 afterEach(() => {
