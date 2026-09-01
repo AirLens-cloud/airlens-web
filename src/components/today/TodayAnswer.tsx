@@ -16,9 +16,15 @@ export interface TodayAnswerProps {
   city: string
   countryCode: string | null
   validTimeIso: string | null
+  /** Distance from the viewer's chosen location to the primary source's own
+   * reading point (GRID's nearest cell, or CAMS's nearest feed city) — both
+   * hooks already compute this; null when the primary source has no
+   * reading. Surfaces that a "city" name can be a stand-in some distance
+   * away, not the viewer's exact spot. */
+  distanceKm: number | null
 }
 
-export default function TodayAnswer({ tier, pm25, city, countryCode, validTimeIso }: TodayAnswerProps) {
+export default function TodayAnswer({ tier, pm25, city, countryCode, validTimeIso, distanceKm }: TodayAnswerProps) {
   return (
     <section className="today-answer" aria-label="Decision">
       <div className="today-answer__row">
@@ -28,6 +34,12 @@ export default function TodayAnswer({ tier, pm25, city, countryCode, validTimeIs
       <p className="today-answer__meta t-micro">
         {city}
         {countryCode ? `, ${countryCode}` : ''}
+        {distanceKm !== null ? (
+          <>
+            {' · '}
+            {Math.round(distanceKm)} km away
+          </>
+        ) : null}
         {pm25 !== null ? (
           <>
             {' · '}

@@ -72,12 +72,26 @@ export default function Today() {
   const agreement = useMemo(() => computeSourceAgreement(gridPm25, camsPm25), [gridPm25, camsPm25])
 
   let agreeCount = 0
-  if (grid.status === 'ready' && tierFromPm25(grid.pm25) === primaryTier) agreeCount += 1
-  if (cams.status === 'ready' && cams.tier === primaryTier) agreeCount += 1
+  let resolvedCount = 0
+  if (grid.status === 'ready') {
+    resolvedCount += 1
+    if (tierFromPm25(grid.pm25) === primaryTier) agreeCount += 1
+  }
+  if (cams.status === 'ready') {
+    resolvedCount += 1
+    if (cams.tier === primaryTier) agreeCount += 1
+  }
 
+  // Whichever source backs the primary reading also decides staleness — a
+  // GRID-primary reading checks `grid.stale`, a CAMS-primary reading (GRID
+  // missing/loading, CAMS filled in) must check `cams.stale` instead, or a
+  // stale forecast-fallback bundle (`forecastSource.ts`'s "may be stale"
+  // static fallback) would render as unconditionally "ready".
+  const primaryIsGrid = grid.status === 'ready'
+  const primaryStale = primaryIsGrid ? grid.stale : cams.status === 'ready' ? cams.stale === true : false
   const hudStatus: TodayHudStatus =
     primaryPm25 !== null
-      ? grid.status === 'ready' && grid.stale
+      ? primaryStale
         ? 'stale'
         : 'ready'
       : grid.status === 'loading' || cams.status === 'loading'
@@ -99,6 +113,7 @@ export default function Today() {
   const natureLabel = grid.status === 'ready' ? '[ANALYSIS]' : cams.status === 'ready' ? '[FORECAST]' : '[NO DATA]'
   const primaryCity = grid.status === 'ready' ? location.label : cams.status === 'ready' ? cams.cityName : location.label
   const primaryCountryCode = cams.status === 'ready' ? cams.countryCode : null
+  const primaryDistanceKm = grid.status === 'ready' ? grid.distanceKm : cams.status === 'ready' ? cams.distanceKm : null
   const validTimeIso =
     grid.status === 'ready' ? grid.updatedAt : cams.status === 'ready' ? (cams.series24h[0]?.time ?? cams.updatedAt) : null
 
@@ -155,6 +170,7 @@ export default function Today() {
             city={primaryCity}
             countryCode={primaryCountryCode}
             validTimeIso={validTimeIso}
+            distanceKm={primaryDistanceKm}
           />
           <div className="today-decision__row">
             <TodayWhy
@@ -165,7 +181,7 @@ export default function Today() {
               weatherConfigured={weatherData.configured}
               onRetryWeather={weatherData.retry}
             />
-            <TodayWhatNext tier={primaryTier} agreeCount={agreeCount} />
+            <TodayWhatNext tier={primaryTier} agreeCount={agreeCount} resolvedCount={resolvedCount} />
           </div>
           <TodayEvidence grid={grid} cams={cams} agreement={agreement} />
         </div>

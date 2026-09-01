@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchForecast } from '../lib/today/forecastSource'
 import { pickNearestCity } from '../lib/today/nearestCity'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
+import { DEFAULT_MAX_AGE_HOURS } from '../api/gridSnapshot'
 import type { ForecastPayload } from '../types/forecast'
 import type { CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
 import type { AqiTier } from '../components/wireframe/AqiDot'
@@ -25,10 +26,31 @@ export type TodayCamsState =
       tier: AqiTier
       series24h: CapsuleSeriesPoint[]
       updatedAt: string
+      /** Same 48h threshold `gridSnapshot.ts` judges GRID staleness by
+       * (`DEFAULT_MAX_AGE_HOURS`) — null when `generated_at` cannot be
+       * parsed, never a guessed true/false. `forecastSource.ts`'s bundled
+       * static fallback is explicitly "may be stale", so this must not
+       * default to `false`. */
+      stale: boolean | null
     }
   | { status: 'missing' }
 
-type PayloadState = 'loading' | ForecastPayload | null
+/** `Date.now()` here runs inside an async `.then()` callback (after the
+ * fetch resolves), not during render — the same reason `gridSnapshot.ts`'s
+ * own staleness check is clean under the purity lint despite calling it. */
+function staleFromGeneratedAt(generatedAt: string): boolean | null {
+  const generatedMs = new Date(generatedAt).getTime()
+  if (!Number.isFinite(generatedMs)) return null
+  const ageHours = (Date.now() - generatedMs) / 3_600_000
+  return ageHours > DEFAULT_MAX_AGE_HOURS
+}
+
+interface FetchedPayload {
+  payload: ForecastPayload
+  stale: boolean | null
+}
+
+type PayloadState = 'loading' | FetchedPayload | null
 
 export function useTodayCams(lat: number, lon: number): TodayCamsState {
   const [payload, setPayload] = useState<PayloadState>('loading')
@@ -37,7 +59,8 @@ export function useTodayCams(lat: number, lon: number): TodayCamsState {
     let alive = true
     fetchForecast()
       .then((p) => {
-        if (alive) setPayload(p)
+        if (!alive) return
+        setPayload(p ? { payload: p, stale: staleFromGeneratedAt(p.generated_at) } : null)
       })
       .catch(() => {
         if (alive) setPayload(null)
@@ -50,7 +73,8 @@ export function useTodayCams(lat: number, lon: number): TodayCamsState {
   return useMemo(() => {
     if (payload === 'loading') return { status: 'loading' }
     if (!payload) return { status: 'missing' }
-    const nearest = pickNearestCity(payload.cities, lat, lon)
+    const { payload: forecast, stale } = payload
+    const nearest = pickNearestCity(forecast.cities, lat, lon)
     const now = nearest?.city.hourly[0]
     if (!nearest || !now || !Number.isFinite(now.pm25)) return { status: 'missing' }
 
@@ -73,7 +97,8 @@ export function useTodayCams(lat: number, lon: number): TodayCamsState {
       current: now.pm25,
       tier: tierFromPm25(now.pm25),
       series24h,
-      updatedAt: payload.generated_at,
+      updatedAt: forecast.generated_at,
+      stale,
     }
   }, [payload, lat, lon])
 }

@@ -54,6 +54,23 @@ function mockCams(state: TodayCamsState) {
   vi.mocked(useTodayCams).mockReturnValue(state)
 }
 
+/** A ready `TodayCamsState` with sane defaults (`stale: false`) — spreadable
+ * per test so each only names what it cares about. */
+function camsReady(overrides: Partial<Extract<TodayCamsState, { status: 'ready' }>> = {}): TodayCamsState {
+  return {
+    status: 'ready',
+    cityName: 'Seoul',
+    countryCode: 'KR',
+    distanceKm: 1,
+    current: 22,
+    tier: 'good',
+    series24h: [{ time: '2026-08-26T00:00:00Z', p10: null, p50: 22, p90: null }],
+    updatedAt: '2026-08-26T00:00:00Z',
+    stale: false,
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('reduced-motion'),
@@ -142,16 +159,7 @@ describe('Today page', () => {
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
-    mockCams({
-      status: 'ready',
-      cityName: 'Seoul',
-      countryCode: 'KR',
-      distanceKm: 1,
-      current: 22,
-      tier: 'good',
-      series24h: [{ time: '2026-08-26T00:00:00Z', p10: null, p50: 22, p90: null }],
-      updatedAt: '2026-08-26T00:00:00Z',
-    })
+    mockCams(camsReady())
     // Act
     const { container } = render(<Today />)
     // Assert — GRID + CAMS + AGREEMENT cells each carry one `.unit` span.
@@ -167,16 +175,7 @@ describe('Today page', () => {
     mockGeo()
     mockWeather()
     mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
-    mockCams({
-      status: 'ready',
-      cityName: 'Seoul',
-      countryCode: 'KR',
-      distanceKm: 1,
-      current: 22,
-      tier: 'good',
-      series24h: [],
-      updatedAt: '2026-08-26T00:00:00Z',
-    })
+    mockCams(camsReady({ series24h: [] }))
     // Act
     const { getByText } = render(<Today />)
     // Assert
@@ -188,16 +187,7 @@ describe('Today page', () => {
     mockGeo()
     mockWeather()
     mockGrid({ status: 'missing' })
-    mockCams({
-      status: 'ready',
-      cityName: 'Seoul',
-      countryCode: 'KR',
-      distanceKm: 1,
-      current: 22,
-      tier: 'good',
-      series24h: [{ time: '2026-08-26T00:00:00Z', p10: null, p50: 22, p90: null }],
-      updatedAt: '2026-08-26T00:00:00Z',
-    })
+    mockCams(camsReady())
     // Act
     const { getByText, container } = render(<Today />)
     // Assert
@@ -215,5 +205,90 @@ describe('Today page', () => {
     const { getByText } = render(<Today />)
     // Assert
     expect(getByText('Not enough sources to compare.')).toBeTruthy()
+  })
+
+  it('renders a stale CAMS-primary reading as stale — GRID missing, CAMS is the only (stale) source, so "ready" would be dishonest', () => {
+    // Arrange — GRID absent so CAMS becomes the primary reading; its payload
+    // carries `stale: true` (e.g. the "may be stale" static forecast fallback).
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ stale: true }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert — HUD dot reflects stale status, and the Evidence/Why CAMS cells
+    // both say so, mirroring the existing GRID stale pattern.
+    expect(container.querySelector('.gobs-live-dot.is-stale')).not.toBeNull()
+    expect(container.querySelector('.gobs-live-dot.is-ready')).toBeNull()
+    const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
+    expect(camsWhySub?.textContent).toMatch(/^stale · forecast/)
+    const camsEvidence = container.querySelectorAll('.today-evidence__cells .today-cell')[1]
+    expect(camsEvidence?.textContent).toMatch(/· stale/)
+  })
+
+  it('renders a fresh CAMS-primary reading as ready — GRID missing, CAMS stale:false', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ stale: false }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.gobs-live-dot.is-ready')).not.toBeNull()
+    const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
+    expect(camsWhySub?.textContent).not.toMatch(/^stale/)
+  })
+
+  it('renders the distance to the primary source next to its city name when known', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 12.4 })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.today-answer__meta')?.textContent).toContain('12 km away')
+  })
+
+  it('omits the distance suffix when the primary source has no distanceKm', () => {
+    // Arrange — CAMS becomes primary via `nearestCity` returning no match
+    // (distanceKm null is only reachable through the hook's own contract, but
+    // Today.tsx's fallback of `null` for an unresolved primary must not print
+    // "null km away" or similar).
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.today-answer__meta')?.textContent).not.toContain('km away')
+  })
+
+  it('shows an honest "single source" confidence line — never a fixed "/2" — when only one of GRID/CAMS resolved', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
+    mockCams({ status: 'missing' })
+    // Act
+    const { getByText, queryByText } = render(<Today />)
+    // Assert
+    expect(getByText(/Single source — no cross-check available/)).toBeTruthy()
+    expect(queryByText(/\/2 sources agree/)).toBeNull()
+  })
+
+  it('shows the resolved-count denominator (not a fixed "/2") when both GRID and CAMS resolve and agree', () => {
+    // Arrange — both PM2.5 readings land in the same tier (good, <=12).
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 8, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
+    mockCams(camsReady({ current: 9, tier: 'good' }))
+    // Act
+    const { getByText } = render(<Today />)
+    // Assert
+    expect(getByText(/2\/2 sources agree on tier/)).toBeTruthy()
   })
 })

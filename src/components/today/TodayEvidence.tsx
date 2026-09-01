@@ -37,6 +37,7 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
             <p className="t-micro">
               <span className="unit">µg/m³</span> · forecast · valid {formatUtcTime(cams.series24h[0]?.time ?? cams.updatedAt)}{' '}
               · source Open-Meteo CAMS
+              {cams.stale ? ' · stale' : ''}
             </p>
           ) : (
             <p className="t-micro">Not available.</p>

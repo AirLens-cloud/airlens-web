@@ -77,7 +77,7 @@ export default function TodayWhy({ grid, cams, weather, weatherStatus, weatherCo
                 {Math.round(cams.current)} <small>µg/m³</small>
               </span>
               <span className="today-cell__sub t-micro">
-                forecast · lead +0h · valid {formatUtcTime(cams.series24h[0]?.time ?? cams.updatedAt)}
+                {cams.stale ? 'stale · ' : ''}forecast · lead +0h · valid {formatUtcTime(cams.series24h[0]?.time ?? cams.updatedAt)}
               </span>
             </>
           )}
