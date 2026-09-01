@@ -33,6 +33,10 @@ export default function HomeStoriesResearch() {
   }, [])
 
   const posts = feed.status === 'ready' ? feed.posts.slice(0, STORY_COUNT) : []
+  // `fetchBlogFeed` never resolves 'ready' with zero posts (blog.ts's
+  // `fetchBlogFeed` returns 'empty' for that case) — the `posts.length === 0`
+  // half is a defensive fallback for the same wording, not a reachable branch.
+  const showStoriesEmpty = feed.status === 'empty' || (feed.status === 'ready' && posts.length === 0)
 
   return (
     <section className="home-stories-research" aria-label="Stories and Research">
@@ -56,11 +60,7 @@ export default function HomeStoriesResearch() {
           </p>
         )}
 
-        {feed.status === 'empty' && (
-          <p className="home-stories__empty t-caption">No Field Notes have been published yet.</p>
-        )}
-
-        {feed.status === 'ready' && posts.length === 0 && (
+        {showStoriesEmpty && (
           <p className="home-stories__empty t-caption">No Field Notes have been published yet.</p>
         )}
 
