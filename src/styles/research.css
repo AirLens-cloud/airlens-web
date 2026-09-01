@@ -1,0 +1,291 @@
+/* ════════════════════════════════════════════════════════════════════
+   research.css — shared styles for the three new research/lab surfaces:
+   /learn (lrn-*), /lab (lab-*), /research (rsc-*).
+
+   Space division: fixed/hybrid capped-fluid shells (`--shell` cap), same
+   pattern as `.ins-shell` in insights.css. Square doctrine throughout
+   (`--r-0`, `--r-pill` only for the status badge) — no hardcoded radius.
+   Colors and surfaces come from tokens.css pairs (`--bg-*`/`--ink-*`/
+   `--rule`/`--orange-ink`) so the page renders correctly in both the light
+   and dark token sets — no standalone hex.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ---- shared page background ---- */
+.lrn-page,
+.lab-page,
+.rsc-page {
+  background: var(--bg-0);
+  color: var(--ink-0);
+  min-height: 100vh;
+}
+
+.lrn-shell,
+.rsc-shell {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+
+/* ── /learn ── */
+.lrn-header__eyebrow {
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-3);
+}
+.lrn-header__title {
+  margin: 0 0 var(--sp-2);
+}
+.lrn-header__thesis {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--ink-1);
+}
+
+.lrn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-5);
+}
+
+.lrn-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-0);
+  background: var(--bg-1);
+}
+.lrn-card__eyebrow {
+  color: var(--ink-2);
+  margin: 0;
+}
+.lrn-card__question {
+  margin: 0;
+}
+.lrn-card__data {
+  color: var(--ink-2);
+  margin: 0;
+}
+.lrn-card__caveat {
+  margin: 0;
+}
+.lrn-card__link {
+  color: var(--orange-ink);
+  text-decoration: none;
+  margin-top: auto;
+}
+.lrn-card__link:hover {
+  text-decoration: underline;
+}
+
+.lrn-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+  padding-top: var(--sp-5);
+}
+.lrn-footer__note {
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 48ch;
+}
+.lrn-footer__link {
+  color: var(--orange-ink);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.lrn-footer__link:hover {
+  text-decoration: underline;
+}
+
+/* ── /lab ── */
+.lab-page {
+  width: 100%;
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.lab-header__badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--orange-ink);
+  border: 1px solid var(--orange-ink);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  margin: 0 0 var(--sp-3);
+}
+.lab-header__title {
+  margin: 0 0 var(--sp-2);
+}
+.lab-header__thesis {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--ink-1);
+}
+
+.lab-note {
+  border-left: 2px solid var(--orange-ink);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-1);
+  color: var(--ink-1);
+  margin: 0;
+  max-width: 72ch;
+}
+
+/* Whole shell reads as inert: dashed hairlines + reduced opacity, same
+   visual language WfDisabledCta already uses for this exact state. */
+.lab-shell {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2.2fr) minmax(220px, 1fr);
+  gap: var(--sp-4);
+  opacity: 0.6;
+}
+@media (max-width: 900px) {
+  .lab-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lab-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.lab-rail-group {
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-0);
+  padding: var(--sp-3);
+  background: var(--bg-1);
+}
+.lab-rail-group__label {
+  color: var(--ink-2);
+  margin: 0 0 4px;
+}
+.lab-rail-group__placeholder {
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.lab-canvas {
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-0);
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-5);
+}
+.lab-canvas__placeholder {
+  color: var(--ink-3);
+  margin: 0;
+  max-width: 32ch;
+}
+
+.lab-drawer {
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-0);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  opacity: 0.6;
+}
+.lab-drawer__label {
+  color: var(--ink-2);
+  margin: 0;
+}
+.lab-drawer__code {
+  margin: 0;
+  padding: var(--sp-3);
+  background: var(--bg-0);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-0);
+  color: var(--ink-3);
+  white-space: pre-wrap;
+}
+.lab-drawer__citation {
+  color: var(--ink-3);
+  margin: 0;
+}
+.lab-drawer__actions {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+
+/* ── /research ── */
+.rsc-header__eyebrow {
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-3);
+}
+.rsc-header__title {
+  margin: 0 0 var(--sp-2);
+}
+.rsc-header__thesis {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--ink-1);
+}
+
+.rsc-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-6);
+  border: 1px dashed var(--rule);
+  border-radius: var(--r-0);
+  background: var(--bg-1);
+}
+.rsc-empty__title {
+  margin: 0;
+  font-weight: 700;
+}
+.rsc-empty__body {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ink-2);
+}
+.rsc-empty__cta {
+  margin: 0;
+  color: var(--ink-2);
+}
+.rsc-empty__cta a {
+  color: var(--orange-ink);
+}
+
+.rsc-anatomy {
+  border-top: 1px solid var(--rule);
+  padding-top: var(--sp-5);
+}
+.rsc-anatomy__label {
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-2);
+}
+.rsc-anatomy__chain {
+  margin: 0;
+  color: var(--ink-1);
+  overflow-x: auto;
+  white-space: nowrap;
+}
