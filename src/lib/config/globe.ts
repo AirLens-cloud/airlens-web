@@ -191,12 +191,11 @@ export const GLOBE_CONFIG = {
     // to show the interpolation caveat — keep it a single constant so the two sides
     // cannot drift apart and silently drop the caveat.
     //
-    // Value is lifted verbatim from the previous ScalarFieldOverlay literal. "stations"
-    // is a misnomer — fetchGlobalMarkers returns global_grid Edge Fn cells
-    // (station_id 'grid-N'), not physical stations. Renaming it is a user-visible copy
-    // change and is deliberately left out of this PR so promoting the constant stays
-    // a pure refactor; the legend caveat below already says "observation points".
-    IDW_SOURCE_LABEL: 'AirLens stations (IDW)',
+    // "grid", not "stations": fetchGlobalMarkers returns global_grid cells
+    // (station_id 'grid-N'), not physical stations. The previous label said
+    // "AirLens stations (IDW)" — a grid-as-station misnomer fixed in B0
+    // (Truth Kernel, WEB_ARCHITECTURE §7.1).
+    IDW_SOURCE_LABEL: 'AirLens grid (IDW)',
 
     // P8b timeline cross-fade (V-W3) — dual-texture opacity blend between two
     // real, already-fetched GEFS frames (never a data interpolation — see

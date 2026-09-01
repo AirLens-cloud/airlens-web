@@ -3,9 +3,12 @@
  * apps/web `src/api/gridSnapshot.ts` — the retired `global-grid-snapshot`
  * Supabase Edge Fn never held data of its own; it read the harvester-exported
  * PM2.5 grid artifact and ran pure client-safe computation on it (haversine
- * proximity ranking, `aqi = round(pm25*1.25)`, grade cut 15/35/75, 48h
- * staleness). That artifact is published straight to the browser via two
- * channels this module reads instead:
+ * proximity ranking, grade cut 15/35/75, 48h staleness). One deliberate
+ * divergence from that port: the Edge Fn's `aqi = round(pm25*1.25)` fallback
+ * is replaced with `pm25ToAqi()` (EPA piecewise, the inverse of the
+ * `aqiToPm25()` decoder downstream consumers apply) — B0 Truth Kernel,
+ * EVIDENCE_CONTRACT §7. That artifact is published straight to the browser via
+ * two channels this module reads instead:
  *
  *   1. HF dataset (`Robeedau/airlens-live`, `HF_LIVE_BASE`) — GitHub Actions
  *      cron republishes `aq-data/current-pm25-grid.json` every 3h.
@@ -16,6 +19,7 @@
  * `dqss`/`confidence` stay `undefined` unless present verbatim in the source point.
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources';
+import { pm25ToAqi } from '../lib/config/aqi';
 import type { GlobalGridCell, GlobalGridSnapshot, GlobalGridSnapshotOptions, PM25Grade } from '../types/data';
 
 const GRID_OBJECT_PATH = 'aq-data/current-pm25-grid.json';
@@ -70,10 +74,6 @@ function gradeFromPm25(pm25: number): PM25Grade {
   if (pm25 <= 35) return 'Moderate';
   if (pm25 <= 75) return 'Unhealthy';
   return 'Very Unhealthy';
-}
-
-function aqiFromPm25(pm25: number): number {
-  return Math.round(pm25 * 1.25);
 }
 
 function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
@@ -192,7 +192,7 @@ export async function fetchGlobalGridSnapshot(
         lat: p.lat,
         lon: p.lon,
         pm25: p.pm25,
-        aqi: p.aqi ?? aqiFromPm25(p.pm25),
+        aqi: p.aqi ?? pm25ToAqi(p.pm25),
         grade: gradeFromPm25(p.pm25),
         updatedAt,
         dqss: p.dqss,

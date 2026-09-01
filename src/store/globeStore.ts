@@ -94,7 +94,6 @@ interface GlobeStore {
   qualityTier: QualityTier;
   qualityPreset: QualityPreset;
   // Phase A-C additions
-  globalAQI: number;
   hoveredStation: HoveredStation | null;
   /** Grid cell hover readout (Globe stage tooltip) — 20Hz event, no track() */
   gridHover: GridHoverInfo | null;
@@ -219,7 +218,6 @@ interface GlobeStore {
   setSelectedStation: (s: SelectedStation | null) => void;
   setSelectedPolicy: (p: SelectedPolicy | null) => void;
   setQualityTier: (tier: QualityTier) => void;
-  setGlobalAQI: (v: number) => void;
   setHoveredStation: (s: HoveredStation | null) => void;
   setViewCenterLocation: (v: string | null) => void;
 }
@@ -264,7 +262,6 @@ export const useGlobeStore = create<GlobeStore>((set, get) => ({
   hoveredPrediction: null,
   qualityTier: _initialTier,
   qualityPreset: getQualityPreset(_initialTier),
-  globalAQI: 50,
   hoveredStation: null,
   gridHover: null,
   setGridHover: (g) => set({ gridHover: g }),
@@ -483,7 +480,6 @@ export const useGlobeStore = create<GlobeStore>((set, get) => ({
     set({ qualityTier: tier, qualityPreset: getQualityPreset(tier) });
     track('globe_quality_changed', { tier });
   },
-  setGlobalAQI: (v) => set({ globalAQI: v }),
   setHoveredStation: (s) => set({ hoveredStation: s }),
   setViewCenterLocation: (v) => set({ viewCenterLocation: v }),
 }));
