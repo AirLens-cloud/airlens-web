@@ -161,3 +161,67 @@ describe('App — FluidChrome routing', () => {
     expect(landingVariant).toBe('night')
   })
 })
+
+// PR-N1: App.tsx now wraps every matched route in SiteChrome, which decides
+// whether GlobalNav mounts (and in which variant) from the route's `chrome`
+// field. This block is scoped to that wrapping decision — GlobalNav's own
+// interaction behavior (dropdowns, Escape, aria-current) is covered by
+// GlobalNav.test.tsx, not duplicated here.
+describe('App — SiteChrome routing (PR-N1)', () => {
+  it('mounts GlobalNav in the site variant on Home, with no footer yet (PR-N2)', () => {
+    // Arrange
+    setPath('/')
+    // Act
+    const { container } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--site')).not.toBeNull()
+    expect(container.querySelector('.chrome-shell--site')).not.toBeNull()
+  })
+
+  it('mounts GlobalNav in the overlay variant on /globe (no bare fallback, no footer)', () => {
+    // Arrange
+    setPath('/globe')
+    // Act
+    const { container } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--overlay')).not.toBeNull()
+    expect(container.querySelector('.chrome-nav--site')).toBeNull()
+  })
+
+  it('mounts no chrome at all on /landing (bare — the immersive flight owns its own chrome)', () => {
+    // Arrange
+    setPath('/landing')
+    // Act
+    const { container, queryByTestId } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav')).toBeNull()
+    expect(container.querySelector('.chrome-shell')).toBeNull()
+    expect(queryByTestId('page-landing')).not.toBeNull()
+  })
+
+  it('mounts no chrome on /design and /probe (bare dev-only surfaces)', () => {
+    // Arrange / Act
+    setPath('/design')
+    const design = render(<App />)
+    const designChrome = design.container.querySelector('.chrome-nav')
+    cleanup()
+
+    setPath('/probe')
+    const probe = render(<App />)
+    const probeChrome = probe.container.querySelector('.chrome-nav')
+
+    // Assert
+    expect(designChrome).toBeNull()
+    expect(probeChrome).toBeNull()
+  })
+
+  it('gives NotFound the site chrome (a recovery surface, not another dead end)', () => {
+    // Arrange
+    setPath('/some-unknown-path')
+    // Act
+    const { container, queryByTestId } = render(<App />)
+    // Assert
+    expect(container.querySelector('.chrome-nav--site')).not.toBeNull()
+    expect(queryByTestId('page-not-found')).not.toBeNull()
+  })
+})

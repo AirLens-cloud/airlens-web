@@ -25,6 +25,7 @@ import Learn from './pages/Learn'
 import Lab from './pages/Lab'
 import Research from './pages/Research'
 import NotFound from './pages/NotFound'
+import SiteChrome, { type ChromeVariant } from './app/SiteChrome'
 
 /**
  * WeatherRedirectShim — `/weather` no longer has its own page. Today absorbed
@@ -49,22 +50,47 @@ function WeatherRedirectShim() {
 const Insights = lazy(() => import('./pages/Insights'))
 
 /**
+ * A route's `render` returns its element paired with a chrome variant
+ * (PR-N1) instead of a bare `JSX.Element` — `router.ts` is generic over its
+ * render's return type, so this rides the existing `matchRoute` mechanism
+ * rather than needing a second lookup (`router.ts` is frozen — see its
+ * header comment). `App()` reads `.chrome` to pick how `SiteChrome` wraps
+ * `.element`.
+ *
+ *   'site'    → GlobalNav (default — every briefing/static/catalog page)
+ *   'overlay' → GlobalNav, transparent-on-dark, no footer (/globe)
+ *   'bare'    → no chrome at all (/design, /landing, /probe)
+ */
+interface RouteRender {
+  element: JSX.Element
+  chrome: ChromeVariant
+}
+
+/**
  * Route table for `matchRoute` (`./app/router`) — a ~40-line regex matcher,
  * not react-router-dom (not installed in this repo; adding one wasn't part
  * of the design-system porting brief). Matched in order; the first hit wins.
  * FluidChrome (and the AQI capsule it mounts) wraps only the immersive
  * surfaces — /landing, /globe, /insights — every other page (briefing
  * surfaces and static content alike) renders unwrapped, same as Home/Today.
+ *
+ * Named export (not just used locally) so `nav.test.ts` can verify every
+ * nav/footer href resolves here, and that no `chrome: 'site'` route is
+ * missing from nav.
  */
-const routes: Array<Route<JSX.Element>> = [
-  { path: '/design', render: () => <DesignGallery /> },
+// eslint-disable-next-line react-refresh/only-export-components -- route data, not a component
+export const routes: Array<Route<RouteRender>> = [
+  { path: '/design', render: () => ({ element: <DesignGallery />, chrome: 'bare' }) },
   {
     path: '/landing',
-    render: () => (
-      <FluidChrome>
-        <LandingFlight />
-      </FluidChrome>
-    ),
+    render: () => ({
+      element: (
+        <FluidChrome>
+          <LandingFlight />
+        </FluidChrome>
+      ),
+      chrome: 'bare',
+    }),
   },
   // G2: Chapter 5's CTA now lands on the real observation deck (the WebGL
   // globe + its observatory chrome). GlobePlaceholder, which stood in while
@@ -72,56 +98,70 @@ const routes: Array<Route<JSX.Element>> = [
   // itself when WebGL is unavailable.
   {
     path: '/globe',
-    render: () => (
-      <FluidChrome>
-        <Globe />
-      </FluidChrome>
-    ),
+    render: () => ({
+      element: (
+        <FluidChrome>
+          <Globe />
+        </FluidChrome>
+      ),
+      chrome: 'overlay',
+    }),
   },
   // /weather is absorbed into /today (DECISIONS-2026-08-28 D4) — this is now
   // a redirect shim, not a page render. `Weather.tsx` itself is untouched;
-  // Today's Conditions tab reuses its section components directly.
-  { path: '/weather', render: () => <WeatherRedirectShim /> },
+  // Today's Conditions tab reuses its section components directly. 'bare'
+  // because the redirect is instant — mounting nav chrome first would only
+  // flash it for one render before `location.replace` fires.
+  { path: '/weather', render: () => ({ element: <WeatherRedirectShim />, chrome: 'bare' }) },
   // Today IS the briefing/decision surface — it renders its own current-
   // reading HUD and Answer hero, so it is not wrapped in FluidChrome (that
   // would float a second, redundant AqiCapsule readout over it). Same
   // reasoning as Home, below.
-  { path: '/today', render: () => <Today /> },
+  { path: '/today', render: () => ({ element: <Today />, chrome: 'site' }) },
   {
     path: '/insights',
-    render: () => (
-      <FluidChrome capsuleVariant="day">
-        <Suspense fallback={null}>
-          <Insights />
-        </Suspense>
-      </FluidChrome>
-    ),
+    render: () => ({
+      element: (
+        <FluidChrome capsuleVariant="day">
+          <Suspense fallback={null}>
+            <Insights />
+          </Suspense>
+        </FluidChrome>
+      ),
+      chrome: 'site',
+    }),
   },
-  { path: '/probe', render: () => <DataProbe /> },
-  { path: '/dispatch', render: () => <Dispatch /> },
-  { path: '/news/:slug', render: ({ slug }) => <NewsArticle slug={slug} /> },
-  { path: '/blog', render: () => <Blog /> },
-  { path: '/blog/:slug', render: ({ slug }) => <BlogPost slug={slug} /> },
-  { path: '/data-sources', render: () => <DataSources /> },
-  { path: '/datasets', render: () => <Datasets /> },
+  { path: '/probe', render: () => ({ element: <DataProbe />, chrome: 'bare' }) },
+  { path: '/dispatch', render: () => ({ element: <Dispatch />, chrome: 'site' }) },
+  { path: '/news/:slug', render: ({ slug }) => ({ element: <NewsArticle slug={slug} />, chrome: 'site' }) },
+  { path: '/blog', render: () => ({ element: <Blog />, chrome: 'site' }) },
+  { path: '/blog/:slug', render: ({ slug }) => ({ element: <BlogPost slug={slug} />, chrome: 'site' }) },
+  { path: '/data-sources', render: () => ({ element: <DataSources />, chrome: 'site' }) },
+  { path: '/datasets', render: () => ({ element: <Datasets />, chrome: 'site' }) },
   // CountryProfile normalizes `code` itself (trims + upper-cases), so the
   // raw decoded path segment is passed through as-is.
-  { path: '/country/:code', render: ({ code }) => <CountryProfile code={code} /> },
-  { path: '/trust', render: () => <Trust /> },
+  {
+    path: '/country/:code',
+    render: ({ code }) => ({ element: <CountryProfile code={code} />, chrome: 'site' }),
+  },
+  { path: '/trust', render: () => ({ element: <Trust />, chrome: 'site' }) },
   // Legal falls back to its first document for an unrecognized `doc` id
   // rather than 404ing (Legal.tsx `LEGAL_DOCS.find(...) ?? LEGAL_DOCS[0]`).
-  { path: '/legal/:doc', render: ({ doc }) => <Legal doc={doc as LegalDocId} /> },
-  { path: '/about', render: () => <About /> },
-  { path: '/faq', render: () => <Faq /> },
-  { path: '/methodology', render: () => <Methodology /> },
-  { path: '/glossary', render: () => <Glossary /> },
-  { path: '/learn', render: () => <Learn /> },
-  { path: '/lab', render: () => <Lab /> },
-  { path: '/research', render: () => <Research /> },
+  {
+    path: '/legal/:doc',
+    render: ({ doc }) => ({ element: <Legal doc={doc as LegalDocId} />, chrome: 'site' }),
+  },
+  { path: '/about', render: () => ({ element: <About />, chrome: 'site' }) },
+  { path: '/faq', render: () => ({ element: <Faq />, chrome: 'site' }) },
+  { path: '/methodology', render: () => ({ element: <Methodology />, chrome: 'site' }) },
+  { path: '/glossary', render: () => ({ element: <Glossary />, chrome: 'site' }) },
+  { path: '/learn', render: () => ({ element: <Learn />, chrome: 'site' }) },
+  { path: '/lab', render: () => ({ element: <Lab />, chrome: 'site' }) },
+  { path: '/research', render: () => ({ element: <Research />, chrome: 'site' }) },
   // Home (`/`) IS the briefing surface — it renders its own current-reading
   // hero, so it is not wrapped in FluidChrome (that would mount a second,
   // redundant AqiCapsule readout on top of it).
-  { path: '/', render: () => <Home /> },
+  { path: '/', render: () => ({ element: <Home />, chrome: 'site' }) },
 ]
 
 function App() {
@@ -129,8 +169,11 @@ function App() {
   // unavailable, pathname defaults to '/' and the root route (Home) matches.
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
   // Any path none of the routes above match falls to the recovery surface
-  // (NotFound), replacing the previous silent fallback to Home.
-  return matchRoute(pathname, routes) ?? <NotFound />
+  // (NotFound), replacing the previous silent fallback to Home. NotFound
+  // still gets the site chrome (nav) — it's a recovery surface, not an exit.
+  const matched = matchRoute(pathname, routes)
+  const { element, chrome } = matched ?? { element: <NotFound />, chrome: 'site' as ChromeVariant }
+  return <SiteChrome variant={chrome}>{element}</SiteChrome>
 }
 
 export default App
