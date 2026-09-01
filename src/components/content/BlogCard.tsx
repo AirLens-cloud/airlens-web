@@ -1,8 +1,11 @@
 import type { BlogPostSummary } from '../../types/blog'
+import BoundedImage from './BoundedImage'
 import { formatDate } from './formatDate'
 
 export interface BlogCardProps {
   post: BlogPostSummary
+  /** Placeholder gradient cycle key — same contract as `ArticleCard`'s `index`. */
+  index: number
   onOpen: (slug: string) => void
 }
 
@@ -11,22 +14,30 @@ export interface BlogCardProps {
  * "reproducible" badge anywhere on this card (§1 boundary, acceptance test
  * #6) — those belong to Research Commons, a different surface this repo has
  * not built yet.
+ *
+ * Thumbnail (Wave 4): `post.heroImage` when present, else the gradient
+ * placeholder cycle — same "every card shows something" contract as
+ * `ArticleCard`. Never a re-hosted image, always the feed's own
+ * `hero_image.url`.
  */
-export default function BlogCard({ post, onOpen }: BlogCardProps) {
+export default function BlogCard({ post, index, onOpen }: BlogCardProps) {
   const date = formatDate(post.publishedAt)
   return (
     <article className="content-card blog-card">
       <button type="button" className="blog-card__open" onClick={() => onOpen(post.slug)} aria-label={`Open post: ${post.title}`}>
-        <div className="blog-card__meta t-micro">
-          <span className="content-tag">{post.topic}</span>
-          {date ? <span className="content-tag">{date}</span> : null}
+        <BoundedImage src={post.heroImage?.url ?? null} alt="" index={index} />
+        <div className="blog-card__body">
+          <div className="blog-card__meta t-micro">
+            <span className="content-tag">{post.topic}</span>
+            {date ? <span className="content-tag">{date}</span> : null}
+          </div>
+          <h3 className="blog-card__title t-body">{post.title}</h3>
+          {post.dek ? <p className="blog-card__dek t-caption">{post.dek}</p> : null}
+          <p className="blog-card__footer t-micro">
+            {post.readingMin ? `${post.readingMin} min read · ` : ''}
+            SRC ×{post.sourceRefsCount}
+          </p>
         </div>
-        <h3 className="blog-card__title t-body">{post.title}</h3>
-        {post.dek ? <p className="blog-card__dek t-caption">{post.dek}</p> : null}
-        <p className="blog-card__footer t-micro">
-          {post.readingMin ? `${post.readingMin} min read · ` : ''}
-          SRC ×{post.sourceRefsCount}
-        </p>
       </button>
     </article>
   )

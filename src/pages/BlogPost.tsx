@@ -5,8 +5,10 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchBlogPostBySlug } from '../api/blog'
 import type { BlogPostLookupResult } from '../types/blog'
+import AttributedHeroImage from '../components/content/AttributedHeroImage'
 import MarkdownBody from '../components/content/MarkdownBody'
 import SourceRefsBlock from '../components/content/SourceRefsBlock'
+import VideoEmbed from '../components/content/VideoEmbed'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
 import { formatDate } from '../components/content/formatDate'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
@@ -87,15 +89,30 @@ export default function BlogPost({ slug }: BlogPostProps) {
         {post.dek ? <p className="blogpost-dek t-lede">{post.dek}</p> : null}
       </header>
 
-      {body ? (
+      {/* Media is fully optional (Wave 4) — no back-filled posts carry it,
+          so absence must not shift layout or leave a gap: nothing renders
+          when `heroImage`/`video` are null, same as `post.dek` above. */}
+      {post.heroImage ? (
         <div className="fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+          <AttributedHeroImage image={post.heroImage} postSlug={post.slug} />
+        </div>
+      ) : null}
+
+      {post.video ? (
+        <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+          <VideoEmbed video={post.video} />
+        </div>
+      ) : null}
+
+      {body ? (
+        <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
           <MarkdownBody body={body} />
         </div>
       ) : (
         <p className="blogpost-pending t-caption">This post's body is still being prepared.</p>
       )}
 
-      <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
+      <div className="fluid-enter" style={{ '--enter-i': 4 } as CSSProperties}>
         <SourceRefsBlock refs={post.sourceRefs} />
       </div>
 

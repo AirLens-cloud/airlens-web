@@ -135,3 +135,104 @@ describe('mapPost — field derivation', () => {
     expect(excerpt).toBe('실제 첫 문단입니다.')
   })
 })
+
+// Wave 4 — hero_image/video mappers. Both drop the whole field on any
+// partial break rather than render an uncredited image or a mixed-content
+// (http) source.
+describe('mapHeroImage', () => {
+  const VALID = {
+    url: 'https://example.com/photo.jpg',
+    source_name: 'Example News',
+    source_url: 'https://example.com/article',
+  }
+
+  it('maps a well-formed hero_image with attribution', () => {
+    expect(__test.mapHeroImage(VALID)).toEqual({
+      url: 'https://example.com/photo.jpg',
+      sourceName: 'Example News',
+      sourceUrl: 'https://example.com/article',
+      alt: null,
+    })
+  })
+
+  it('carries alt text through when present', () => {
+    expect(__test.mapHeroImage({ ...VALID, alt: 'A smoggy skyline' })?.alt).toBe('A smoggy skyline')
+  })
+
+  it('returns null (not undefined) for a non-object input', () => {
+    expect(__test.mapHeroImage(null)).toBeNull()
+    expect(__test.mapHeroImage('a string')).toBeNull()
+    expect(__test.mapHeroImage(undefined)).toBeNull()
+  })
+
+  it('drops the whole field when source_name is missing (no uncredited image)', () => {
+    const { source_name: _drop, ...rest } = VALID
+    expect(__test.mapHeroImage(rest)).toBeNull()
+  })
+
+  it('drops the whole field when source_url is missing (no uncredited image)', () => {
+    const { source_url: _drop, ...rest } = VALID
+    expect(__test.mapHeroImage(rest)).toBeNull()
+  })
+
+  it('drops the whole field when url is missing', () => {
+    const { url: _drop, ...rest } = VALID
+    expect(__test.mapHeroImage(rest)).toBeNull()
+  })
+
+  it('drops the whole field when url is http, not https (no mixed content)', () => {
+    expect(__test.mapHeroImage({ ...VALID, url: 'http://example.com/photo.jpg' })).toBeNull()
+  })
+
+  it('drops the whole field when source_url is http, not https', () => {
+    expect(__test.mapHeroImage({ ...VALID, source_url: 'http://example.com/article' })).toBeNull()
+  })
+})
+
+describe('mapVideo', () => {
+  it('maps a well-formed https source_url', () => {
+    expect(__test.mapVideo({ source_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })).toEqual({
+      sourceUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    })
+  })
+
+  it('returns null for a non-object input', () => {
+    expect(__test.mapVideo(null)).toBeNull()
+    expect(__test.mapVideo('a string')).toBeNull()
+  })
+
+  it('returns null when source_url is missing', () => {
+    expect(__test.mapVideo({})).toBeNull()
+  })
+
+  it('returns null when source_url is http, not https', () => {
+    expect(__test.mapVideo({ source_url: 'http://www.youtube.com/watch?v=dQw4w9WgXcQ' })).toBeNull()
+  })
+})
+
+describe('mapPost — media fields (Wave 4)', () => {
+  it('maps heroImage/video to null when the row carries neither field', () => {
+    const mapped = __test.mapPost(REAL_POST)
+    expect(mapped?.heroImage).toBeNull()
+    expect(mapped?.video).toBeNull()
+  })
+
+  it('maps a row that carries both hero_image and video', () => {
+    const mapped = __test.mapPost({
+      ...REAL_POST,
+      hero_image: {
+        url: 'https://example.com/photo.jpg',
+        source_name: 'Example News',
+        source_url: 'https://example.com/article',
+      },
+      video: { source_url: 'https://vimeo.com/76979871' },
+    })
+    expect(mapped?.heroImage).toEqual({
+      url: 'https://example.com/photo.jpg',
+      sourceName: 'Example News',
+      sourceUrl: 'https://example.com/article',
+      alt: null,
+    })
+    expect(mapped?.video).toEqual({ sourceUrl: 'https://vimeo.com/76979871' })
+  })
+})

@@ -12,6 +12,7 @@ function post(overrides: Partial<BlogPostSummary> = {}): BlogPostSummary {
   return {
     slug: 'p1', title: 'A Field Note', dek: 'A short dek.', topic: 'health',
     publishedAt: '2026-08-26T00:00:00Z', readingMin: 3, sourceRefsCount: 1,
+    heroImage: null,
     ...overrides,
   }
 }
@@ -40,5 +41,33 @@ describe('Blog page', () => {
     await screen.findByText('A Field Note')
     expect(container.querySelector('[class*="dqss"]')).toBeNull()
     expect(container.querySelector('[class*="reproduc"]')).toBeNull()
+  })
+
+  it('renders the gradient placeholder thumbnail when a post has no heroImage (Wave 4)', async () => {
+    vi.mocked(fetchBlogFeed).mockResolvedValue({ status: 'ready', posts: [post()] })
+    const { container } = render(<Blog />)
+    await screen.findByText('A Field Note')
+    expect(container.querySelector('.content-thumb--placeholder')).toBeTruthy()
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('renders the heroImage as the card thumbnail when present (Wave 4)', async () => {
+    vi.mocked(fetchBlogFeed).mockResolvedValue({
+      status: 'ready',
+      posts: [
+        post({
+          heroImage: {
+            url: 'https://example.com/photo.jpg',
+            sourceName: 'Example News',
+            sourceUrl: 'https://example.com/article',
+            alt: null,
+          },
+        }),
+      ],
+    })
+    const { container } = render(<Blog />)
+    await screen.findByText('A Field Note')
+    const img = container.querySelector('img')
+    expect(img?.getAttribute('src')).toBe('https://example.com/photo.jpg')
   })
 })
