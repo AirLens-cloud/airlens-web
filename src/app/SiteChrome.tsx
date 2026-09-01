@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import GlobalNav from './GlobalNav'
+import SiteFooter from './SiteFooter'
 
 export type ChromeVariant = 'site' | 'overlay' | 'bare'
 
@@ -10,9 +11,9 @@ interface SiteChromeProps {
 
 /**
  * SiteChrome — mounts the global chrome around a route's rendered page
- * (PR-N1; see `App.tsx`'s route table for the `chrome` field per route).
+ * (PR-N1/PR-N2; see `App.tsx`'s route table for the `chrome` field per route).
  *
- *   'site'    → GlobalNav (footer lands in PR-N2 — deliberately absent here)
+ *   'site'    → GlobalNav + SiteFooter
  *   'overlay' → GlobalNav only, transparent-on-dark variant, no footer
  *               (/globe — a 100vh stage; a footer would be destructive, but
  *               shipping with no nav at all leaves no way out)
@@ -42,6 +43,7 @@ export default function SiteChrome({ variant, children }: SiteChromeProps) {
       <div id="main" className="chrome-main" tabIndex={-1} inert={mobileNavOpen}>
         {children}
       </div>
+      {variant === 'site' && <SiteFooter />}
     </div>
   )
 }

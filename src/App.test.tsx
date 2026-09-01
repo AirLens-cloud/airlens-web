@@ -168,7 +168,7 @@ describe('App — FluidChrome routing', () => {
 // interaction behavior (dropdowns, Escape, aria-current) is covered by
 // GlobalNav.test.tsx, not duplicated here.
 describe('App — SiteChrome routing (PR-N1)', () => {
-  it('mounts GlobalNav in the site variant on Home, with no footer yet (PR-N2)', () => {
+  it('mounts GlobalNav and SiteFooter in the site variant on Home', () => {
     // Arrange
     setPath('/')
     // Act
@@ -176,9 +176,10 @@ describe('App — SiteChrome routing (PR-N1)', () => {
     // Assert
     expect(container.querySelector('.chrome-nav--site')).not.toBeNull()
     expect(container.querySelector('.chrome-shell--site')).not.toBeNull()
+    expect(container.querySelector('.chrome-footer')).not.toBeNull()
   })
 
-  it('mounts GlobalNav in the overlay variant on /globe (no bare fallback, no footer)', () => {
+  it('mounts GlobalNav in the overlay variant on /globe, with no footer (100vh stage)', () => {
     // Arrange
     setPath('/globe')
     // Act
@@ -186,6 +187,7 @@ describe('App — SiteChrome routing (PR-N1)', () => {
     // Assert
     expect(container.querySelector('.chrome-nav--overlay')).not.toBeNull()
     expect(container.querySelector('.chrome-nav--site')).toBeNull()
+    expect(container.querySelector('.chrome-footer')).toBeNull()
   })
 
   it('mounts no chrome at all on /landing (bare — the immersive flight owns its own chrome)', () => {

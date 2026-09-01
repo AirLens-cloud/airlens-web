@@ -314,3 +314,144 @@
 .chrome-shell--overlay .globe-page {
   padding-top: var(--nav-height);
 }
+
+/* ---- SiteFooter (PR-N2) — renders on `chrome: 'site'` routes only
+   (App.tsx via SiteChrome.tsx); absent on 'overlay' (/globe, a 100vh
+   immersive stage with no scroll-to-footer) and 'bare' (/landing, /design,
+   /probe). Structure follows the approved mockup's footer draft (§02):
+   brand column + 5 NAV_GROUPS columns + a base bar (copyright/About/FAQ +
+   LEGAL_DOCS). Namespaced chrome-footer-* to match this file's chrome-nav-*
+   convention, not the mockup's f-* prefix. Tokens only — --shell/--pad-x
+   are this repo's exact match for the mockup's literal 1280px/clamp(20,3vw,40)
+   values, so no new tokens were needed. */
+.chrome-footer {
+  border-top: 1px solid var(--rule-strong);
+  background: var(--bg-1);
+  padding: var(--sp-7) var(--pad-x) var(--sp-5);
+}
+
+.chrome-footer__grid {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(5, 1fr);
+  gap: var(--sp-5);
+  max-width: var(--shell);
+  margin: 0 auto;
+}
+
+.chrome-footer__heading {
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — footer column label, not prose (matches .chrome-nav__beta scale) */
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 var(--sp-3);
+}
+
+.chrome-footer__heading a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chrome-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chrome-footer__links a {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12.5px; /* design-lint-ok: typography — footer link row, not prose */
+  color: var(--ink-1);
+  text-decoration: none;
+  padding: 3px 0;
+}
+
+.chrome-footer__links a:hover {
+  color: var(--ink-0);
+}
+
+.chrome-footer__col--brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.chrome-footer__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-0);
+  text-decoration: none;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 14px; /* design-lint-ok: typography — brand wordmark, not prose (matches .chrome-nav__wordmark) */
+}
+
+.chrome-footer__tagline {
+  font-family: var(--sans);
+  font-size: 12px; /* design-lint-ok: typography — footer brand copy, not prose */
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: var(--sp-2) 0 0;
+  max-width: 26ch;
+}
+
+.chrome-footer__feed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: var(--sp-3) 0 0;
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — status indicator label, not prose (matches --viz-live: status dot only) */
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+
+.chrome-footer__feed-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--viz-live);
+}
+
+.chrome-footer__base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  max-width: var(--shell);
+  margin: var(--sp-5) auto 0;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px; /* design-lint-ok: typography — legal/copyright fine print, not prose */
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.chrome-footer__base a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chrome-footer__base a:hover {
+  color: var(--ink-1);
+}
+
+/* Narrow viewport: 6-column grid (brand + 5 groups) has no room at mobile
+   widths — collapse to 2 columns, brand spanning full width above them. */
+@media (max-width: 768px) {
+  .chrome-footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chrome-footer__col--brand {
+    grid-column: 1 / -1;
+  }
+
+  .chrome-footer__base {
+    flex-direction: column;
+  }
+}
