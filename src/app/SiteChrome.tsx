@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import GlobalNav from './GlobalNav'
 
 export type ChromeVariant = 'site' | 'overlay' | 'bare'
@@ -19,19 +19,27 @@ interface SiteChromeProps {
  *   'bare'    → nothing (/design, /landing, /probe — dev tools and the
  *               immersive landing flight, which owns its own chrome)
  *
- * The wrapper is a plain `<div id="main">`, not a second `<main>` — every
- * page in this repo already renders its own `<main>` landmark, so nesting
- * one here would violate the one-`<main>`-per-page rule. `tabIndex={-1}`
- * lets the skip link move focus to it even though a `<div>` isn't natively
- * focusable.
+ * The wrapper is a plain `<div id="main">`, not a second `<main>`. Every
+ * `chrome: 'site'`/`'overlay'` page renders its own `<main>` landmark — this
+ * was checked page by page (`grep -n '<main' src/pages/*.tsx`), not assumed;
+ * `Globe.tsx` was the one gap (its root was a bare `<div>`) and was promoted
+ * to `<main>` as part of this same review round, so nesting a second `<main>`
+ * here would now violate the one-`<main>`-per-page rule everywhere.
+ * `tabIndex={-1}` lets the skip link move focus to the div even though it
+ * isn't natively focusable.
  */
 export default function SiteChrome({ variant, children }: SiteChromeProps) {
+  // Mobile nav panel focus trap (review round 1, WCAG 2.4.3/2.1.1) —
+  // GlobalNav owns the open/closed boolean but reports it up here so the
+  // page content underneath can be made `inert` while the panel covers it.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
   if (variant === 'bare') return <>{children}</>
 
   return (
     <div className={`chrome-shell chrome-shell--${variant}`}>
-      <GlobalNav variant={variant} />
-      <div id="main" className="chrome-main" tabIndex={-1}>
+      <GlobalNav variant={variant} onMobileOpenChange={setMobileNavOpen} />
+      <div id="main" className="chrome-main" tabIndex={-1} inert={mobileNavOpen}>
         {children}
       </div>
     </div>

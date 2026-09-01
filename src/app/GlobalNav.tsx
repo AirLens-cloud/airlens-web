@@ -7,6 +7,9 @@ export type GlobalNavVariant = 'site' | 'overlay'
 interface GlobalNavProps {
   /** 'overlay' = /globe's transparent-on-dark variant; both render the same markup. */
   variant: GlobalNavVariant
+  /** Reports the mobile panel's open/closed state up to SiteChrome so it can
+   *  make the page content underneath `inert` while the panel covers it. */
+  onMobileOpenChange?: (open: boolean) => void
 }
 
 /**
@@ -22,7 +25,7 @@ interface GlobalNavProps {
  * `./router.ts`), so navigating away is a full page load and there is no
  * need to reset open/mobile state on route change.
  */
-export default function GlobalNav({ variant }: GlobalNavProps) {
+export default function GlobalNav({ variant, onMobileOpenChange }: GlobalNavProps) {
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
   const activeKey = getActiveGroupKey(pathname)
 
@@ -60,6 +63,10 @@ export default function GlobalNav({ variant }: GlobalNavProps) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [mobileOpen])
 
+  useEffect(() => {
+    onMobileOpenChange?.(mobileOpen)
+  }, [mobileOpen, onMobileOpenChange])
+
   function toggleGroup(key: string) {
     setOpenGroup((current) => (current === key ? null : key))
   }
@@ -69,9 +76,15 @@ export default function GlobalNav({ variant }: GlobalNavProps) {
     triggerRefs.current[key]?.focus()
   }
 
+  // No stopPropagation() here (review round 1): the document-level Escape
+  // listener above only attaches while `mobileOpen` is true, so on desktop
+  // this change is unobservable. On mobile, letting the event keep bubbling
+  // past this handler means a single Escape press closes both layers in one
+  // keystroke — the group closes first via this handler, then the still-
+  // bubbling event reaches the document listener and closes the mobile
+  // panel too, landing focus on the mobile toggle button since it runs last.
   function handleGroupKeyDown(event: KeyboardEvent<HTMLLIElement>, key: string) {
     if (event.key === 'Escape' && openGroup === key) {
-      event.stopPropagation()
       closeGroupAndReturnFocus(key)
     }
   }

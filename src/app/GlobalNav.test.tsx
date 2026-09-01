@@ -153,4 +153,18 @@ describe('GlobalNav — mobile toggle', () => {
     expect(screen.getByRole('navigation', { name: 'Primary' }).getAttribute('data-mobile-open')).toBe('false')
     expect(document.activeElement).toBe(closeToggle)
   })
+
+  it('a single Escape closes both an open group and the mobile panel, with focus landing on the mobile toggle', () => {
+    // Arrange
+    render(<GlobalNav variant="site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }))
+    const dropdownLink = screen.getByRole('link', { name: 'Overview' })
+    // Act — one Escape press
+    fireEvent.keyDown(dropdownLink, { key: 'Escape' })
+    // Assert
+    expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('navigation', { name: 'Primary' }).getAttribute('data-mobile-open')).toBe('false')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open menu' }))
+  })
 })
