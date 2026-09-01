@@ -54,7 +54,9 @@ describe('fetchGlobalGridSnapshot — HF → static adapter', () => {
     // Assert
     expect(result.nearbyCells.map((c) => c.lat)).toEqual([37.5, 35.1, 40.7])
     expect(result.pm25).toBe(12)
-    expect(result.aqi).toBe(15) // round(12 * 1.25)
+    // pm25ToAqi: EPA pre-2024 band [0,50,0,12] → pm 12 sits exactly at AQI 50.
+    // (Was 15 under the retired non-standard round(pm25 * 1.25) — B0 Truth Kernel.)
+    expect(result.aqi).toBe(50)
     expect(result.grade).toBe('Good') // 12 <= 15
     expect(result.stale).toBe(false)
     expect(result.dqss).toBeUndefined() // no synthetic quality score

@@ -256,3 +256,29 @@ export function aqiToPm25(aqi: number): number {
   }
   return EPA_PM25_BREAKPOINTS[EPA_PM25_BREAKPOINTS.length - 1][3];
 }
+
+/**
+ * Forward piecewise-linear conversion over the same EPA_PM25_BREAKPOINTS table —
+ * the inverse of `aqiToPm25()`, so `aqiToPm25(pm25ToAqi(x)) ≈ x` (exact up to
+ * AQI integer rounding). Same pre-2024 scale, same reason: an `aqi` field
+ * produced here flows into consumers that decode it with `aqiToPm25()`
+ * (stationParse and the Globe layers), so encoder and decoder must share one
+ * table or the round trip corrupts the concentration.
+ *
+ * This replaced `round(pm25 * 1.25)` in gridSnapshot.ts — a conversion with no
+ * standard behind it (EVIDENCE_CONTRACT §7). The flat factor didn't just lack
+ * a citation: decoded back through aqiToPm25 it turned pm25 40 into 12 µg/m³
+ * on every grid-fed Globe marker.
+ */
+export function pm25ToAqi(pm25: number): number {
+  if (!Number.isFinite(pm25) || pm25 <= 0) return EPA_PM25_BREAKPOINTS[0][0];
+  for (const [aqiLo, aqiHi, pmLo, pmHi] of EPA_PM25_BREAKPOINTS) {
+    if (pm25 <= pmHi) {
+      // Same gap-clamp as the decoder: pm bands step 12.0→12.1 etc., so a
+      // value in the gap must not extrapolate t < 0 into the next band.
+      const t = Math.max(0, Math.min(1, (pm25 - pmLo) / (pmHi - pmLo)));
+      return Math.round(aqiLo + t * (aqiHi - aqiLo));
+    }
+  }
+  return EPA_PM25_BREAKPOINTS[EPA_PM25_BREAKPOINTS.length - 1][1];
+}
