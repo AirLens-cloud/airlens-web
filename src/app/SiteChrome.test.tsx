@@ -52,3 +52,41 @@ describe('SiteChrome — mobile nav focus trap', () => {
     expect(container.querySelector('.chrome-shell')).toBeNull()
   })
 })
+
+// ChatWidget (Field Assistant FAB, Wave 4 Block 3) mounts only for chrome:'site'
+// — /globe (overlay) and /design (bare) own their own chrome and must not gain
+// a floating dock on top of it.
+describe('SiteChrome — ChatWidget mount scope', () => {
+  it('mounts the chat dock for variant="site"', () => {
+    // Arrange / Act
+    const { container } = render(
+      <SiteChrome variant="site">
+        <p>page content</p>
+      </SiteChrome>,
+    )
+    // Assert
+    expect(container.querySelector('.chat-dock')).not.toBeNull()
+  })
+
+  it('does not mount the chat dock for variant="overlay"', () => {
+    // Arrange / Act
+    const { container } = render(
+      <SiteChrome variant="overlay">
+        <p>page content</p>
+      </SiteChrome>,
+    )
+    // Assert
+    expect(container.querySelector('.chat-dock')).toBeNull()
+  })
+
+  it('does not mount the chat dock for variant="bare"', () => {
+    // Arrange / Act
+    const { container } = render(
+      <SiteChrome variant="bare">
+        <p>page content</p>
+      </SiteChrome>,
+    )
+    // Assert
+    expect(container.querySelector('.chat-dock')).toBeNull()
+  })
+})

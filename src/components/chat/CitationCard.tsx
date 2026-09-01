@@ -47,6 +47,12 @@ export default function CitationCard({ citation, index = 0 }: CitationCardProps)
   return (
     <li>
       {url ? (
+        // TODO(backend wiring): `url` is only ever DesignGallery demo data
+        // right now (dead path — no live citation source exists yet). Once a
+        // real chat backend can populate `source_url`, validate the protocol
+        // here (allow http/https only) before using it as `href` — an
+        // unvalidated `javascript:`/`data:` URL from a model response would
+        // be an XSS vector.
         <a
           href={url}
           target="_blank"
