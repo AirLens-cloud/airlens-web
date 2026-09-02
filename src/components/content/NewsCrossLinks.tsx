@@ -40,12 +40,12 @@ export default function NewsCrossLinks({ article, className }: NewsCrossLinksPro
   return (
     <div className={classes.join(' ')}>
       {name && article.countryCode ? (
-        <a className="news-chip" href={`/country/${article.countryCode}`}>
+        <a className="news-chip t-caption" href={`/country/${article.countryCode}`}>
           {article.countryCode} · {name} profile →
         </a>
       ) : null}
       {article.sourceName ? (
-        <a className="news-chip news-chip--muted" href="/data-sources">
+        <a className="news-chip news-chip--muted t-caption" href="/data-sources">
           Evidence: {article.sourceName}
         </a>
       ) : null}

@@ -54,7 +54,7 @@
   /* Fixed (not theme-flipped), like --aqi-*: badges on the AqiCapsule's dark
      glass never invert for light/dark theme, so their background tokens
      can't either. Same hex as --orange-ink's light value — deliberately not
-     `var(--orange-ink)` since that resolves to the un-darkened #ff5c00 (only
+     `var(--orange-ink)` since that resolves to the un-darkened `var(--orange)` (only
      ~3.1:1 with white text) under dark theme. */
   --brand-notice-bg: #c74700; /* white text ~4.8:1 AA */
 

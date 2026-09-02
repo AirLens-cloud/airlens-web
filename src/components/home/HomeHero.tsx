@@ -160,7 +160,7 @@ export default function HomeHero({
         </div>
 
         {!data.isPersonalized && (
-          <div className="home-hero__fallback-band">
+          <div className="home-hero__fallback-band t-caption">
             <b>Showing Earth's thickest air right now</b> — not your local reading.
           </div>
         )}
@@ -170,7 +170,7 @@ export default function HomeHero({
             <>
               <button
                 type="button"
-                className="home-hero__cta home-hero__cta--primary"
+                className="home-hero__cta home-hero__cta--primary t-caption"
                 onClick={onRequestLocation}
                 disabled={requestingLocation}
               >
@@ -178,7 +178,7 @@ export default function HomeHero({
               </button>
               <button
                 type="button"
-                className="home-hero__cta home-hero__cta--secondary"
+                className="home-hero__cta home-hero__cta--secondary t-caption"
                 onClick={() => setSearchOpen((v) => !v)}
                 aria-expanded={searchOpen}
               >
@@ -188,7 +188,7 @@ export default function HomeHero({
           ) : (
             <button
               type="button"
-              className="home-hero__cta home-hero__cta--secondary"
+              className="home-hero__cta home-hero__cta--secondary t-caption"
               onClick={() => setSearchOpen((v) => !v)}
               aria-expanded={searchOpen}
             >
@@ -198,7 +198,7 @@ export default function HomeHero({
         </div>
 
         {locationDenied && !data.isPersonalized && (
-          <p className="home-hero__location-note">
+          <p className="home-hero__location-note t-caption">
             Location permission was not granted — showing the global fallback.
           </p>
         )}

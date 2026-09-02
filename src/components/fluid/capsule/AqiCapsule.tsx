@@ -264,7 +264,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     const remaining = REFRESH_INTERVAL_MS - elapsed
     idle = (
       <>
-        <span className="aq-capsule__loc-row">
+        <span className="aq-capsule__loc-row t-micro">
           <span className="aq-capsule__loc">{data.city}</span>
           {!data.isPersonalized && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
         </span>

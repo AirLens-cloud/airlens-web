@@ -156,15 +156,17 @@
 .article-cross-links { margin-top: var(--sp-3); }
 .news-chip {
   display: inline-block;
-  font-family: var(--sans);
-  font-size: 11px;
-  color: var(--accent);
   border: 1px solid var(--rule);
-  padding: 3px 8px;
+  padding: var(--sp-1) var(--sp-2);
   border-radius: var(--r-0);
 }
+/* `.t-caption` (11px, sans) matches this chip's size/family exactly — the
+   compound selector overrides its `color` so the pill's own accent/muted
+   tones win regardless of stylesheet load order (t-caption vs. news-chip are
+   both single-class selectors, so cascade order alone can't be trusted). */
+.news-chip.t-caption { color: var(--accent); }
 .news-chip:hover { border-color: var(--accent); }
-.news-chip--muted { color: var(--ink-1); }
+.news-chip--muted.t-caption { color: var(--ink-1); }
 
 .content-body { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 68ch; }
 .content-body__heading { margin: var(--sp-3) 0 0; }

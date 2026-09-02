@@ -64,7 +64,7 @@ export default function TrustLine({
   methodologyHref = '/methodology',
   className,
 }: TrustLineProps) {
-  const classes = ['trust-line']
+  const classes = ['trust-line', 't-tag']
   if (className) classes.push(className)
 
   const ageText = ageLabel ?? (ageMs != null && Number.isFinite(ageMs) ? formatAge(ageMs) : null)

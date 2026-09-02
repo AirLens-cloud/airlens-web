@@ -70,9 +70,13 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: 9px;
+}
+/* `.t-micro` supplies size/family/weight/case; the compound selector keeps
+   this row's own letter-spacing and the white-on-glass color (AA-tuned for
+   the dark capsule surface, not `.t-micro`'s default `--ink-2`) regardless
+   of stylesheet load order. */
+.aq-capsule__loc-row.t-micro {
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -93,7 +97,7 @@
   flex-shrink: 0;
   background: var(--brand-notice-bg);
   color: #ffffff;
-  padding: 1px 5px;
+  padding: 1px var(--sp-1);
   font-weight: 600;
   letter-spacing: 0.05em;
 }
