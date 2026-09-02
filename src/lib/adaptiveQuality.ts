@@ -122,14 +122,153 @@ export const QUALITY_PRESETS: Record<QualityTier, QualityPreset> = {
 
 // ─── Device Detection ───────────────────────────────────────────────────────
 
+/** localStorage key for the persisted quality tier (bumped `.v1` on shape change). */
+const STORAGE_KEY = 'airlens.globe.quality.v1';
+
+/** Cache lifetime — long enough to skip the probe on repeat visits, short
+ * enough to absorb GPU driver / browser updates without a manual reset. */
+const STORAGE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface StoredQuality {
+  tier: QualityTier;
+  sig: string;
+  ts: number;
+}
+
+function isQualityTier(v: unknown): v is QualityTier {
+  return v === 'high' || v === 'medium' || v === 'low';
+}
+
+/**
+ * Stable signature of the device signals that don't require a GPU probe.
+ * Deliberately excludes the renderer string — putting it here would make a
+ * cache hit depend on the very probe the cache exists to skip.
+ */
+function computeDeviceSignature(): string {
+  const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 'x' : 'x';
+  const mem =
+    typeof navigator !== 'undefined'
+      ? (navigator as { deviceMemory?: number }).deviceMemory ?? 'x'
+      : 'x';
+  const pixels =
+    typeof window !== 'undefined' && window.screen
+      ? window.screen.width * window.screen.height
+      : 'x';
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio ?? 'x' : 'x';
+  return [cores, mem, pixels, dpr].join('|');
+}
+
+/** Default storage accessor — guarded because Safari private mode can throw
+ * on `localStorage` access itself, not just on `setItem`. */
+function getDefaultStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredQuality(storage: Storage): StoredQuality | null {
+  try {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredQuality>;
+    if (!isQualityTier(parsed.tier) || typeof parsed.sig !== 'string' || typeof parsed.ts !== 'number') {
+      return null;
+    }
+    return { tier: parsed.tier, sig: parsed.sig, ts: parsed.ts };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredQuality(storage: Storage, value: StoredQuality): void {
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Quota exceeded / private mode — persistence is a nice-to-have, never fatal.
+  }
+}
+
+/**
+ * Write-through helper for `globeStore.setQualityTier` — so an FPS-governor
+ * downgrade (or a manual override) persists as next visit's starting tier.
+ */
+export function persistQualityTier(tier: QualityTier, storage: Storage | null = getDefaultStorage()): void {
+  if (!storage) return;
+  writeStoredQuality(storage, { tier, sig: computeDeviceSignature(), ts: Date.now() });
+}
+
+/**
+ * Probe the GPU renderer string via a throwaway WebGL context. Returns null
+ * on any failure or when the browser exposes no useful renderer info
+ * (privacy-gated `WEBGL_debug_renderer_info`, or a generic ANGLE-only string)
+ * — callers must treat null as "no signal", never as "bad GPU".
+ */
+export function probeGpuRenderer(): string | null {
+  if (typeof document === 'undefined') return null;
+
+  let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+  try {
+    const canvas = document.createElement('canvas');
+    gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as
+      | WebGLRenderingContext
+      | WebGL2RenderingContext
+      | null;
+    if (!gl) return null;
+
+    let renderer: unknown = null;
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (debugInfo) {
+      renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+    }
+    if (typeof renderer !== 'string' || renderer.trim().length === 0) {
+      renderer = gl.getParameter(gl.RENDERER);
+    }
+
+    if (typeof renderer !== 'string') return null;
+    const trimmed = renderer.trim();
+    // Masked fallback with no vendor signal at all — not worth scoring on.
+    if (trimmed.length === 0 || /^angle$/i.test(trimmed)) return null;
+    return trimmed;
+  } catch {
+    return null;
+  } finally {
+    try {
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {
+      // Context is already gone / extension unsupported — nothing to clean up.
+    }
+  }
+}
+
+export interface DetectQualityTierOptions {
+  /** Injectable for tests — defaults to the real WebGL probe. */
+  probeRenderer?: () => string | null;
+  /** Injectable for tests — pass `null` to force a fresh detection every call. */
+  storage?: Storage | null;
+}
+
 /**
  * Detect device capability tier based on hardware signals.
  * Runs once at app startup — result stored in globeStore.
  */
-export function detectQualityTier(): QualityTier {
+export function detectQualityTier(options: DetectQualityTierOptions = {}): QualityTier {
   // Server-side or test environment
   if (typeof navigator === 'undefined' || typeof window === 'undefined') {
     return 'medium';
+  }
+
+  const probeRenderer = options.probeRenderer ?? probeGpuRenderer;
+  const storage = options.storage !== undefined ? options.storage : getDefaultStorage();
+  const sig = computeDeviceSignature();
+
+  if (storage) {
+    const cached = readStoredQuality(storage);
+    if (cached && cached.sig === sig && Date.now() - cached.ts < STORAGE_TTL_MS) {
+      return cached.tier;
+    }
   }
 
   let score = 0;
@@ -161,10 +300,31 @@ export function detectQualityTier(): QualityTier {
   const isMobile = 'ontouchstart' in window && window.screen.width < MOBILE_GPU_MAX;
   if (isMobile) score -= 2;
 
+  // GPU renderer string — a positive signal boosts, a known-bad one caps low
+  // immediately, and no signal (null) leaves the heuristic score untouched.
+  const renderer = probeRenderer();
+  if (renderer) {
+    if (/swiftshader|llvmpipe|software/i.test(renderer)) {
+      if (storage) writeStoredQuality(storage, { tier: 'low', sig, ts: Date.now() });
+      return 'low';
+    }
+    // Adreno 는 "Adreno (TM) 330" 처럼 상표 표기가 끼는 실드라이버 문자열까지 매치
+    if (/mali-4|adreno[^0-9]*3\d\d|powervr/i.test(renderer)) {
+      score -= 3;
+    } else if (/apple|nvidia|radeon|arc/i.test(renderer)) {
+      score += 2;
+    }
+  }
+
   // Classify
-  if (score >= 7) return 'high';
-  if (score >= 4) return 'medium';
-  return 'low';
+  let tier: QualityTier;
+  if (score >= 7) tier = 'high';
+  else if (score >= 4) tier = 'medium';
+  else tier = 'low';
+
+  if (storage) writeStoredQuality(storage, { tier, sig, ts: Date.now() });
+
+  return tier;
 }
 
 /**
