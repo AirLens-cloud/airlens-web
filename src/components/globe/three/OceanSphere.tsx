@@ -1,9 +1,10 @@
 /**
  * OceanSphere — unified earth: bright white land + sky blue ocean.
  *
- * Land: custom shader with proper RGB mask sampling, self-lit white,
- *       bump displacement for mountains (vertex shader), day/night
- *       terminator dimming + NASA Black Marble city lights (HD mode).
+ * Land: custom shader with proper RGB mask sampling, flat sphere (no
+ *       vertex displacement) with a 5-stage altitude color ramp from the
+ *       bump map, day/night terminator dimming + NASA Black Marble city
+ *       lights (HD mode).
  * Ocean: shader-lit sky blue, terminator-matched with land so lighting
  *        reads as one consistent globe (no meshStandardMaterial —
  *        avoids scene-light dependency divorced from uSunDirection).
@@ -36,7 +37,6 @@ const fallbackNightTex = (() => {
 
 const landVert = /* glsl */ `
   uniform sampler2D uBumpMap;
-  uniform float uDisplacementScale;
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -49,13 +49,12 @@ const landVert = /* glsl */ `
     vNormal = normalize(normalMatrix * normal);
     vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
 
-    // Sample bump and displace along normal
-    float bump = texture2D(uBumpMap, uv).r;
-    vElevation = bump;
-    vec3 displaced = position + normal * bump * uDisplacementScale;
+    // Bump sample kept for fragment-stage altitude color ramp — no displacement,
+    // vertices stay on the sphere.
+    vElevation = texture2D(uBumpMap, uv).r;
 
-    vec4 mvPos = modelViewMatrix * vec4(displaced, 1.0);
-    vWorldPos = (modelMatrix * vec4(displaced, 1.0)).xyz;
+    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
 
     gl_Position = projectionMatrix * mvPos;
   }
@@ -73,26 +72,6 @@ const landFrag = /* glsl */ `
   varying vec3 vWorldPos;
   varying float vElevation;
 
-  // 2D noise for natural variation
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash(i), hash(i + vec2(1,0)), f.x),
-      mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
-  }
-  float fbm(vec2 p) {
-    float v = 0.0;
-    v += 0.5 * noise(p); p *= 2.1;
-    v += 0.25 * noise(p); p *= 2.1;
-    v += 0.125 * noise(p);
-    return v;
-  }
-
   void main() {
     // Land mask — max(R,G,B), threshold unchanged
     vec4 mask = texture2D(uLandMask, vUv);
@@ -103,9 +82,7 @@ const landFrag = /* glsl */ `
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     float NdotV = max(dot(N, viewDir), 0.0);
 
-    // FBM noise to break uniform color bands
-    float nz = fbm(vUv * 40.0) * 0.12;
-    float elev = clamp(vElevation + nz, 0.0, 1.0);
+    float elev = clamp(vElevation, 0.0, 1.0);
 
     // 5-stage satellite terrain colors (high contrast for 3D depth)
     vec3 coastColor = vec3(0.18, 0.38, 0.14);
@@ -125,13 +102,10 @@ const landFrag = /* glsl */ `
       terrainColor = mix(rockColor, snowColor, (elev - 0.60) / 0.40);
     }
 
-    // Hillshade + slope shading (dramatic side lighting for depth)
+    // Spherical falloff — subtle view-angle shading, no directional hillshade
     float viewShade = NdotV * 0.25 + 0.75;
-    float slopeFactor = 1.0 - (1.0 - NdotV) * 0.45;
-    vec3 lightDir = normalize(vec3(-0.6, 0.8, 0.3));
-    float hillshade = max(dot(N, lightDir), 0.0) * 0.35 + 0.65;
 
-    vec3 color = terrainColor * viewShade * slopeFactor * hillshade;
+    vec3 color = terrainColor * viewShade;
 
     // Day/night terminator — soft band (Glass-box: real sun position, not decorative)
     float sunDot = dot(normalize(vWorldNormal), uSunDirection);
@@ -192,7 +166,6 @@ const OceanSphere = () => {
   const landUniforms = useMemo(() => ({
     uLandMask: { value: null as THREE.Texture | null },
     uBumpMap: { value: null as THREE.Texture | null },
-    uDisplacementScale: { value: DM.ELEVATION_SCALE as number },
     uSunDirection: { value: getSunDirection() },
     uNightTex: { value: fallbackNightTex as THREE.Texture },
     uNightMix: { value: 0 },
@@ -300,7 +273,7 @@ const OceanSphere = () => {
         />
       </mesh>
 
-      {/* Land — bright white, bump displaced, self-lit, day/night terminator + city lights */}
+      {/* Land — altitude-colored flat sphere, day/night terminator + city lights */}
       <mesh>
         <sphereGeometry args={[1.001, 128, 96]} />
         <shaderMaterial
