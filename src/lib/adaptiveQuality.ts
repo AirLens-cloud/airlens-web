@@ -308,7 +308,8 @@ export function detectQualityTier(options: DetectQualityTierOptions = {}): Quali
       if (storage) writeStoredQuality(storage, { tier: 'low', sig, ts: Date.now() });
       return 'low';
     }
-    if (/mali-4|adreno 3|powervr/i.test(renderer)) {
+    // Adreno 는 "Adreno (TM) 330" 처럼 상표 표기가 끼는 실드라이버 문자열까지 매치
+    if (/mali-4|adreno[^0-9]*3\d\d|powervr/i.test(renderer)) {
       score -= 3;
     } else if (/apple|nvidia|radeon|arc/i.test(renderer)) {
       score += 2;

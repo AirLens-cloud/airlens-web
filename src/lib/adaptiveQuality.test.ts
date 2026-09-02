@@ -98,6 +98,24 @@ describe('detectQualityTier — GPU renderer scoring', () => {
     expect(tier).toBe('low')
   })
 
+  it('demotes the trademark-form driver string "Adreno (TM) 330" the same way', () => {
+    // Arrange — 실제 Qualcomm 드라이버가 흔히 노출하는 상표 삽입 형식
+    const probeRenderer = () => 'Adreno (TM) 330'
+    // Act
+    const tier = detectQualityTier({ probeRenderer, storage: null })
+    // Assert
+    expect(tier).toBe('low')
+  })
+
+  it('does not demote a modern Adreno (6xx/7xx) via the 3xx pattern', () => {
+    // Arrange
+    const baseline = detectQualityTier({ probeRenderer: () => null, storage: null })
+    // Act — 6xx 는 3xx 감점 패턴에 걸리면 안 된다 (no-signal 과 동일 결과)
+    const tier = detectQualityTier({ probeRenderer: () => 'Adreno (TM) 640', storage: null })
+    // Assert
+    expect(tier).toBe(baseline)
+  })
+
   it('promotes a strong discrete/integrated GPU (Apple) above the hardware-only baseline', () => {
     // Arrange
     const probeRenderer = () => 'Apple M1 Pro'
