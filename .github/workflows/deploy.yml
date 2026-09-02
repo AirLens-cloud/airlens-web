@@ -103,6 +103,17 @@ jobs:
           done
           echo "entry — deployed: ${entry:-<none>} / built: $local_entry"
           if [ "$entry" != "$local_entry" ]; then
+            # Diagnose before failing: `curl -sf` above swallows non-2xx
+            # bodies, so a zone bot challenge served to this runner's
+            # datacenter IP reads as <none> exactly like a missing upload.
+            # `cf-mitigated: challenge` is Cloudflare's own marker for a
+            # served challenge page — its presence means the deploy landed
+            # but the probe was blocked, not that the upload failed.
+            curl -s -D /tmp/verify-headers -o /tmp/verify-body \
+              -w 'diagnostic — http_code: %{http_code}\n' "$SITE/" || true
+            grep -i -E '^(cf-mitigated|cf-ray|server):' /tmp/verify-headers || true
+            echo "diagnostic — body head:"
+            head -c 300 /tmp/verify-body || true; echo
             echo "::error::deployed entry (${entry:-<none>}) != built entry ($local_entry) — the upload did not land"
             exit 1
           fi
