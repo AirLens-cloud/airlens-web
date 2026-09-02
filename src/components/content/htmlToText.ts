@@ -24,18 +24,42 @@
 const CLOSING_TAG = /<\/[a-z][a-z0-9]*\s*>/gi
 const TAG_TOKEN = /<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi
 
-const BASIC_ENTITIES: Record<string, string> = {
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&apos;': "'",
-  '&nbsp;': ' ',
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+}
+
+/** `&#39;`, `&#xF1;`, `&#241;`, ... — decimal or hex numeric character references (case-insensitive `x`/digits). */
+const ENTITY_TOKEN = /&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi
+
+/**
+ * Decodes one matched `&...;` token: named entities from `NAMED_ENTITIES`,
+ * or any numeric character reference via `String.fromCodePoint` — e.g. the
+ * hex refs some source feeds publish in `title` (`El Ni&#xF1;o`, QA finding
+ * 2026-09-02), which the pre-fix table only covered for `&#39;` specifically
+ * and left every other numeric reference (any hex ref, any other decimal
+ * code point) passing through unresolved.
+ */
+function decodeEntityToken(token: string, body: string): string {
+  if (body[0] === '#') {
+    const isHex = body[1] === 'x' || body[1] === 'X'
+    const codePoint = isHex ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10)
+    if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return token
+    try {
+      return String.fromCodePoint(codePoint)
+    } catch {
+      return token
+    }
+  }
+  return NAMED_ENTITIES[body.toLowerCase()] ?? token
 }
 
 function decodeBasicEntities(s: string): string {
-  return s.replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp);/g, (m) => BASIC_ENTITIES[m] ?? m)
+  return s.replace(ENTITY_TOKEN, (m, body: string) => decodeEntityToken(m, body))
 }
 
 /**
