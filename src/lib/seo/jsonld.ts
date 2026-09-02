@@ -237,6 +237,44 @@ export function faqPageJsonLd(faqs: Array<{ q: string; a: string }>): string {
   })
 }
 
+/** One term of a DefinedTermSet — see `definedTermSetJsonLd`. */
+export interface DefinedTermInput {
+  termId: string
+  term: string
+  definition: string
+  url: string
+}
+
+/**
+ * schema.org DefinedTermSet — the site glossary as one machine-readable term
+ * collection (O2, aq-ontology-feasibility-2026-09-02.md §3). `/glossary` has
+ * no SSR handler in this repo (`functions/_lib/pageHandlers.ts`), so this is
+ * consumed client-side by `Glossary.tsx` rather than through `pageSeo.ts`.
+ */
+export function definedTermSetJsonLd(
+  name: string,
+  description: string,
+  pageUrl: string,
+  terms: DefinedTermInput[],
+): string {
+  return ldScriptJson({
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTermSet',
+    name,
+    description,
+    url: pageUrl,
+    publisher: ORG,
+    hasDefinedTerm: terms.map((t) => ({
+      '@type': 'DefinedTerm',
+      '@id': `${pageUrl}#${t.termId}`,
+      name: t.term,
+      description: t.definition,
+      url: t.url,
+      inDefinedTermSet: pageUrl,
+    })),
+  })
+}
+
 /** schema.org CollectionPage with a mainEntity ItemList — blog / dispatch list SSR. */
 export function collectionPageJsonLd(
   name: string,
