@@ -1,0 +1,59 @@
+name = "airlens-assistant"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Quota / session counter store ───────────────────────────────────────────
+#
+# UNBOUND UNTIL AN OPERATOR CREATES THE NAMESPACE. Deploying as-is is safe:
+# `CHAT_QUOTA` is optional in `Env` and quota.ts fails **open** (no cap) when
+# it is absent — same convention as workers/public-api's RL_KV. It is not a
+# silent hole, just one layer short until step 1 below is done.
+#
+#   1. npx wrangler kv namespace create CHAT_QUOTA
+#   2. paste the printed id below and uncomment the block
+#
+# [[kv_namespaces]]
+# binding = "CHAT_QUOTA"
+# id = "<paste the id from step 1>"
+
+# ── Route ────────────────────────────────────────────────────────────────
+#
+# Left to the dashboard on purpose (same rationale as workers/public-api in
+# AirLens-platform): a `routes` entry naming a hostname with no DNS record
+# makes `wrangler deploy` fail outright. Until a custom domain is bound, the
+# deploy lands at https://airlens-assistant.<account>.workers.dev, which is
+# enough to verify `GET /api/chat/health`. To pin the route in code instead
+# of the dashboard, add:
+#
+# routes = [{ pattern = "assistant.airlens.cloud/*", zone_name = "airlens.cloud" }]
+
+[vars]
+# Session token TTL (seconds) — Field Assistant v2 design §1 D-2.
+SESSION_TTL_SECONDS = "3600"
+# Per-identifier burst cap (60s fixed window).
+RATE_LIMIT_PER_MINUTE = "5"
+# Per-identifier daily cap. Identifier = session hash (primary) or client IP
+# (fallback when a request has no valid session — see session.ts resolveIdentifier).
+DAILY_MESSAGE_LIMIT = "30"
+# Account-wide daily request budget (generalized from the retired chatbot
+# worker's "neuron budget" — C1 has no LLM cost yet, but the KV-backed
+# fail-open budget guard is wired now so C2/C3 only need to raise
+# REQUEST_COST_ESTIMATE once real Workers AI calls land).
+DAILY_REQUEST_BUDGET = "2000"
+REQUEST_COST_ESTIMATE = "1"
+MAX_MESSAGE_LENGTH = "2000"
+MAX_HISTORY_TURNS = "10"
+ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"
+
+# Secrets (set via `npx wrangler secret put <NAME>`):
+#   SESSION_HMAC_SECRET  — signs/verifies the session token (HMAC-SHA256).
+#                          Required; there is no dev fallback for this one —
+#                          `wrangler secret put SESSION_HMAC_SECRET --local`
+#                          (or a .dev.vars file, gitignored) for local dev.
+#   TURNSTILE_SECRET     — Cloudflare Turnstile secret key. Unset in dev/local
+#                          → siteverify is skipped and a session is still
+#                          issued (dev-bypass, logged via console.warn on every
+#                          issuance so it is never mistaken for a verified
+#                          production session). MUST be set before this worker
+#                          is deployed to a real origin.

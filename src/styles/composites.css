@@ -262,6 +262,11 @@
 }
 .chat-mast { padding: 16px 16px 4px; }
 .chat-mast .t-lede { margin: 0; font-size: 15px; }
+/* Active mode (C1) message list — replaces .chat-mast/.chat-sug once a
+   session has at least one message. Scrolls with the rest of .chat-panel
+   (which already has overflow-y: auto), so no separate scroll region here. */
+.chat-msgs { padding: 16px; display: flex; flex-direction: column; gap: 0; flex: 1; }
+.chat-msgs-empty { margin: 0; font-size: 15px; }
 .chat-sug { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; }
 .chat-sug-chip {
   font: 500 10px/1 var(--mono);
