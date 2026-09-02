@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { track } from '../lib/analytics';
 import type { QualityTier, QualityPreset } from '../lib/adaptiveQuality';
-import { detectQualityTier, getQualityPreset } from '../lib/adaptiveQuality';
+import { detectQualityTier, getQualityPreset, persistQualityTier } from '../lib/adaptiveQuality';
 import { GLOBE_SCENES } from '../lib/config/globeScenes';
 import type { SensorType, StationAttribution, HoveredStation, SelectedCountry, DQSSProvenance, DataMode, OverlayType, ProjectionType, VisualizationType, ViewMode, VisualizationMode, ActivePanel, HUDStyle, NullschoolThemePreset, EarthStyle, AQDataSource, GridHoverInfo, FlyToTarget, WindLevel, WindFieldStatus, WindFieldMeta, SelectedPrediction, HoveredPrediction, FireCoverage, AtmosphericMode } from '../types/globe';
 import type { TimelineFrameMeta } from '../api/timeline';
@@ -513,6 +513,9 @@ export const useGlobeStore = create<GlobeStore>((set, get) => ({
   setQualityTier: (tier) => {
     set({ qualityTier: tier, qualityPreset: getQualityPreset(tier) });
     track('globe_quality_changed', { tier });
+    // Write-through so an FPS-governor downgrade (or manual override) is the
+    // next visit's starting tier, not a fresh probe that re-thrashes back up.
+    persistQualityTier(tier);
   },
   setHoveredStation: (s) => set({ hoveredStation: s }),
   setViewCenterLocation: (v) => set({ viewCenterLocation: v }),
