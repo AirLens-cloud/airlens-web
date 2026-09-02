@@ -64,7 +64,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             pages deploy dist
-            --project-name=airlens-web
+            --project-name=airlens
             --branch=main
             --commit-dirty=true
             --commit-message="${{ github.sha }}"
@@ -78,7 +78,7 @@ jobs:
       # and so can fail to upload while every bundle succeeds).
       - name: Verify the deploy actually landed
         env:
-          SITE: https://airlens-web.pages.dev
+          SITE: https://airlens.cloud
         run: |
           set -u
           fail=0
