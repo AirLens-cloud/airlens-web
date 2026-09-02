@@ -72,4 +72,16 @@ describe('NewsArticle page', () => {
     await screen.findByRole('heading', { name: 'Article A' })
     expect(container.querySelector('[class*="dqss"]')).toBeNull()
   })
+
+  // UI Tier-1 P2-B — country/evidence cross-link chips on the detail page.
+  it('renders country and evidence cross-link chips backed by the real article fields', async () => {
+    vi.mocked(fetchArticleBySlug).mockResolvedValue({
+      status: 'found',
+      article: article({ countryCode: 'KR', sourceName: 'Reuters' }),
+    })
+    render(<NewsArticle slug="a" />)
+    await screen.findByRole('heading', { name: 'Article A' })
+    expect(screen.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
+    expect(screen.getByText(/evidence: reuters/i)).toBeTruthy()
+  })
 })

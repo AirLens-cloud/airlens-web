@@ -4,10 +4,14 @@ import WfTag from '../wireframe/WfTag'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
 import AqiDot from '../wireframe/AqiDot'
+import TrustLine from '../wireframe/TrustLine'
+import Materialize from '../fluid/Materialize'
+import CitySearch from '../weather/CitySearch'
 import { dataState } from '../../types/dataState'
 import { ACTION_SENTENCE, STALE_THRESHOLD_MS, TIER_LABEL, TIER_TINT_BAND } from '../../lib/config/homeBriefing'
 import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
 import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
+import type { WeatherCity } from '../../lib/cityCatalog'
 import { useSpring } from '../../motion/useSpring'
 import type { SpringConfig } from '../../motion/spring'
 
@@ -17,6 +21,10 @@ export interface HomeHeroProps {
    * `useState` initializer) rather than here — calling `Date.now()` inside a
    * component body is an impure render, which this keeps out of. */
   nowMs: number
+  requestingLocation: boolean
+  locationDenied: boolean
+  onRequestLocation: () => void
+  onSelectCity: (city: WeatherCity) => void
 }
 
 /** Slower/gentler than the base Δ5 contract (ζ1.0·r0.35) — a headline number
@@ -28,12 +36,23 @@ const VALUE_SPRING: SpringConfig = { damping: 1.0, response: 0.5 }
  * AQI-tinted band showing the featured city's current reading, its 24h-
  * forecast valid time, freshness, and one plain-language action sentence.
  *
- * The featured city is always the "thickest air" pick `useCapsuleData`
- * already makes (highest current PM2.5 among the forecast's cities) — not a
- * personalized location, unlike /weather. The eyebrow says so explicitly
- * rather than implying this is "your" air.
+ * UI Tier-1 P1-B (uiux-evaluation-manyfast-2026-09-02 §4 G1): until the
+ * visitor personalizes, the featured city is the "thickest air" pick
+ * `useCapsuleData` already makes (highest current PM2.5 among the forecast's
+ * cities) — very unlikely to be the visitor's own air. The eyebrow, a
+ * fallback band, and two CTAs ("see air quality near me" / "search a
+ * location") say so explicitly and offer a way out, rather than implying
+ * this is "your" air. Once personalized (`data.isPersonalized`), the band
+ * and CTAs drop and the eyebrow reads as a plain observation location.
  */
-export default function HomeHero({ data, nowMs }: HomeHeroProps) {
+export default function HomeHero({
+  data,
+  nowMs,
+  requestingLocation,
+  locationDenied,
+  onRequestLocation,
+  onSelectCity,
+}: HomeHeroProps) {
   // Hooks run unconditionally (Rules of Hooks) ahead of the loading/missing
   // early returns below — `targetValue` is a 0 sentinel until `data` is
   // actually `'ready'`, mirroring the sentinel pattern `useSmoothedProgress`
@@ -43,6 +62,7 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
   const valueSpring = useSpring(targetValue, VALUE_SPRING)
   const [displayedValue, setDisplayedValue] = useState(targetValue)
   const hasSyncedRef = useRef(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // The `.set()`/`.jump()` calls are side effects, not state updates — same
   // separation ChatFAB's `translateY` effect uses. The first time `data`
@@ -100,6 +120,11 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
   const actionSentence = ACTION_SENTENCE[data.tier]
   const value = Math.round(displayedValue)
 
+  const uncertainty =
+    data.p10 !== null && data.p90 !== null
+      ? { available: true as const, p10: data.p10, p90: data.p90, unit: 'µg/m³' }
+      : { available: false as const, reason: "this forecast doesn't publish a range" }
+
   return (
     <WfGlassCard
       as="section"
@@ -111,7 +136,11 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
     >
       <div className="home-hero__inner">
         <div className="home-hero__eyebrow">
-          NOW · {data.city}, {data.countryCode} · FALLBACK: THICKEST AIR
+          {data.isPersonalized ? (
+            <>MY LOCATION · {data.city}, {data.countryCode}</>
+          ) : (
+            <>NOW · {data.city}, {data.countryCode} · FALLBACK: THICKEST AIR</>
+          )}
         </div>
 
         <div className="home-hero__reading">
@@ -130,6 +159,59 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
           </div>
         </div>
 
+        {!data.isPersonalized && (
+          <div className="home-hero__fallback-band t-caption">
+            <b>Showing Earth's thickest air right now</b> — not your local reading.
+          </div>
+        )}
+
+        <div className="home-hero__location-ctas">
+          {!data.isPersonalized ? (
+            <>
+              <button
+                type="button"
+                className="home-hero__cta home-hero__cta--primary t-caption"
+                onClick={onRequestLocation}
+                disabled={requestingLocation}
+              >
+                {requestingLocation ? 'Locating…' : 'See air quality near me'}
+              </button>
+              <button
+                type="button"
+                className="home-hero__cta home-hero__cta--secondary t-caption"
+                onClick={() => setSearchOpen((v) => !v)}
+                aria-expanded={searchOpen}
+              >
+                Search a location
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="home-hero__cta home-hero__cta--secondary t-caption"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-expanded={searchOpen}
+            >
+              Not you? Search again
+            </button>
+          )}
+        </div>
+
+        {locationDenied && !data.isPersonalized && (
+          <p className="home-hero__location-note t-caption">
+            Location permission was not granted — showing the global fallback.
+          </p>
+        )}
+
+        <Materialize show={searchOpen} origin="top left">
+          <CitySearch
+            onSelect={(city) => {
+              onSelectCity(city)
+              setSearchOpen(false)
+            }}
+          />
+        </Materialize>
+
         <div className="home-hero__meta">
           <span>Valid {formatUtcTime(data.series24h[0]?.time ?? data.updatedAt)}</span>
           <span aria-hidden="true">·</span>
@@ -142,6 +224,12 @@ export default function HomeHero({ data, nowMs }: HomeHeroProps) {
         </div>
 
         {actionSentence ? <p className="home-hero__action">{actionSentence}</p> : null}
+
+        <TrustLine
+          ageMs={elapsedMs}
+          dqss={{ available: false, reason: 'not measured by this forecast source' }}
+          uncertainty={uncertainty}
+        />
       </div>
     </WfGlassCard>
   )

@@ -5,6 +5,7 @@ import HomeWhyNow from '../components/home/HomeWhyNow'
 import HomeActOnIt from '../components/home/HomeActOnIt'
 import HomeStoriesResearch from '../components/home/HomeStoriesResearch'
 import { useCapsuleData } from '../components/fluid/capsule/useCapsuleData'
+import { useLocationPersonalization } from '../hooks/useLocationPersonalization'
 import { STALE_THRESHOLD_MS } from '../lib/config/homeBriefing'
 import { track } from '../lib/analytics'
 import '../styles/home.css'
@@ -31,7 +32,9 @@ import '../styles/home.css'
  * withhold it.
  */
 export default function Home() {
-  const data = useCapsuleData()
+  const { choice, requesting, denied, requestGeolocation, selectCity } = useLocationPersonalization()
+  const personalizedLocation = choice ? { lat: choice.lat, lon: choice.lon } : null
+  const data = useCapsuleData(personalizedLocation)
   // Read once, in a lazy initializer (React's documented escape hatch for a
   // one-time non-deterministic read) rather than calling `Date.now()`
   // directly in the render body, which the purity lint rule rejects.
@@ -57,7 +60,14 @@ export default function Home() {
   return (
     <main className="home-page">
       <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
-        <HomeHero data={data} nowMs={renderedAtMs} />
+        <HomeHero
+          data={data}
+          nowMs={renderedAtMs}
+          requestingLocation={requesting}
+          locationDenied={denied}
+          onRequestLocation={requestGeolocation}
+          onSelectCity={selectCity}
+        />
       </div>
 
       {data.status === 'ready' ? (

@@ -147,6 +147,27 @@
 .content-sources__item a { color: var(--accent); }
 .content-sources__caveat { margin: 0; }
 
+/* ---- News cross-links (UI Tier-1 P2-B) — one line, card bottom, News
+   Surface Contract §8 badge-density budget. Distinct from `.content-tag`
+   (static meta text): these are actionable links, so mixed-case + hairline
+   pill rather than uppercase-mono meta styling. */
+.news-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.dispatch-card__cross-links { padding: 0 var(--sp-4) var(--sp-3); margin-top: calc(-1 * var(--sp-1)); }
+.article-cross-links { margin-top: var(--sp-3); }
+.news-chip {
+  display: inline-block;
+  border: 1px solid var(--rule);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-0);
+}
+/* `.t-caption` (11px, sans) matches this chip's size/family exactly — the
+   compound selector overrides its `color` so the pill's own accent/muted
+   tones win regardless of stylesheet load order (t-caption vs. news-chip are
+   both single-class selectors, so cascade order alone can't be trusted). */
+.news-chip.t-caption { color: var(--accent); }
+.news-chip:hover { border-color: var(--accent); }
+.news-chip--muted.t-caption { color: var(--ink-1); }
+
 .content-body { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 68ch; }
 .content-body__heading { margin: var(--sp-3) 0 0; }
 .content-body__para { margin: 0; color: var(--ink-1); }

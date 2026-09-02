@@ -1,0 +1,141 @@
+// AAA coverage for locationChoiceStore: null-until-chosen default, setChoice
+// persistence, clearChoice, and localStorage failure tolerance.
+//
+// The store reads localStorage once, synchronously, at module import (a
+// Zustand `create()` initializer) — matching how it runs once at real app
+// boot. Each test therefore stubs `window.localStorage` and re-imports the
+// module fresh via `vi.resetModules()` so the read happens after the stub is
+// in place, the same reason `useGeolocation.test.ts` documents jsdom's
+// missing `window.localStorage` here.
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>()
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value)
+    },
+    removeItem: (key: string) => {
+      store.delete(key)
+    },
+    clear: () => {
+      store.clear()
+    },
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+}
+
+let originalDescriptor: PropertyDescriptor | undefined
+
+beforeEach(() => {
+  originalDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
+  vi.resetModules()
+})
+
+afterEach(() => {
+  if (originalDescriptor) Object.defineProperty(window, 'localStorage', originalDescriptor)
+  else delete (window as { localStorage?: Storage }).localStorage
+  vi.resetModules()
+})
+
+describe('locationChoiceStore', () => {
+  it('defaults to choice=null (never a silent guess) when nothing is stored', async () => {
+    // Arrange
+    Object.defineProperty(window, 'localStorage', { value: createMemoryStorage(), configurable: true })
+    // Act
+    const { useLocationChoiceStore } = await import('./locationChoiceStore')
+    // Assert
+    expect(useLocationChoiceStore.getState().choice).toBeNull()
+  })
+
+  it('setChoice updates state and persists to localStorage', async () => {
+    // Arrange
+    const storage = createMemoryStorage()
+    Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+    const { useLocationChoiceStore } = await import('./locationChoiceStore')
+    // Act
+    useLocationChoiceStore
+      .getState()
+      .setChoice({ lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'search' })
+    // Assert
+    expect(useLocationChoiceStore.getState().choice).toEqual({
+      lat: 37.5665,
+      lon: 126.978,
+      label: 'Seoul, KR',
+      source: 'search',
+    })
+    expect(JSON.parse(storage.getItem('airlens-location-choice')!)).toEqual({
+      lat: 37.5665,
+      lon: 126.978,
+      label: 'Seoul, KR',
+      source: 'search',
+    })
+  })
+
+  it('reloads a persisted choice on the next module import (simulated app restart)', async () => {
+    // Arrange
+    const storage = createMemoryStorage()
+    Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+    const first = await import('./locationChoiceStore')
+    first.useLocationChoiceStore
+      .getState()
+      .setChoice({ lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'geolocation' })
+    // Act — fresh module instance, same underlying storage (mirrors a reload)
+    vi.resetModules()
+    const { useLocationChoiceStore: reloadedStore } = await import('./locationChoiceStore')
+    // Assert
+    expect(reloadedStore.getState().choice).toEqual({
+      lat: 48.8566,
+      lon: 2.3522,
+      label: 'Paris, FR',
+      source: 'geolocation',
+    })
+  })
+
+  it('clearChoice resets state and removes the stored value', async () => {
+    // Arrange
+    const storage = createMemoryStorage()
+    Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+    const { useLocationChoiceStore } = await import('./locationChoiceStore')
+    useLocationChoiceStore.getState().setChoice({ lat: 1, lon: 2, label: 'X', source: 'search' })
+    // Act
+    useLocationChoiceStore.getState().clearChoice()
+    // Assert
+    expect(useLocationChoiceStore.getState().choice).toBeNull()
+    expect(storage.getItem('airlens-location-choice')).toBeNull()
+  })
+
+  it('falls back to choice=null when localStorage throws (private window etc.)', async () => {
+    // Arrange
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: () => {
+          throw new Error('storage blocked')
+        },
+        setItem: () => {
+          throw new Error('storage blocked')
+        },
+      },
+      configurable: true,
+    })
+    // Act
+    const { useLocationChoiceStore } = await import('./locationChoiceStore')
+    // Assert
+    expect(useLocationChoiceStore.getState().choice).toBeNull()
+  })
+
+  it('ignores a malformed stored payload (missing lat/lon) rather than throwing', async () => {
+    // Arrange
+    const storage = createMemoryStorage()
+    storage.setItem('airlens-location-choice', JSON.stringify({ label: 'broken' }))
+    Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+    // Act
+    const { useLocationChoiceStore } = await import('./locationChoiceStore')
+    // Assert
+    expect(useLocationChoiceStore.getState().choice).toBeNull()
+  })
+})

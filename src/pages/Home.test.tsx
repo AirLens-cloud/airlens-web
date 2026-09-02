@@ -46,9 +46,12 @@ function readyFixture(overrides: Partial<Extract<CapsuleDataState, { status: 're
     current: 42,
     tier: 'moderate',
     range: null,
+    p10: null,
+    p90: null,
     series24h: Array.from({ length: 24 }, (_, i) => seriesPoint(i, 42 + i)),
     updatedAt: NOW.toISOString(),
     alert: 'steady',
+    isPersonalized: false,
     ...overrides,
   }
 }
@@ -186,6 +189,53 @@ describe('Home page — ready state', () => {
     // useId() ids contain `:` — bracket-attribute selector avoids CSS escaping.
     const note = container.querySelector(`[id="${describedById}"]`)
     expect(note?.textContent).toMatch(/feasibility review/i)
+  })
+
+  it('shows the fallback band and both location CTAs for the unpersonalized (thickest-air) reading', () => {
+    // Arrange
+    mockData(readyFixture({ isPersonalized: false }))
+    // Act
+    const { container, getByText } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero__fallback-band')).not.toBeNull()
+    expect(getByText('See air quality near me')).not.toBeNull()
+    expect(getByText('Search a location')).not.toBeNull()
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/FALLBACK: THICKEST AIR/)
+  })
+
+  it('hides the fallback band and CTA pair once the reading is personalized', () => {
+    // Arrange
+    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    // Act
+    const { container, getByText, queryByText } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero__fallback-band')).toBeNull()
+    expect(queryByText('See air quality near me')).toBeNull()
+    expect(getByText('Not you? Search again')).not.toBeNull()
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · Paris, FR/)
+  })
+
+  it('renders TrustLine with DQSS withheld and p10/p90 not published for the deterministic forecast', () => {
+    // Arrange — p10/p90 null (Open-Meteo CAMS carries no band)
+    mockData(readyFixture({ p10: null, p90: null }))
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine).not.toBeNull()
+    expect(trustLine?.textContent).toMatch(/DQSS.*withheld/)
+    expect(trustLine?.textContent).toMatch(/not published/)
+    expect(trustLine?.textContent).toMatch(/obs age/)
+  })
+
+  it('renders TrustLine with a real p10/p90 range when the source publishes one', () => {
+    // Arrange
+    mockData(readyFixture({ p10: 30, p90: 55 }))
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.textContent).toMatch(/30\.0–55\.0/)
   })
 })
 

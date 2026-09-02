@@ -22,6 +22,11 @@ function article(overrides: Partial<NewsArticle> = {}): NewsArticle {
 afterEach(() => {
   cleanup()
   vi.resetAllMocks()
+  // Dispatch persists its category filter into the URL (`history.replaceState`)
+  // — without a reset, a later test in this file inherits whatever filter the
+  // previous test last clicked (surfaced by the cross-link test added after
+  // the pagination test, which otherwise silently landed on category=research).
+  window.history.replaceState({}, '', '/dispatch')
 })
 
 describe('Dispatch page', () => {
@@ -110,5 +115,18 @@ describe('Dispatch page', () => {
     await screen.findByText('Research 0')
     expect(container.querySelectorAll('.dispatch-card')).toHaveLength(12)
     expect(screen.getByRole('button', { name: /load more/i })).toBeTruthy()
+  })
+
+  // UI Tier-1 P2-B — country/evidence cross-link chips on the card.
+  it('renders a country cross-link chip on the card when the article has a real countryCode', async () => {
+    vi.mocked(fetchDispatchFeed).mockResolvedValue({
+      status: 'ready',
+      articles: [article({ countryCode: 'KR' })],
+      categories: ['policy'],
+      refTime: null,
+    })
+    render(<Dispatch />)
+    await screen.findByText('Article A')
+    expect(screen.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
   })
 })

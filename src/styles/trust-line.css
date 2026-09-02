@@ -1,0 +1,40 @@
+/* trust-line.css — TrustLine (Home/Today/Country hero Glass-box strip). */
+.trust-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  border: 1px solid var(--rule);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3);
+  color: var(--ink-1);
+  max-width: 560px;
+}
+/* `.t-tag` matches this strip's size/family exactly (11px mono); its
+   uppercase + wide tracking are wrong for mixed-case key:value pairs
+   ("obs age", "p10–p90"), so the compound selector cancels both. */
+.trust-line.t-tag {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.trust-line__item {
+  white-space: nowrap;
+}
+
+.trust-line__k {
+  color: var(--ink-2);
+}
+
+.trust-line__na {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.trust-line a {
+  color: var(--orange-ink);
+  text-decoration: none;
+}
+
+.trust-line a:hover {
+  text-decoration: underline;
+}

@@ -18,6 +18,8 @@ const READY: CapsuleDataReady = {
   current: 42,
   tier: 'moderate',
   range: { lo: 30, hi: 55 },
+  p10: 37,
+  p90: 47,
   series24h: Array.from({ length: 24 }, (_, i) => ({
     time: `t${i}`,
     p10: 30 + i,
@@ -26,6 +28,7 @@ const READY: CapsuleDataReady = {
   })),
   updatedAt: new Date().toISOString(),
   alert: 'steady',
+  isPersonalized: false,
 }
 
 beforeEach(() => {
@@ -165,5 +168,24 @@ describe('AqiCapsule', () => {
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).getByText('NO FEED')).toBeTruthy()
+  })
+
+  it('shows the location label and a NOT YOUR LOCATION warning for the fallback pick', () => {
+    // Arrange — READY.isPersonalized is false (default fixture)
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(within(container).getByText('Seoul')).toBeTruthy()
+    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
+  })
+
+  it('omits the NOT YOUR LOCATION warning once the reading is personalized', () => {
+    // Arrange
+    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(within(container).getByText('Seoul')).toBeTruthy()
+    expect(container.querySelector('.aq-capsule__warn')).toBeNull()
   })
 })

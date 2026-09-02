@@ -13,10 +13,14 @@ import LiquidGlass, { type LiquidGlassProps } from '../LiquidGlass'
 import AqiDot from '../../wireframe/AqiDot'
 import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
+import { useLocationPersonalization } from '../../../hooks/useLocationPersonalization'
 
 const CAPSULE_SPRING = { damping: 0.68, response: 0.38 }
 const COLLAPSED_W = 220
-const COLLAPSED_H = 56
+// Taller than the pre-Tier-1 56px: the idle bar is now two rows (location
+// label + warning on top, the reading below) so the capsule never shows a
+// bare number with no location context — see AqiCapsule's header comment.
+const COLLAPSED_H = 68
 const EXPANDED_W = 320
 const EXPANDED_H = 300
 const PANEL_PAD = 20
@@ -82,9 +86,19 @@ export interface AqiCapsuleProps {
  * (current reading + range, then a 24h sparkline). idle -> open on
  * hover/click/keyboard, plus a one-shot session alert when the forecast
  * worsens in the next 24h.
+ *
+ * UI Tier-1 P1: reads the shared `useLocationPersonalization` choice (set
+ * from the Home hero's "see air quality near me" / "search a location"
+ * CTAs) so a visitor who personalizes on Home sees the same personalized
+ * reading here on Today/Globe/Insights/Landing, not a second prompt. Idle
+ * state always shows a location label; unpersonalized (the feed's
+ * "thickest air" fallback pick) additionally shows a "NOT YOUR LOCATION"
+ * warning, since that number is very unlikely to be the visitor's own air.
  */
 export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
-  const data = useCapsuleData()
+  const { choice } = useLocationPersonalization()
+  const personalizedLocation = choice ? { lat: choice.lat, lon: choice.lon } : null
+  const data = useCapsuleData(personalizedLocation)
   useReducedMotion()
   const [open, setOpen] = useState(false)
   const [pulsing, setPulsing] = useState(false)
@@ -250,15 +264,23 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     const remaining = REFRESH_INTERVAL_MS - elapsed
     idle = (
       <>
-        <AqiDot tier={data.tier} size={10} />
-        <span className="aq-capsule__value">{Math.round(data.current)}</span>
-        <span className="aq-capsule__unit">µg/m³</span>
-        <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined}>
-          {remaining > 0 ? formatCountdown(remaining) : formatDataAge(elapsed)}
+        <span className="aq-capsule__loc-row t-micro">
+          <span className="aq-capsule__loc">{data.city}</span>
+          {!data.isPersonalized && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
+        </span>
+        <span className="aq-capsule__reading-row">
+          <AqiDot tier={data.tier} size={10} />
+          <span className="aq-capsule__value">{Math.round(data.current)}</span>
+          <span className="aq-capsule__unit">µg/m³</span>
+          <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined}>
+            {remaining > 0 ? formatCountdown(remaining) : formatDataAge(elapsed)}
+          </span>
         </span>
       </>
     )
-    ariaLabel = `Air quality ${Math.round(data.current)} PM2.5, expand for details`
+    ariaLabel = data.isPersonalized
+      ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
+      : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
   }
 
   return (

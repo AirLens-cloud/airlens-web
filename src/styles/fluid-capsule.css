@@ -49,10 +49,14 @@
 
 .aq-capsule__trigger {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
   width: 100%;
-  height: 56px;
+  /* Height comes from the shell (JS spring, `COLLAPSED_H`/`EXPANDED_H`), not
+     a fixed value here — the idle content is 1 row (loading/missing) or 2
+     rows (ready: location + reading), and both must center within it. */
+  height: 100%;
   padding: 0 var(--sp-4);
   border: 0;
   background: transparent;
@@ -60,6 +64,48 @@
   cursor: pointer;
   font: inherit;
   white-space: nowrap;
+}
+
+.aq-capsule__loc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+/* `.t-micro` supplies size/family/weight/case; the compound selector keeps
+   this row's own letter-spacing and the white-on-glass color (AA-tuned for
+   the dark capsule surface, not `.t-micro`'s default `--ink-2`) regardless
+   of stylesheet load order. */
+.aq-capsule__loc-row.t-micro {
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.aq-capsule__loc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+/* Solid badge, not colored text-on-glass. Deliberately `--brand-notice-bg`
+   (fixed brand orange-ink), not an `--aqi-*` red — the AqiDot below this
+   badge already uses the AQI severity palette for the actual reading, and a
+   second red badge reads as "the air is dangerous" rather than "this isn't
+   your location" (UX review 2026-09-02). White-on-`--brand-notice-bg`
+   measures ~4.8:1, clearing AA on any glass tier the same way
+   white-on-`--aqi-unh` did. */
+.aq-capsule__warn {
+  flex-shrink: 0;
+  background: var(--brand-notice-bg);
+  color: #ffffff;
+  padding: 1px var(--sp-1);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.aq-capsule__reading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 .aq-capsule__value {
