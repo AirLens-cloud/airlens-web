@@ -25,6 +25,33 @@
     <meta name="twitter:description" content="AirLens — Glass-box air quality intelligence with PM2.5, AOD, and policy impact analysis across global cities." />
     <meta name="twitter:image" content="https://airlens.cloud/og-icon.png" />
 
+    <!-- Site-wide structured data (Organization + WebSite), ported verbatim from
+         AirLens-platform apps/web/index.html. Static so crawlers see it on the
+         homepage (no SSR for /); the SSR shell (functions/_lib/render.ts) appends
+         page-specific JSON-LD on the routes listed above without removing it. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://airlens.cloud/#organization",
+            "name": "AirLens",
+            "url": "https://airlens.cloud",
+            "logo": "https://airlens.cloud/og-icon.png",
+            "description": "Glass-box air quality intelligence — satellite-derived PM2.5 estimates and SDID clean-air policy impact analysis with published uncertainty."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://airlens.cloud/#website",
+            "name": "AirLens",
+            "url": "https://airlens.cloud",
+            "publisher": { "@id": "https://airlens.cloud/#organization" }
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 

@@ -43,6 +43,9 @@ export interface Env {
   ASSETS: { fetch: (input: Request | string) => Promise<Response> }
 }
 
+// src/api/policy.ts's mapper is lossy (see module header) — these are defined
+// locally for the raw shape pageSeo.ts needs. If the source path ever moves,
+// update both this pair and src/api/policy.ts's URL construction.
 const POLICY_IMPACT_BASE = `${HF_LIVE_BASE}/insights-data/policy-impact`
 const POLICY_INDEX_URL = `${POLICY_IMPACT_BASE}/index.json`
 
