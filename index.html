@@ -4,7 +4,53 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>airlens-web</title>
+    <title>AirLens — The Story of Our Atmosphere</title>
+    <meta name="description" content="AirLens — Glass-box air quality intelligence with PM2.5, AOD, and policy impact analysis across global cities." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://airlens.cloud/" />
+
+    <!-- Open Graph / Twitter defaults. The SSR shell (functions/_lib/render.ts)
+         rewrites these per-route on /blog, /blog/:slug, /news/:slug,
+         /country/:code, /dispatch, /today, /insights — HTMLRewriter only
+         rewrites elements that already exist, so these placeholders must stay
+         even though the default SPA route (/) never overwrites them itself. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AirLens" />
+    <meta property="og:title" content="AirLens — The Story of Our Atmosphere" />
+    <meta property="og:description" content="AirLens — Glass-box air quality intelligence with PM2.5, AOD, and policy impact analysis across global cities." />
+    <meta property="og:url" content="https://airlens.cloud/" />
+    <meta property="og:image" content="https://airlens.cloud/og-icon.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AirLens — The Story of Our Atmosphere" />
+    <meta name="twitter:description" content="AirLens — Glass-box air quality intelligence with PM2.5, AOD, and policy impact analysis across global cities." />
+    <meta name="twitter:image" content="https://airlens.cloud/og-icon.png" />
+
+    <!-- Site-wide structured data (Organization + WebSite), ported verbatim from
+         AirLens-platform apps/web/index.html. Static so crawlers see it on the
+         homepage (no SSR for /); the SSR shell (functions/_lib/render.ts) appends
+         page-specific JSON-LD on the routes listed above without removing it. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://airlens.cloud/#organization",
+            "name": "AirLens",
+            "url": "https://airlens.cloud",
+            "logo": "https://airlens.cloud/og-icon.png",
+            "description": "Glass-box air quality intelligence — satellite-derived PM2.5 estimates and SDID clean-air policy impact analysis with published uncertainty."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://airlens.cloud/#website",
+            "name": "AirLens",
+            "url": "https://airlens.cloud",
+            "publisher": { "@id": "https://airlens.cloud/#organization" }
+          }
+        ]
+      }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

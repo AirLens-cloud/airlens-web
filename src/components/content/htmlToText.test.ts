@@ -4,7 +4,7 @@
 // on the Dispatch card and Article page. These pin the fix: any tag/entity
 // content collapses to plain text, and clean text is passed through
 // untouched (fast path, no unnecessary DOMParser work).
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { htmlToPlainText, truncateText } from './htmlToText'
 
 describe('htmlToPlainText', () => {
@@ -60,6 +60,42 @@ describe('htmlToPlainText', () => {
     expect(out).not.toContain('<')
     expect(out).not.toContain('&lt;')
     expect(out).toBe('Critically endangered species threatened. Read more')
+  })
+})
+
+// Ported alongside the Wave 1 SSR port (plan airlens-airlens-web-2-curious-
+// chipmunk) — this module now also runs in Cloudflare Pages Functions
+// (`functions/_lib/data.ts`), whose `workerd` runtime has no `DOMParser`.
+// jsdom (the vitest `environment`) always provides one, so the regex fallback
+// path is otherwise invisible to this suite — a real bug shipped invisibly
+// this way once already (the fallback decoded entities AFTER stripping tags,
+// so a double-encoded `&lt;p&gt;` row's now-literal tags, revealed only by
+// the decode, were never stripped; caught by a live `wrangler pages dev`
+// probe, not by tests, since every case above only exercises the DOMParser
+// path). `vi.stubGlobal('DOMParser', undefined)` forces the fallback branch.
+describe('htmlToPlainText — no-DOMParser fallback (workerd)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('strips real HTML tags the same way as the DOMParser path', () => {
+    vi.stubGlobal('DOMParser', undefined)
+    const input = '<p>Critically endangered species threatened.</p><a href="https://example.com">Read more</a>'
+    expect(htmlToPlainText(input)).toBe('Critically endangered species threatened. Read more')
+  })
+
+  it('decodes a double-encoded fragment (literal &lt;p&gt; text) and then strips the revealed tags', () => {
+    vi.stubGlobal('DOMParser', undefined)
+    const input = '&lt;p&gt;Critically endangered species threatened.&lt;/p&gt;&lt;a href="https://example.com"&gt;Read more&lt;/a&gt;'
+    const out = htmlToPlainText(input)
+    expect(out).not.toContain('<')
+    expect(out).not.toContain('&lt;')
+    expect(out).toBe('Critically endangered species threatened. Read more')
+  })
+
+  it('passes plain text through unchanged (fast path — never reaches the fallback)', () => {
+    vi.stubGlobal('DOMParser', undefined)
+    expect(htmlToPlainText('Just a normal sentence.')).toBe('Just a normal sentence.')
   })
 })
 

@@ -17,12 +17,28 @@
  * — the resolve URL is that path appended verbatim, no auth needed (public
  * repo, CDN-served).
  */
+// `import.meta.env` is a Vite build-time injection, present in the SPA bundle
+// but `undefined` when this module is pulled into a Cloudflare Pages Function
+// (Wrangler's esbuild bundler doesn't inject it) — the optional chain avoids
+// throwing at Function startup (`functions/_lib/data.ts`, Wave 1 SSR port).
 export const SNAPSHOT_CDN_BASE: string =
-  import.meta.env.VITE_SNAPSHOT_CDN_BASE ??
+  import.meta.env?.VITE_SNAPSHOT_CDN_BASE ??
   'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main/mac-data/data/web/v1';
 
 export const HF_LIVE_BASE: string =
-  import.meta.env.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
+  import.meta.env?.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
+
+/**
+ * SDID policy-impact feed base — single source for the one path 3 call
+ * sites need (`src/api/policy.ts`, `functions/_lib/data.ts`, and
+ * `src/lib/seo/pageSeo.ts`'s country JSON-LD `distribution.contentUrl`).
+ * Previously duplicated as a private literal in the first two; a country
+ * hub's Dataset JSON-LD once emitted a *different*, never-published path
+ * (`${CANONICAL_ORIGIN}/data/policy-impact/{cc}.json`) that 404s, since it
+ * was hand-typed instead of sourced from here (code review finding, Wave 1
+ * SSR port). If this path ever moves, this is the only place to update.
+ */
+export const POLICY_IMPACT_BASE: string = `${HF_LIVE_BASE}/insights-data/policy-impact`;
 
 /**
  * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
@@ -44,4 +60,4 @@ export const HF_LIVE_BASE: string =
  * include localhost — `npm run dev` gets a 403 here, deployed builds do not.
  */
 export const COMMUNITY_API_BASE: string =
-  import.meta.env.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';
+  import.meta.env?.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';
