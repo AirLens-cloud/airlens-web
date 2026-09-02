@@ -78,6 +78,31 @@ describe('AtmosphericEvidenceCard — Layer 1 (always visible)', () => {
     expect(qualityLine?.textContent).toContain('OBSERVED')
   })
 
+  it('suppresses the expected-range caption when the band was rejected (crossing quantiles) — no reversed range', () => {
+    // Arrange — independent quantile regressors can cross (p10 > p90); the
+    // view model then returns band=null, and Layer 1 must not leak the raw pair.
+    const props = baseProps({ band: null })
+    props.focus = { ...props.focus!, p10: 45.0, p90: 40.0 }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.queryByText(/Expected range/)).toBeNull()
+    expect(screen.getByText('No band — none generated')).toBeTruthy()
+  })
+
+  it('keeps the lineage tag visible when no DQSS/confidence grade was published', () => {
+    // Arrange — stations without a DQSS score ship qualityGrade:null; the
+    // OBSERVED/MODELED lineage still changes how the value reads.
+    const props = baseProps({ dqssGrade: null })
+    props.focus = { ...props.focus!, dqss: undefined, qualityGrade: null } as typeof props.focus
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    const qualityLine = document.querySelector('.atmos-quality-line')
+    expect(qualityLine?.textContent).toContain('OBSERVED')
+    expect(qualityLine?.textContent).not.toContain('DQSS')
+  })
+
   it('falls back to the honest-empty prompt and "no band" message when nothing is selected — never fabricates a value', () => {
     // Arrange / Act
     render(<AtmosphericEvidenceCard {...baseProps({ focus: null, band: null, range: null, dqssGrade: null })} />)

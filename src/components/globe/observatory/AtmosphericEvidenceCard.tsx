@@ -132,7 +132,11 @@ export default function AtmosphericEvidenceCard({
               <span>{focus.value.toFixed(1)}</span>
               <small>{focus.unit}</small>
             </div>
-            {focus.p10 != null && focus.p90 != null && (
+            {/* Gate on `band` (null on quantile crossing — independent
+                regressors don't guarantee p10≤p50≤p90) so this caption can
+                never show a reversed range while the band line below says
+                "No band". */}
+            {band != null && focus.p10 != null && focus.p90 != null && (
               <p className="atmos-value-caption">Expected range {focus.p10.toFixed(1)}–{focus.p90.toFixed(1)}</p>
             )}
           </div>
@@ -175,12 +179,19 @@ export default function AtmosphericEvidenceCard({
           )
         )}
 
-        {qualityTag && (
+        {/* Lineage must survive a missing grade — it changes how the value
+            reads (OBSERVED vs MODEL-ESTIMATE) even when no DQSS/confidence
+            score was published ("don't fill the unknown with a C"). */}
+        {(qualityTag || lineageTag) && (
           <div className="atmos-quality-line">
-            <span title="Data Quality Scoring System — composite confidence grade">
-              {dqssGrade ? 'DQSS' : 'Prediction confidence'}
-            </span>
-            <b>{qualityTag}</b>
+            {qualityTag && (
+              <>
+                <span title="Data Quality Scoring System — composite confidence grade">
+                  {dqssGrade ? 'DQSS' : 'Prediction confidence'}
+                </span>
+                <b>{qualityTag}</b>
+              </>
+            )}
             {focus?.dqss != null && <em>{Math.round(focus.dqss)}/100</em>}
             {lineageTag && <em className="atmos-lineage-tag">{lineageTag}</em>}
           </div>
