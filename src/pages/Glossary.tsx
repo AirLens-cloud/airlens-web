@@ -1,7 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import '../styles/static.css'
-import { GLOSSARY_TERMS, findGlossaryTerm, type GlossaryCategory } from '../content/glossaryTerms'
+import { GLOSSARY_TERMS, findGlossaryTerm, relatedTermIds, type GlossaryCategory } from '../content/glossaryTerms'
 import UnitSafeText from '../components/knowledge/UnitSafeText'
+import { CANONICAL_ORIGIN, definedTermSetJsonLd } from '../lib/seo/jsonld'
 
 /**
  * Glossary — `/glossary`. A concept graph, not a static dictionary: every
@@ -9,6 +10,11 @@ import UnitSafeText from '../components/knowledge/UnitSafeText'
  * (page-specs/methodology-glossary-knowledge-system.md §4.2). Search and
  * category filtering are client-side only — this is static content, no
  * server round-trip.
+ *
+ * O2: embeds a schema.org `DefinedTermSet` JSON-LD block. `/glossary` has no
+ * SSR handler (`functions/_lib/pageHandlers.ts`), so this is built once at
+ * module scope from the static `GLOSSARY_TERMS` catalog and rendered
+ * directly in the SPA output rather than through the `pageSeo.ts` SSR path.
  */
 
 const CATEGORY_LABEL: Record<GlossaryCategory, string> = {
@@ -18,6 +24,19 @@ const CATEGORY_LABEL: Record<GlossaryCategory, string> = {
   ui: 'UI',
 }
 const CATEGORIES: GlossaryCategory[] = ['nature', 'quality', 'method', 'ui']
+
+const GLOSSARY_URL = `${CANONICAL_ORIGIN}/glossary`
+const GLOSSARY_JSON_LD = definedTermSetJsonLd(
+  'AirLens Glossary',
+  'What each data-quality, provenance, and methodology term on AirLens means — a controlled vocabulary spanning nature/provenance tags, DQSS quality grading, pollutant overlays, and SDID causal-inference terms.',
+  GLOSSARY_URL,
+  GLOSSARY_TERMS.map((t) => ({
+    termId: t.termId,
+    term: t.term,
+    definition: t.definition,
+    url: `${GLOSSARY_URL}#${t.termId}`,
+  })),
+)
 
 export default function Glossary() {
   const [query, setQuery] = useState('')
@@ -34,103 +53,106 @@ export default function Glossary() {
   }, [query, category])
 
   return (
-    <main className="static-page" data-tier="hub">
-      <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
-        <h1 className="h-hero">Glossary</h1>
-        <p className="static-page__thesis t-lede">
-          What each term on AirLens actually means — every entry links to the method that produces it and the
-          concepts it relates to.
-        </p>
-      </header>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: GLOSSARY_JSON_LD }} />
+      <main className="static-page" data-tier="hub">
+        <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+          <h1 className="h-hero">Glossary</h1>
+          <p className="static-page__thesis t-lede">
+            What each term on AirLens actually means — every entry links to the method that produces it and the
+            concepts it relates to.
+          </p>
+        </header>
 
-      <div className="glossary-controls">
-        <div>
-          <label htmlFor="glossary-search" className="a11y-only">Search terms</label>
-          <input
-            id="glossary-search"
-            type="search"
-            placeholder="Search terms…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div className="seg" role="group" aria-label="Filter by category">
-          <button
-            type="button"
-            className={`seg-item${category === 'all' ? ' active' : ''}`}
-            aria-pressed={category === 'all'}
-            onClick={() => setCategory('all')}
-          >
-            All
-          </button>
-          {CATEGORIES.map((c) => (
+        <div className="glossary-controls">
+          <div>
+            <label htmlFor="glossary-search" className="a11y-only">Search terms</label>
+            <input
+              id="glossary-search"
+              type="search"
+              placeholder="Search terms…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div className="seg" role="group" aria-label="Filter by category">
             <button
-              key={c}
               type="button"
-              className={`seg-item${category === c ? ' active' : ''}`}
-              aria-pressed={category === c}
-              onClick={() => setCategory(c)}
+              className={`seg-item${category === 'all' ? ' active' : ''}`}
+              aria-pressed={category === 'all'}
+              onClick={() => setCategory('all')}
             >
-              {CATEGORY_LABEL[c]}
+              All
             </button>
-          ))}
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`seg-item${category === c ? ' active' : ''}`}
+                aria-pressed={category === c}
+                onClick={() => setCategory(c)}
+              >
+                {CATEGORY_LABEL[c]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {filtered.length === 0 ? (
-        <div className="glossary-empty">
-          <p className="t-body">No terms match.</p>
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => {
-              setQuery('')
-              setCategory('all')
-            }}
-          >
-            Reset filters
-          </button>
-        </div>
-      ) : (
-        <div className="glossary-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
-          {filtered.map((term) => {
-            const expanded = expandedId === term.termId
-            return (
-              <article key={term.termId} id={term.termId} className="glossary-card wf-card">
-                <button
-                  type="button"
-                  className="glossary-card__trigger"
-                  aria-expanded={expanded}
-                  onClick={() => setExpandedId(expanded ? null : term.termId)}
-                >
-                  <h2 className="glossary-card__term h-3">{term.term}</h2>
-                  <p className="glossary-card__def t-caption">{term.definition}</p>
-                </button>
-                {expanded ? (
-                  <div className="glossary-card__expanded">
-                    <p className="t-micro" style={{ color: 'var(--ink-2)' }}>
-                      <UnitSafeText text={term.example} />
-                    </p>
-                    {term.methodRef ? (
-                      <a href={`/methodology#${term.methodRef}`}>See method →</a>
-                    ) : null}
-                    <div className="glossary-card__related">
-                      {term.relatedTerms.map((relId) => {
-                        const related = findGlossaryTerm(relId)
-                        return (
-                          <a key={relId} href={`#${relId}`} className="t-tag">
-                            {related?.term ?? relId}
-                          </a>
-                        )
-                      })}
+        {filtered.length === 0 ? (
+          <div className="glossary-empty">
+            <p className="t-body">No terms match.</p>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => {
+                setQuery('')
+                setCategory('all')
+              }}
+            >
+              Reset filters
+            </button>
+          </div>
+        ) : (
+          <div className="glossary-grid fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
+            {filtered.map((term) => {
+              const expanded = expandedId === term.termId
+              return (
+                <article key={term.termId} id={term.termId} className="glossary-card wf-card">
+                  <button
+                    type="button"
+                    className="glossary-card__trigger"
+                    aria-expanded={expanded}
+                    onClick={() => setExpandedId(expanded ? null : term.termId)}
+                  >
+                    <h2 className="glossary-card__term h-3">{term.term}</h2>
+                    <p className="glossary-card__def t-caption">{term.definition}</p>
+                  </button>
+                  {expanded ? (
+                    <div className="glossary-card__expanded">
+                      <p className="t-micro" style={{ color: 'var(--ink-2)' }}>
+                        <UnitSafeText text={term.example} />
+                      </p>
+                      {term.methodRef ? (
+                        <a href={`/methodology#${term.methodRef}`}>See method →</a>
+                      ) : null}
+                      <div className="glossary-card__related">
+                        {relatedTermIds(term).map((relId) => {
+                          const related = findGlossaryTerm(relId)
+                          return (
+                            <a key={relId} href={`#${relId}`} className="t-tag">
+                              {related?.term ?? relId}
+                            </a>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </article>
-            )
-          })}
-        </div>
-      )}
-    </main>
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </main>
+    </>
   )
 }
