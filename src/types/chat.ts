@@ -19,3 +19,46 @@ export interface ChatMessage {
   timestamp: number
   citations?: ChatCitation[]
 }
+
+// ── Field Assistant v2 API wire types (C1 scaffold: workers/assistant/) ────
+// See Obsidian-airlens/wiki/synthesis/field-assistant-v2-design-2026-09-02.md §2.
+// C1 is SSE echo only — no RAG, no LLM — so `citations` is typed for the
+// contract's sake but the C1 worker never emits it (Glass-box: never imply a
+// search happened when it didn't). `intent` is always `'general'` until the
+// guardrails.ts port lands in C3.
+
+/** POST {WORKER}/api/session body. */
+export interface ChatSessionRequest {
+  turnstileToken?: string
+}
+
+export interface ChatSessionResponse {
+  session: string
+  /** epoch ms */
+  expiresAt: number
+  devBypass?: boolean
+}
+
+/** POST {WORKER}/api/chat body (SSE response). */
+export interface ChatRequest {
+  session: string
+  messages: { role: 'user' | 'assistant'; content: string }[]
+  locale?: 'en' | 'ko'
+  page?: string
+}
+
+export type ChatIntent = 'causal' | 'policy' | 'data_lookup' | 'general'
+export type ChatBudgetStatus = 'ok' | 'exhausted'
+
+export type ChatStreamEvent =
+  | { type: 'token'; content: string }
+  | { type: 'citations'; citations: ChatCitation[] }
+  | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent }
+
+export type ChatErrorCode = 'turnstile_failed' | 'rate_limited' | 'quota_exceeded' | 'origin_denied' | 'invalid_body'
+
+export interface ChatErrorBody {
+  error: string
+  code?: ChatErrorCode
+  retry_after?: number
+}

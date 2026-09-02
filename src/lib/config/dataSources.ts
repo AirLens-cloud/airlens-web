@@ -61,3 +61,13 @@ export const POLICY_IMPACT_BASE: string = `${HF_LIVE_BASE}/insights-data/policy-
  */
 export const COMMUNITY_API_BASE: string =
   import.meta.env?.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';
+
+/**
+ * Field Assistant Worker (`workers/assistant/`, C1 scaffold — session issuance
+ * + SSE chat, echo-only until C2 wires RAG). Empty by default: the worker is
+ * not deployed yet, and `ChatPanel` treats an empty base as "assistant
+ * offline" — the disabled input stays disabled rather than rendering a
+ * scripted/fake conversation (Glass-box). Set `VITE_ASSISTANT_API_BASE` once
+ * the worker is deployed and its route is bound.
+ */
+export const ASSISTANT_API_BASE: string = import.meta.env?.VITE_ASSISTANT_API_BASE ?? '';
