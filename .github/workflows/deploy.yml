@@ -56,6 +56,7 @@ jobs:
           echo "deploy credentials present (values masked)"
 
       - name: Deploy to Cloudflare Pages
+        id: deploy
         # SHA-pinned (repo policy: third-party actions pin to a commit, not a
         # movable tag — this step receives the deploy credentials).
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
@@ -79,9 +80,23 @@ jobs:
       - name: Verify the deploy actually landed
         env:
           SITE: https://airlens.cloud
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
           set -u
           fail=0
+
+          # The zone serves a bot challenge (403 + cf-mitigated: challenge) to
+          # GitHub's datacenter IPs — run 33598172881 proved every $SITE probe
+          # reads <none> from this runner while browsers see the site fine. So
+          # all hard assertions run against the unique per-deploy URL
+          # (<hash>.airlens.pages.dev), which functions/_middleware.ts leaves
+          # reachable for QA and the zone challenge does not cover. $SITE gets
+          # one challenge-aware advisory check at the end.
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::wrangler-action returned no deployment-url — cannot verify this deploy"
+            exit 1
+          fi
+          echo "probing deployment URL: $DEPLOY_URL"
 
           # Rollup emits exactly one entry chunk. More than one means the glob
           # below is ambiguous and this check can no longer prove anything —
@@ -93,24 +108,19 @@ jobs:
           fi
           local_entry=$(basename "$(find dist/assets -maxdepth 1 -name 'index-*.js')")
 
-          # Pages puts a fresh upload behind the alias within seconds, but not
-          # instantly. Retry so slow propagation reads as slow, not as failure.
+          # The unique deploy URL serves this upload as soon as it exists, but
+          # give it a short window so slow propagation reads as slow, not as
+          # failure.
           entry=""
-          for _ in $(seq 1 12); do
-            entry=$(curl -sf "$SITE/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
+          for _ in $(seq 1 6); do
+            entry=$(curl -sf "$DEPLOY_URL/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
             [ "$entry" = "$local_entry" ] && break
             sleep 10
           done
           echo "entry — deployed: ${entry:-<none>} / built: $local_entry"
           if [ "$entry" != "$local_entry" ]; then
-            # Diagnose before failing: `curl -sf` above swallows non-2xx
-            # bodies, so a zone bot challenge served to this runner's
-            # datacenter IP reads as <none> exactly like a missing upload.
-            # `cf-mitigated: challenge` is Cloudflare's own marker for a
-            # served challenge page — its presence means the deploy landed
-            # but the probe was blocked, not that the upload failed.
             curl -s -D /tmp/verify-headers -o /tmp/verify-body \
-              -w 'diagnostic — http_code: %{http_code}\n' "$SITE/" || true
+              -w 'diagnostic — http_code: %{http_code}\n' "$DEPLOY_URL/" || true
             grep -i -E '^(cf-mitigated|cf-ray|server):' /tmp/verify-headers || true
             echo "diagnostic — body head:"
             head -c 300 /tmp/verify-body || true; echo
@@ -124,7 +134,7 @@ jobs:
             # `|| true`: a transport failure (DNS, refused, timeout) exits curl
             # nonzero, and under the runner's errexit that would kill the whole
             # verify step mid-list instead of recording this one probe as 000.
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$1" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$1" || true)
             if [ "$code" = "200" ]; then
               echo "  ok   $1"
             else
@@ -173,9 +183,9 @@ jobs:
 
           # A served CSP is the only proof _headers was applied; the file being
           # in dist/ proves only that it was uploaded.
-          csp=$(curl -sI "$SITE/" | grep -ic '^content-security-policy:' || true)
+          csp=$(curl -sI "$DEPLOY_URL/" | grep -ic '^content-security-policy:' || true)
           if [ "$csp" = "0" ]; then
-            echo "::error::no Content-Security-Policy on $SITE/ — _headers did not take effect"
+            echo "::error::no Content-Security-Policy on $DEPLOY_URL/ — _headers did not take effect"
             fail=1
           else
             echo "  ok   Content-Security-Policy served"
@@ -191,13 +201,29 @@ jobs:
           # this into a real assertion needs per-route rendering, which this
           # repo does not have.
           for route in / /globe /weather /insights /__no_such_route__; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE$route" || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$route" || true)
             echo "  $code  $route"
             if [ "$code" != "200" ]; then
               echo "::error::$route returned $code — SPA fallback is broken"
               fail=1
             fi
           done
+
+          # Production alias, challenge-aware. The unique URL above proves the
+          # upload; this is the only check that proves airlens.cloud actually
+          # serves it. A bot challenge makes that unknowable from this runner —
+          # warn and move on rather than recording a false red. A clean non-
+          # challenge response with the wrong entry IS the stale-alias failure
+          # this workflow was built to catch, so that still fails hard.
+          alias_entry=$(curl -s -D /tmp/alias-headers "$SITE/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
+          if [ "$alias_entry" = "$local_entry" ]; then
+            echo "  ok   $SITE serves this build"
+          elif grep -qi '^cf-mitigated: challenge' /tmp/alias-headers; then
+            echo "::warning::$SITE served a bot challenge to this runner — alias unverifiable from CI; verified via $DEPLOY_URL instead"
+          else
+            echo "::error::$SITE serves entry ${alias_entry:-<none>}, built $local_entry — the production alias did not move to this deploy"
+            fail=1
+          fi
 
           [ "$fail" = "0" ] || exit 1
           echo "deploy verified: entry hash matches, sampled assets are served, headers applied"
