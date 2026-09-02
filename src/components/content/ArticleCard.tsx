@@ -1,6 +1,7 @@
 import type { NewsArticle } from '../../types/news'
 import EditorialTrustBadge from './EditorialTrustBadge'
 import BoundedImage from './BoundedImage'
+import NewsCrossLinks from './NewsCrossLinks'
 import { formatDate } from './formatDate'
 import { truncateText } from './htmlToText'
 
@@ -48,6 +49,10 @@ export default function ArticleCard({ article, index, onOpen }: ArticleCardProps
           <EditorialTrustBadge trust={article.editorialTrust} className="dispatch-card__trust" />
         </div>
       </button>
+      {/* Outside <button> — an <a> cannot nest inside one. News Surface
+          Contract §8 badge-density: own row at the card bottom, not folded
+          into the meta row above. */}
+      <NewsCrossLinks article={article} className="dispatch-card__cross-links" />
     </article>
   )
 }
