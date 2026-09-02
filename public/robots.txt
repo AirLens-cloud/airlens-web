@@ -1,0 +1,81 @@
+# robots.txt for AirLens
+# Production canonical: https://airlens.cloud
+# Ported verbatim from the retired monorepo web (apps/web/public/robots.txt)
+# for the Pages cutover. Rules referencing routes this app does not have
+# (/admin, /auth, /profile, /ko/*) are harmless: /ko/* 301s via _redirects and
+# the rest fall through to the SPA shell. Re-derive from src/App.tsx routes
+# when this file is next touched. The Content-Signal block seen on the live
+# site is Cloudflare zone-level managed content, not part of this file.
+
+User-agent: *
+# Public publisher content — crawl + index
+Allow: /$
+Allow: /about
+Allow: /faq
+Allow: /blog
+Allow: /glossary
+Allow: /data-sources
+Allow: /methodology
+Allow: /insights
+Allow: /country
+Allow: /dispatch
+Allow: /news
+Allow: /legal
+
+# Authenticated / interactive screens with no static publisher content
+Disallow: /admin
+Disallow: /auth
+Disallow: /profile
+Disallow: /globe
+Disallow: /report/scenario
+Disallow: /insights/transparency
+Disallow: /ko/admin
+Disallow: /ko/auth
+Disallow: /ko/profile
+Disallow: /ko/globe
+Disallow: /ko/report/scenario
+Disallow: /ko/insights/transparency
+
+# AdSense crawler — full access for ads.txt + on-page snippet verification
+User-agent: Mediapartners-Google
+Allow: /
+
+# AI / answer-engine crawlers — explicitly welcome on public publisher content
+# (same Allow/Disallow surface as "*" above; listed by name so the policy is
+#  deliberate, not incidental). Site guide for LLMs: https://airlens.cloud/llms.txt
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: CCBot
+User-agent: Applebot-Extended
+Allow: /$
+Allow: /about
+Allow: /faq
+Allow: /blog
+Allow: /glossary
+Allow: /data-sources
+Allow: /methodology
+Allow: /insights
+Allow: /country
+Allow: /dispatch
+Allow: /news
+Allow: /legal
+Disallow: /admin
+Disallow: /auth
+Disallow: /profile
+Disallow: /globe
+Disallow: /report/scenario
+Disallow: /insights/transparency
+Disallow: /ko/admin
+Disallow: /ko/auth
+Disallow: /ko/profile
+Disallow: /ko/globe
+Disallow: /ko/report/scenario
+Disallow: /ko/insights/transparency
+
+Sitemap: https://airlens.cloud/sitemap.xml

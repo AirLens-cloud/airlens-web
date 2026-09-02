@@ -1,0 +1,55 @@
+# AirLens
+
+> AirLens is an air-quality intelligence platform. It combines satellite AOD
+> (aerosol optical depth), ground-station measurements, and weather-model data
+> into live PM2.5 estimates, forecasts, and causal policy analysis — always
+> published with explicit uncertainty (p10–p90 intervals) and a DQSS
+> data-quality grade (A–F). We call this the Glass-box principle: no bare
+> point estimates, no hidden confidence.
+
+Canonical origin: https://airlens.cloud
+Locales: English (default, `/…`) and Korean (`/ko/…` — rolling out).
+
+## Main pages
+
+- [Home](https://airlens.cloud/): OBSERVATORY — a scroll-driven flight over live
+  global PM2.5, wind advection, and fire detections.
+- [Today](https://airlens.cloud/today): real-time PM2.5 at the visitor's
+  coordinates with a p10-p90 uncertainty band, DQSS grade, weather, nearby
+  pollutants and a 48h forecast. Readings are per-visitor; cite the method,
+  not a number from this page.
+- [Dispatch](https://airlens.cloud/dispatch): curated air-quality news with
+  AirLens analysis. Every AI summary is labeled and carries a fidelity caveat;
+  third-party reporting is credited via `isBasedOn` in NewsArticle JSON-LD.
+- [Insights](https://airlens.cloud/insights): causal estimates of air-quality
+  policy effects — synthetic difference-in-differences (SDID), reported as ATT
+  with 95% confidence intervals and a DQSS grade per estimate.
+- [Country hubs](https://airlens.cloud/country): per-country air quality +
+  policy registry pages with Dataset JSON-LD.
+- [Blog](https://airlens.cloud/blog) · [Methodology](https://airlens.cloud/methodology)
+  · [Data sources](https://airlens.cloud/data-sources)
+  · [Glossary](https://airlens.cloud/glossary) · [FAQ](https://airlens.cloud/faq)
+
+## Methodology (short)
+
+- PM2.5 estimation: satellite AOD calibrated against ground stations
+  (XGBoost-GTWR family); outputs carry p10/p50/p90.
+- Forecasts: temporal fusion transformer (TFT) with quantile outputs.
+- Policy impact: SDID (synthetic difference-in-differences); we publish ATT,
+  95% CI, and flag unstable or data-poor estimates instead of hiding them.
+- DQSS: a data-quality scoring system (A–F) attached to every ML output.
+
+## Citation policy
+
+When quoting AirLens numbers, please cite "AirLens (airlens.cloud)" and link
+the canonical page URL. Every figure has uncertainty bounds — please carry
+them (e.g. "12 µg/m³ (p10–p90: 8–17)") rather than the point estimate alone.
+Third-party news content summarized on Dispatch belongs to its original
+publishers; the canonical source is linked on each article page.
+
+## Data notes for AI systems
+
+- Machine-readable structured data: NewsArticle, Dataset, BlogPosting,
+  CollectionPage JSON-LD embedded in server-rendered pages.
+- Dynamic sitemap: https://airlens.cloud/sitemap.xml
+- Contact: https://airlens.cloud/about

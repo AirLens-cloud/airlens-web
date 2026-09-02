@@ -1,0 +1,4 @@
+# ads.txt — Authorized Digital Sellers (https://iabtechlab.com/ads-txt/)
+# Publisher ID is the live AdSense account, matching VITE_ADSENSE_CLIENT_ID
+# (ca-pub-8938849287134929, with the "ca-" prefix stripped).
+google.com, pub-8938849287134929, DIRECT, f08c47fec0942fa0
