@@ -60,10 +60,8 @@ export const DOT_MATRIX_CONFIG = {
   LAND_THRESHOLD: 30,
   /** Dot color */
   DOT_COLOR: '#f0f0f0',
-  /** Bump/elevation texture for mountain height */
+  /** Bump/elevation texture — sampled for the land shader's altitude color ramp */
   BUMP_TEXTURE: '/textures/earth-bump.png',
-  /** Elevation scale — max mountain height as fraction of globe radius */
-  ELEVATION_SCALE: 0.065,
   /** Reveal animation duration (seconds) */
   REVEAL_DURATION: 2.0,
   /** Per-tier point counts (after land filtering) */
