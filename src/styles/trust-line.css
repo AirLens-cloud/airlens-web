@@ -1,0 +1,35 @@
+/* trust-line.css — TrustLine (Home/Today/Country hero Glass-box strip). */
+.trust-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  border: 1px solid var(--rule);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-1);
+  max-width: 560px;
+}
+
+.trust-line__item {
+  white-space: nowrap;
+}
+
+.trust-line__k {
+  color: var(--ink-2);
+}
+
+.trust-line__na {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.trust-line a {
+  color: var(--orange-ink);
+  text-decoration: none;
+}
+
+.trust-line a:hover {
+  text-decoration: underline;
+}
