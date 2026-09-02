@@ -296,7 +296,7 @@
   border-top: 1px solid rgba(232, 236, 244, .08);
 }
 .obs-surface .gl-more-summary {
-  padding: 6px 8px 4px;
+  padding: 4px 8px;
   color: var(--obs-hud-dim);
   font: 700 8px/1 var(--obs-mono);
   letter-spacing: .12em;
