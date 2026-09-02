@@ -18,11 +18,13 @@
  *     p10—p50—p90 band line, and a DQSS + lineage badge line. Lineage moved
  *     up here (not buried in the source block) because it changes how the
  *     value should be read.
- *   - Layer 2 (conditional): the mode-specific caveats — only rendered when
- *     they'd change interpretation (transport composite, forecast single
- *     member, events partial-volume note).
- *   - Layer 3 (collapsed `<details>`): source / reference time / valid time /
- *     coverage / full provenance tags. The `<summary>` line (source name) is
+ *   - Layer 2 (conditional) + Layer 3 share one disclosure (2026-09 evidence-row
+ *     revision): the mode-specific caveats (transport composite, forecast
+ *     single member, events partial-volume note) render inside the same
+ *     `<details>` as source / reference time / valid time / coverage / full
+ *     provenance tags, wrapped in one `.atmos-evidence-body` element so a
+ *     caller can position the whole disclosed body as a single popover
+ *     without touching this component. The `<summary>` line (source name) is
  *     the one always-visible line; everything else needs a click.
  * Switching `mode` only swaps the value-block content (events → total count +
  * per-type subtotal) — band/quality/details structure is unchanged, so the
@@ -198,44 +200,45 @@ export default function AtmosphericEvidenceCard({
         )}
       </div>
 
-      {/* Layer 2 — conditional caveats: only surfaced when they'd change how the value reads. */}
-      {isEvents && (
-        <p className="atmos-caveat">On-screen counts show what's actually rendered and published, not the full upstream volume.</p>
-      )}
-      {mode === 'transport' && (
-        <p className="atmos-caveat">Visual estimate — wind × concentration field composite. Not a chemical transport model (CTM).</p>
-      )}
-      {mode === 'forecast' && !band && (
-        <p className="atmos-caveat">GEFS single-member forecast — no uncertainty band</p>
-      )}
-
-      {/* Layer 3 — collapsed source/provenance detail; the summary line is the only always-visible part. */}
+      {/* Layer 2 (caveats) + Layer 3 (source/provenance) — one disclosure, one
+          body. The summary line (source name) is the only always-visible part. */}
       <details className="atmos-evidence-details">
         <summary className="atmos-source-line">
           {source ?? '—'}{focus?.version ? ` · ${focus.version}` : ''}
         </summary>
-        <dl className="atmos-provenance">
-          <div>
-            <dt>Reference time</dt>
-            <dd>{referenceTimeLabel}</dd>
-          </div>
-          <div>
-            <dt>Valid time</dt>
-            <dd>{validTimeLabel}</dd>
-          </div>
-        </dl>
-        {provenance.length > 0 && (
-          <div className="atmos-provenance-tags" aria-label="Data epistemic provenance">
-            {provenance.map((kind) => (
-              <span key={kind}>{kind.toUpperCase()}</span>
-            ))}
-          </div>
-        )}
-        {coverage && (
-          <p className="atmos-coverage" title="Spatial or temporal extent this reading describes">
-            Coverage · {coverage}
-          </p>
-        )}
+        <div className="atmos-evidence-body">
+          {isEvents && (
+            <p className="atmos-caveat">On-screen counts show what's actually rendered and published, not the full upstream volume.</p>
+          )}
+          {mode === 'transport' && (
+            <p className="atmos-caveat">Visual estimate — wind × concentration field composite. Not a chemical transport model (CTM).</p>
+          )}
+          {mode === 'forecast' && !band && (
+            <p className="atmos-caveat">GEFS single-member forecast — no uncertainty band</p>
+          )}
+          <dl className="atmos-provenance">
+            <div>
+              <dt>Reference time</dt>
+              <dd>{referenceTimeLabel}</dd>
+            </div>
+            <div>
+              <dt>Valid time</dt>
+              <dd>{validTimeLabel}</dd>
+            </div>
+          </dl>
+          {provenance.length > 0 && (
+            <div className="atmos-provenance-tags" aria-label="Data epistemic provenance">
+              {provenance.map((kind) => (
+                <span key={kind}>{kind.toUpperCase()}</span>
+              ))}
+            </div>
+          )}
+          {coverage && (
+            <p className="atmos-coverage" title="Spatial or temporal extent this reading describes">
+              Coverage · {coverage}
+            </p>
+          )}
+        </div>
       </details>
     </section>
   )

@@ -274,14 +274,44 @@ export default function Globe() {
         />
       </div>
 
-      <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
+      {/* Evidence row (T1): Layer 1 of the evidence card runs as one horizontal
+          strip here instead of a vertical right-hand rail, with ViewModeSwitch
+          docked to its right — see globe-stage.css ".globe-evidence-row". */}
+      <div className="globe-evidence-row">
+        <AtmosphericEvidenceCard
+          status={chromeStatus}
+          statusLabel={STATUS_LABELS[view.status]}
+          label={view.label}
+          unit={view.unit || null}
+          indexLabel={modeNumber}
+          focus={focus}
+          range={view.range ? [view.range[0], view.range[1]] : null}
+          band={band ? { low: band.low, center: band.center, high: band.high } : null}
+          dqssGrade={focus ? dqssScoreToGrade(focus.dqss) : null}
+          mode={view.mode}
+          uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
+          eventCoverage={view.eventCoverage}
+          source={view.source}
+          referenceTimeLabel={utcLabel(view.referenceTime)}
+          validTimeLabel={utcLabel(view.validTime)}
+          provenance={[...view.provenance]}
+          coverage={view.coverage}
+        />
+        <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
+      </div>
 
       <section className="globe-stage">
         <aside className="globe-stage-left" aria-label="Atmospheric lens and layers">
           <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
+          {/* T2: LAYERS defaults open, TIMELINE defaults collapsed — the
+              timeline is a forecast-only aid, so collapsing it by default is
+              the honest state for the common (non-forecast) session. */}
           <details className="globe-stage-left-controls" open>
-            <summary>Layers &amp; timeline</summary>
+            <summary>Layers</summary>
             <GlobeLayerToggles />
+          </details>
+          <details className="globe-stage-left-controls">
+            <summary>Timeline</summary>
             <GlobeTimeline />
           </details>
         </aside>
@@ -320,28 +350,6 @@ export default function Globe() {
             </>
           )}
         </div>
-
-        <aside className="globe-stage-rail" aria-label="Observation deck evidence">
-          <AtmosphericEvidenceCard
-            status={chromeStatus}
-            statusLabel={STATUS_LABELS[view.status]}
-            label={view.label}
-            unit={view.unit || null}
-            indexLabel={modeNumber}
-            focus={focus}
-            range={view.range ? [view.range[0], view.range[1]] : null}
-            band={band ? { low: band.low, center: band.center, high: band.high } : null}
-            dqssGrade={focus ? dqssScoreToGrade(focus.dqss) : null}
-            mode={view.mode}
-            uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
-            eventCoverage={view.eventCoverage}
-            source={view.source}
-            referenceTimeLabel={utcLabel(view.referenceTime)}
-            validTimeLabel={utcLabel(view.validTime)}
-            provenance={[...view.provenance]}
-            coverage={view.coverage}
-          />
-        </aside>
       </section>
 
       <GlobeGridTooltip />

@@ -28,6 +28,8 @@ export interface GlobeLayerToggleDef {
   label: string;
   /** What is on screen when this is on — shown as the switch's secondary line. */
   detail: string;
+  /** Renders inside the collapsed "MORE" group instead of the primary switchboard. */
+  secondary?: true;
 }
 
 export const GLOBE_LAYER_TOGGLES: readonly GlobeLayerToggleDef[] = [
@@ -35,6 +37,6 @@ export const GLOBE_LAYER_TOGGLES: readonly GlobeLayerToggleDef[] = [
   { flag: 'showPredictions', label: 'PREDICTIONS', detail: 'Model cells with p10–p90' },
   { flag: 'showParticles', label: 'WIND', detail: 'GFS surface wind trails' },
   { flag: 'showFires', label: 'FIRES', detail: 'FIRMS hotspots + smoke' },
-  { flag: 'showPollen', label: 'POLLEN', detail: 'CAMS pollen — Europe only' },
-  { flag: 'showGrid', label: 'GRATICULE', detail: 'Lat/lon reference lines' },
+  { flag: 'showPollen', label: 'POLLEN', detail: 'CAMS pollen — Europe only', secondary: true },
+  { flag: 'showGrid', label: 'GRATICULE', detail: 'Lat/lon reference lines', secondary: true },
 ];

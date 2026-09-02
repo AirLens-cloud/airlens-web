@@ -139,6 +139,17 @@ describe('Globe — G0 stage layout', () => {
     fireEvent.click(viewButton('TABLE'))
     expect(container.querySelector('.compare-tray')).toBeNull()
   })
+
+  it('renders the evidence card in the top chrome row, not a right-hand rail', () => {
+    // Arrange / Act — T1: the evidence rail was removed in favour of a
+    // horizontal strip docked under the HUD, alongside ViewModeSwitch.
+    const { container } = render(<Globe />)
+    // Assert
+    const row = container.querySelector('.globe-evidence-row')
+    expect(row?.querySelector('[aria-label="Data evidence and uncertainty"]')).toBeTruthy()
+    expect(row?.querySelector('.view-mode-switch')).toBeTruthy()
+    expect(container.querySelector('.globe-stage-rail')).toBeNull()
+  })
 })
 
 function viewButton(label: string): HTMLButtonElement {
