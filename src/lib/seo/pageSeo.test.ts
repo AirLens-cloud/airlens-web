@@ -16,6 +16,7 @@ import {
   type CountryRegistry,
   type CountryImpact,
 } from './pageSeo'
+import { POLICY_IMPACT_BASE } from '../config/dataSources'
 
 const ARTICLE: ArticleSeoInput = {
   slug: 'seoul-pm25-falls',
@@ -240,10 +241,20 @@ describe('countryPageSeo', () => {
     expect(ld).toContain('variableMeasured')
     expect(ld).toContain('Synthetic Difference-in-Differences')
     expect(ld).toContain('DataDownload')
-    expect(ld).toContain('/data/policy-impact/KR.json')
     expect(ld).toContain('dateModified')
     expect(ld).toContain('https://airlens.cloud/legal/terms')
     expect(ld).toContain('"creator"')
+  })
+
+  // Code review finding (Wave 1 SSR port): `distribution.contentUrl` once
+  // pointed at `${CANONICAL_ORIGIN}/data/policy-impact/KR.json` — a static
+  // path this repo never publishes, so the link always 404s. It must be the
+  // real, live HF URL — the same one `functions/_lib/data.ts` and
+  // `src/api/policy.ts` actually fetch from — not a guessed same-origin path.
+  it('Dataset JSON-LD distribution.contentUrl is the real, fetchable HF policy-impact URL (not a 404 static path)', () => {
+    const ld = countryPageSeo(REG, META_IMPACT).jsonLd.join(' ')
+    expect(ld).toContain(`"contentUrl":"${POLICY_IMPACT_BASE}/KR.json"`)
+    expect(ld).not.toContain('/data/policy-impact/')
   })
 
   it('honesty: methodology still renders for a gated country, but the effect stays a disclaimer', () => {

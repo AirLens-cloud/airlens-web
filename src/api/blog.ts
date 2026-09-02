@@ -10,6 +10,7 @@
  * far — treated as optional, never backfilled from `body_ko`.
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources'
+import { FEED_CACHE_TTL_MS } from '../lib/config/feeds'
 import { logger } from '../lib/logger'
 import {
   BLOG_TOPICS,
@@ -182,15 +183,16 @@ function byPublishedDesc(a: BlogPost, b: BlogPost): number {
   return tb - ta
 }
 
-let feedCache: BlogPost[] | null = null
+let feedCache: { posts: BlogPost[]; cachedAt: number } | null = null
 
 /** Test seam — drops the in-memory feed cache. */
 export function __resetBlogFeedCache(): void {
   feedCache = null
 }
 
+/** Reuses the parsed feed for `FEED_CACHE_TTL_MS` — see that constant's comment for why a TTL matters here. */
 async function loadBlogFeed(): Promise<BlogPost[] | null> {
-  if (feedCache) return feedCache
+  if (feedCache && Date.now() - feedCache.cachedAt < FEED_CACHE_TTL_MS) return feedCache.posts
   try {
     const res = await fetch(BLOG_FEED_URL)
     if (!res.ok) {
@@ -203,12 +205,13 @@ async function loadBlogFeed(): Promise<BlogPost[] | null> {
       : isRecord(payload) && Array.isArray(payload.posts)
         ? (payload.posts as unknown[])
         : []
-    feedCache = rows
+    const posts = rows
       .filter((r): r is RawBlogRow => isRecord(r))
       .map(mapPost)
       .filter((p): p is BlogPost => p !== null)
       .sort(byPublishedDesc)
-    return feedCache
+    feedCache = { posts, cachedAt: Date.now() }
+    return posts
   } catch (err) {
     logger.error('blog feed fetch threw:', err)
     return null

@@ -13,6 +13,7 @@
  * this repo — see `types/news.ts`.
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources'
+import { FEED_CACHE_TTL_MS } from '../lib/config/feeds'
 import { logger } from '../lib/logger'
 import { htmlToPlainText } from '../components/content/htmlToText'
 import type { ArticleLookupResult, DispatchFeedResult, EditorialTrust, NewsArticle } from '../types/news'
@@ -91,7 +92,7 @@ function byPublishedDesc(a: NewsArticle, b: NewsArticle): number {
   return tb - ta
 }
 
-let feedCache: { articles: NewsArticle[]; refTime: string | null } | null = null
+let feedCache: { articles: NewsArticle[]; refTime: string | null; cachedAt: number } | null = null
 
 /** Test seam — drops the in-memory feed cache. */
 export function __resetNewsFeedCache(): void {
@@ -99,12 +100,14 @@ export function __resetNewsFeedCache(): void {
 }
 
 /**
- * Reads + parses the feed once per session. Returns `null` when the feed
- * could not be read at all (network failure, non-2xx, malformed payload) —
- * distinct from a successfully-read feed with zero rows, which is `{ articles: [] }`.
+ * Reads + parses the feed, reusing the result for `FEED_CACHE_TTL_MS` (see
+ * that constant's comment for why a TTL matters here). Returns `null` when
+ * the feed could not be read at all (network failure, non-2xx, malformed
+ * payload) — distinct from a successfully-read feed with zero rows, which is
+ * `{ articles: [] }`.
  */
 async function loadNewsFeed(): Promise<{ articles: NewsArticle[]; refTime: string | null } | null> {
-  if (feedCache) return feedCache
+  if (feedCache && Date.now() - feedCache.cachedAt < FEED_CACHE_TTL_MS) return feedCache
   try {
     const res = await fetch(NEWS_FEED_URL)
     if (!res.ok) {
@@ -123,7 +126,7 @@ async function loadNewsFeed(): Promise<{ articles: NewsArticle[]; refTime: strin
       .filter((a): a is NewsArticle => a !== null)
       .sort(byPublishedDesc)
     const refTime = isRecord(payload) && typeof payload.refTime === 'string' ? payload.refTime : null
-    feedCache = { articles, refTime }
+    feedCache = { articles, refTime, cachedAt: Date.now() }
     return feedCache
   } catch (err) {
     logger.error('news feed fetch threw:', err)

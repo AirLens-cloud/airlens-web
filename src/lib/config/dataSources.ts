@@ -29,6 +29,18 @@ export const HF_LIVE_BASE: string =
   import.meta.env?.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
 
 /**
+ * SDID policy-impact feed base — single source for the one path 3 call
+ * sites need (`src/api/policy.ts`, `functions/_lib/data.ts`, and
+ * `src/lib/seo/pageSeo.ts`'s country JSON-LD `distribution.contentUrl`).
+ * Previously duplicated as a private literal in the first two; a country
+ * hub's Dataset JSON-LD once emitted a *different*, never-published path
+ * (`${CANONICAL_ORIGIN}/data/policy-impact/{cc}.json`) that 404s, since it
+ * was hand-typed instead of sourced from here (code review finding, Wave 1
+ * SSR port). If this path ever moves, this is the only place to update.
+ */
+export const POLICY_IMPACT_BASE: string = `${HF_LIVE_BASE}/insights-data/policy-impact`;
+
+/**
  * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
  * the Weather page's `/api/proxy/open-meteo-weather` and
  * `/api/proxy/open-meteo-aq` routes live here. Public and keyless, so it gets

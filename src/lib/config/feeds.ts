@@ -170,3 +170,17 @@ export function windLevelSlug(level: 'surface' | '850hPa'): string {
 /** PM2.5 forecast (NOAA GEFS-Aerosols) manifest staleness — 12h SLA, from the
  *  source ontology's `pm25.forecastPipeline.freshnessSlaH`. */
 export const TIMELINE_STALE_MS: number = 12 * 3600 * 1000
+
+// ── Article feeds (news.ts / blog.ts) ───────────────────────────────────────
+
+/**
+ * In-memory feed cache lifetime, shared by `api/news.ts` and `api/blog.ts` —
+ * long enough to dedupe bursts of near-simultaneous requests, short enough
+ * that a newly published article/post shows up promptly. Matters most for
+ * the SSR Cloudflare Pages Function (`functions/_lib/data.ts` reuses both
+ * modules' fetchers): a warm `workerd` isolate can be reused across many
+ * requests over a long span, and this module-scope cache has no other
+ * expiry — without a TTL, a new article would never reach crawler responses
+ * until the isolate happened to recycle (code review finding, Wave 1 SSR port).
+ */
+export const FEED_CACHE_TTL_MS: number = 5 * 60 * 1000

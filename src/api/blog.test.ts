@@ -4,6 +4,7 @@
 // filed under a real bucket).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fetchBlogFeed, fetchBlogPostBySlug, __resetBlogFeedCache, __test } from './blog'
+import { FEED_CACHE_TTL_MS } from '../lib/config/feeds'
 
 function mockFetch(response: { ok: boolean; status?: number; body?: unknown; throws?: boolean }) {
   const spy = vi.fn(async () => {
@@ -67,6 +68,38 @@ describe('fetchBlogFeed', () => {
     expect(result.status).toBe('ready')
     if (result.status !== 'ready') return
     expect(result.posts).toHaveLength(1)
+  })
+})
+
+// Code review finding (Wave 1 SSR port): the SSR Cloudflare Pages Function
+// reuses this module's cache in a `workerd` isolate that can stay warm for a
+// long time. Without a TTL, a newly published post would never reach a
+// crawler response until the isolate happened to recycle — this pins that
+// the cache actually expires, not just that it exists.
+describe('fetchBlogFeed — cache TTL (code review finding, Wave 1 SSR port)', () => {
+  it('reuses the cached feed within the TTL, then refetches once it expires', async () => {
+    vi.useFakeTimers()
+    try {
+      const spy = mockFetch({ ok: true, body: { posts: [REAL_POST], count: 1 } })
+      const first = await fetchBlogFeed()
+      expect(first.status).toBe('ready')
+      expect(spy).toHaveBeenCalledTimes(1)
+
+      // Still within the TTL — same in-memory result, no second fetch.
+      await fetchBlogFeed()
+      expect(spy).toHaveBeenCalledTimes(1)
+
+      // Past the TTL — a stale cache would otherwise hide this new post
+      // forever in a long-lived SSR isolate (the bug this test pins).
+      vi.advanceTimersByTime(FEED_CACHE_TTL_MS + 1)
+      mockFetch({ ok: true, body: { posts: [REAL_POST, { ...REAL_POST, slug: 'second-post' }], count: 2 } })
+      const second = await fetchBlogFeed()
+      expect(second.status).toBe('ready')
+      if (second.status !== 'ready') return
+      expect(second.posts).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

@@ -24,7 +24,7 @@
 // pass the raw JSON through typed as `pageSeo.ts`'s (ported, source-shaped)
 // `CountryImpact`, rather than through that mapper.
 
-import { HF_LIVE_BASE } from '../../src/lib/config/dataSources'
+import { POLICY_IMPACT_BASE } from '../../src/lib/config/dataSources'
 import type { ArticleSeoInput } from '../../src/lib/seo/jsonld'
 import type {
   CountryRegistry,
@@ -43,10 +43,11 @@ export interface Env {
   ASSETS: { fetch: (input: Request | string) => Promise<Response> }
 }
 
-// src/api/policy.ts's mapper is lossy (see module header) — these are defined
-// locally for the raw shape pageSeo.ts needs. If the source path ever moves,
-// update both this pair and src/api/policy.ts's URL construction.
-const POLICY_IMPACT_BASE = `${HF_LIVE_BASE}/insights-data/policy-impact`
+// src/api/policy.ts's mapper is lossy (see module header) — country reads
+// here fetch the same URLs directly instead. `POLICY_IMPACT_BASE` is the
+// single shared constant (`src/lib/config/dataSources.ts`) also used by
+// `src/api/policy.ts` and `pageSeo.ts`'s country JSON-LD contentUrl — update
+// it there if the source path ever moves.
 const POLICY_INDEX_URL = `${POLICY_IMPACT_BASE}/index.json`
 
 async function fetchJson<T>(url: string): Promise<T | null> {

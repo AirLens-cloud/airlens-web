@@ -21,7 +21,7 @@
  *    independent lanes (CAMS EAC4, ground stations) concluded on the same
  *    country. The monorepo predates the field and dropped it.
  */
-import { HF_LIVE_BASE } from '../lib/config/dataSources'
+import { POLICY_IMPACT_BASE } from '../lib/config/dataSources'
 import { ATT_PLAUSIBLE_MAX, POLICY_FIT_GRADE_CUTOFFS } from '../lib/config/policy'
 import { logger } from '../lib/logger'
 import type {
@@ -34,9 +34,8 @@ import type {
   SdidPoint,
 } from '../types/policy'
 
-const POLICY_BASE = `${HF_LIVE_BASE}/insights-data/policy-impact`
-const POLICY_INDEX_URL = `${POLICY_BASE}/index.json`
-const POLICY_SUMMARY_URL = `${POLICY_BASE}/summary.json`
+const POLICY_INDEX_URL = `${POLICY_IMPACT_BASE}/index.json`
+const POLICY_SUMMARY_URL = `${POLICY_IMPACT_BASE}/summary.json`
 
 interface RawCrossCheckLane {
   att?: number | null
@@ -231,7 +230,7 @@ export async function fetchPolicyIndex(): Promise<PolicyIndexEntry[]> {
 export async function fetchCountryPolicyImpact(countryCode: string): Promise<PolicyImpact | null> {
   const cc = (countryCode ?? '').toUpperCase()
   if (!/^[A-Z]{2,3}$/.test(cc)) return null
-  const res = await fetch(`${POLICY_BASE}/${cc}.json`)
+  const res = await fetch(`${POLICY_IMPACT_BASE}/${cc}.json`)
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`policy-impact/${cc}.json: HTTP ${res.status}`)
   const raw = (await res.json()) as RawPolicyImpactData

@@ -26,6 +26,7 @@ import {
   type ArticleSeoInput,
 } from './jsonld'
 import { ATT_PLAUSIBLE_MAX } from '../config/policy'
+import { POLICY_IMPACT_BASE } from '../config/dataSources'
 
 export interface PageSeo {
   title: string
@@ -364,6 +365,9 @@ export function countryPageSeo(reg: CountryRegistry, impact: CountryImpact | nul
       countryCode: code,
       dateModified: impact?.generated_at ?? null,
       treatmentYear: impact?.treatment_year ?? null,
+      // The real, live HF URL a crawler can fetch — see jsonld.ts's
+      // CountryDatasetMeta comment for why this isn't built inside jsonld.ts.
+      distributionContentUrl: `${POLICY_IMPACT_BASE}/${code}.json`,
     }),
     breadcrumbJsonLd([
       { name: 'Home', url: `${CANONICAL_ORIGIN}/` },

@@ -21,11 +21,11 @@ import {
 } from './data'
 import { __resetNewsFeedCache } from '../../src/api/news'
 import { __resetBlogFeedCache } from '../../src/api/blog'
-import { HF_LIVE_BASE } from '../../src/lib/config/dataSources'
+import { HF_LIVE_BASE, POLICY_IMPACT_BASE } from '../../src/lib/config/dataSources'
 
 const NEWS_FEED_URL = `${HF_LIVE_BASE}/news-data/articles.json`
 const BLOG_FEED_URL = `${HF_LIVE_BASE}/blog-data/posts.json`
-const POLICY_INDEX_URL = `${HF_LIVE_BASE}/insights-data/policy-impact/index.json`
+const POLICY_INDEX_URL = `${POLICY_IMPACT_BASE}/index.json`
 
 function jsonResponse(payload: unknown): Response {
   return { ok: true, status: 200, json: async () => payload } as unknown as Response

@@ -121,6 +121,18 @@ export interface CountryDatasetMeta {
   countryCode?: string | null
   dateModified?: string | null
   treatmentYear?: number | null
+  /**
+   * The actual URL a crawler can fetch for this country's raw data — this
+   * module has no data-source knowledge of its own (see file header: no DOM
+   * or browser deps, safe for both SPA and SSR), so the caller must supply
+   * a real, live URL rather than this module inventing one. A prior version
+   * emitted `${CANONICAL_ORIGIN}/data/policy-impact/{cc}.json`, a path this
+   * repo never published — Google Dataset Search would have flagged the
+   * `distribution` as a dead link (code review finding, Wave 1 SSR port).
+   * Omitted (not set) when the caller has no such URL — `distribution` is
+   * then left off entirely rather than emitting a guessed one.
+   */
+  distributionContentUrl?: string | null
 }
 
 /** schema.org Dataset for a country air-quality + policy hub page. */
@@ -147,12 +159,17 @@ export function countryDatasetJsonLd(
   }
   if (meta?.dateModified) obj.dateModified = meta.dateModified
   if (meta?.treatmentYear != null) obj.temporalCoverage = String(meta.treatmentYear)
+  // Both checks stay required, not just the URL one: `cc` is the same
+  // plausible-ISO-code sanity gate this function has always applied before
+  // describing a country dataset at all, independent of where the URL comes
+  // from.
   const cc = (meta?.countryCode ?? '').toUpperCase()
-  if (/^[A-Z]{2,3}$/.test(cc)) {
+  const contentUrl = safeHttpUrl(meta?.distributionContentUrl)
+  if (/^[A-Z]{2,3}$/.test(cc) && contentUrl) {
     obj.distribution = {
       '@type': 'DataDownload',
       encodingFormat: 'application/json',
-      contentUrl: `${CANONICAL_ORIGIN}/data/policy-impact/${cc}.json`,
+      contentUrl,
     }
   }
   return ldScriptJson(obj)

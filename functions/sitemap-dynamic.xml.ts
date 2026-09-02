@@ -25,6 +25,13 @@ interface Ctx {
   next: () => Promise<Response>
 }
 
+// Ported from the source's `NEWS_LIMIT` — a defensive cap against the
+// sitemap protocol's 50,000-URL-per-file ceiling, dropped in the initial
+// port (code review finding, Wave 1 SSR port). Applied to news + blog only,
+// matching the source: country hubs are a closed, small set (ISO country
+// codes) with no realistic path to that ceiling.
+const NEWS_LIMIT = 5000
+
 function urlEntry(loc: string, lastmod?: string | null): string {
   const mod = lastmod ? `\n    <lastmod>${escapeHtml(lastmod)}</lastmod>` : ''
   return `  <url>\n    <loc>${escapeHtml(loc)}</loc>${mod}\n  </url>`
@@ -33,6 +40,7 @@ function urlEntry(loc: string, lastmod?: string | null): string {
 async function newsUrls(): Promise<string[]> {
   const articles = await fetchAllArticlesForSitemap()
   return articles
+    .slice(0, NEWS_LIMIT)
     .filter((a) => a.slug && shouldIndexArticle(a))
     .map((a) => urlEntry(`${CANONICAL_ORIGIN}/news/${a.slug}`, a.published_at))
 }
@@ -40,6 +48,7 @@ async function newsUrls(): Promise<string[]> {
 async function blogUrls(): Promise<string[]> {
   const posts = await fetchAllBlogPostsForSitemap()
   return posts
+    .slice(0, NEWS_LIMIT)
     .filter((p) => shouldIndexBlogPost(p))
     .map((p) => urlEntry(`${CANONICAL_ORIGIN}/blog/${p.slug}`, p.published_at))
 }
