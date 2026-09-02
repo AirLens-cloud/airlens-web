@@ -17,12 +17,16 @@
  * — the resolve URL is that path appended verbatim, no auth needed (public
  * repo, CDN-served).
  */
+// `import.meta.env` is a Vite build-time injection, present in the SPA bundle
+// but `undefined` when this module is pulled into a Cloudflare Pages Function
+// (Wrangler's esbuild bundler doesn't inject it) — the optional chain avoids
+// throwing at Function startup (`functions/_lib/data.ts`, Wave 1 SSR port).
 export const SNAPSHOT_CDN_BASE: string =
-  import.meta.env.VITE_SNAPSHOT_CDN_BASE ??
+  import.meta.env?.VITE_SNAPSHOT_CDN_BASE ??
   'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main/mac-data/data/web/v1';
 
 export const HF_LIVE_BASE: string =
-  import.meta.env.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
+  import.meta.env?.VITE_HF_LIVE_BASE ?? 'https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main';
 
 /**
  * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
@@ -44,4 +48,4 @@ export const HF_LIVE_BASE: string =
  * include localhost — `npm run dev` gets a 403 here, deployed builds do not.
  */
 export const COMMUNITY_API_BASE: string =
-  import.meta.env.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';
+  import.meta.env?.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';

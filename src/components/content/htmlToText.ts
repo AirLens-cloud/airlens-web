@@ -10,9 +10,49 @@
  * `<script>` tags, does not fire event-handler attributes, and is never
  * painted, so reading `.textContent` back out is exactly as safe as any
  * other string operation, not a render.
+ *
+ * This module is also imported by the Cloudflare Pages Functions SSR layer
+ * (`functions/_lib/data.ts`), whose `workerd` runtime has no `DOMParser`
+ * global (a browser API) — jsdom (the vitest `environment`) does provide one,
+ * so this gap is invisible to the test suite. `htmlToPlainText` therefore
+ * checks for `DOMParser` before using it and falls back to a regex-only
+ * strip + a small hand-rolled entity decode. The fallback does not handle
+ * the raw-text-element edge case comment 2 documents below (workerd content
+ * is JSON feed text, not attacker-controlled markup, so that gap is accepted
+ * rather than re-implemented without a parser).
  */
 const CLOSING_TAG = /<\/[a-z][a-z0-9]*\s*>/gi
 const TAG_TOKEN = /<\/?[a-z][a-z0-9]*(?:\s[^<>]*)?\/?>/gi
+
+const BASIC_ENTITIES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&nbsp;': ' ',
+}
+
+function decodeBasicEntities(s: string): string {
+  return s.replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp);/g, (m) => BASIC_ENTITIES[m] ?? m)
+}
+
+/**
+ * No-DOMParser fallback (Cloudflare Workers `workerd`) — entity-decode FIRST,
+ * then tag-strip (the reverse order of the two steps reads more natural, but
+ * decoding second would leave a double-encoded row's now-literal `<p>` tags
+ * — revealed only by the decode — never stripped, since the strip pass
+ * already ran over the still-escaped `&lt;p&gt;` text and found nothing to
+ * match. Decoding first makes both real HTML and double-encoded markup-as-
+ * text land in the same shape before the strip pass sees either.
+ */
+function regexPlainText(input: string): string {
+  const decoded = decodeBasicEntities(input)
+  const spaced = decoded.replace(CLOSING_TAG, (m) => `${m} `)
+  const noTags = spaced.replace(TAG_TOKEN, ' ')
+  return noTags.replace(/\s+/g, ' ').trim()
+}
 
 export function htmlToPlainText(input: string): string {
   if (!input) return input
@@ -20,6 +60,8 @@ export function htmlToPlainText(input: string): string {
   // and skipping the parser for them is both cheaper and avoids exercising
   // it on the common case.
   if (!/[<&]/.test(input)) return input
+
+  if (typeof DOMParser === 'undefined') return regexPlainText(input)
 
   // Pass 1 — a real HTML parse, which both decodes entities and (for
   // genuine HTML) strips real tags in the same step. Space is inserted
