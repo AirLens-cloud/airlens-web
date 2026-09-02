@@ -71,4 +71,22 @@ describe('GlobeLayerToggles', () => {
     // Assert
     expect(offered).not.toContain('WIND')
   })
+
+  it('collapses POLLEN and GRATICULE into a MORE group, collapsed by default', () => {
+    // Arrange / Act — T2: only the 4 primary layers sit in the flat
+    // switchboard; the 2 secondary (region-limited / reference-only) layers
+    // are demoted behind a nested disclosure.
+    const { container } = render(<GlobeLayerToggles />)
+    const more = container.querySelector('details.gl-more') as HTMLDetailsElement
+    // Assert
+    expect(more).toBeTruthy()
+    expect(more.open).toBe(false)
+    expect(more.querySelector('.gl-more-summary')?.textContent).toBe('MORE (2)')
+    const secondaryLabels = Array.from(more.querySelectorAll('.gl-switch strong')).map((el) => el.textContent)
+    expect(secondaryLabels).toEqual(['POLLEN', 'GRATICULE'])
+    // The 4 primary switches sit outside the MORE group entirely.
+    const primarySwitches = Array.from(container.querySelectorAll('.gl-switches'))[0]
+    expect(Array.from(primarySwitches.querySelectorAll('.gl-switch strong')).map((el) => el.textContent))
+      .toEqual(['STATIONS', 'PREDICTIONS', 'WIND', 'FIRES'])
+  })
 })

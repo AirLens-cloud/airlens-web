@@ -33,7 +33,12 @@
 
 .obs-surface .globe-stage {
   display: grid;
-  grid-template-columns: clamp(200px, 18vw, 240px) minmax(0, 1fr) clamp(320px, 30vw, 380px);
+  /* T1 removed the right-hand evidence rail (its Layer 1 now runs in
+     .globe-evidence-row above the grid) — two tracks instead of three.
+     T2 trims the left instrument column from 200-240px to 184-224px: with
+     the rail gone the main track already gained the space, so the column
+     only needs to be as wide as its own dense-mono content. */
+  grid-template-columns: clamp(184px, 16vw, 224px) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
 }
@@ -100,16 +105,6 @@
 .obs-surface .globe-3d-shell:focus-visible {
   outline: 2px solid var(--obs-cyan);
   outline-offset: -2px;
-}
-
-.obs-surface .globe-stage-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px;
-  overflow-y: auto;
-  border-left: 1px solid var(--obs-void-line);
-  background: var(--obs-void-2);
 }
 
 /* ── GlobeLegend ─────────────────────────────────────────────────────────── */
@@ -293,6 +288,27 @@
 .obs-surface .gl-switch-state { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); letter-spacing: .1em; }
 .obs-surface .gl-switch.is-on .gl-switch-state { color: var(--obs-cyan); }
 
+/* T2 — secondary toggles (POLLEN, GRATICULE) collapse into a nested MORE
+   group instead of sitting flush with the primary four; same disclosure
+   pattern as .globe-stage-left-controls above. */
+.obs-surface .gl-more {
+  margin-top: 4px;
+  border-top: 1px solid rgba(232, 236, 244, .08);
+}
+.obs-surface .gl-more-summary {
+  padding: 4px 8px;
+  color: var(--obs-hud-dim);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+.obs-surface .gl-more-summary::-webkit-details-marker { display: none; }
+.obs-surface .gl-more-summary::before { content: '▸ '; }
+.obs-surface .gl-more[open] .gl-more-summary::before { content: '▾ '; }
+.obs-surface .gl-more .gl-switches { padding-top: 4px; }
+
 /* ── GlobeTimeline ───────────────────────────────────────────────────────── */
 
 .obs-surface .globe-timeline {
@@ -420,6 +436,105 @@
 }
 
 .obs-surface .vms-hint { color: var(--obs-hud-dim); }
+
+/* ── GlobeEvidenceRow (T1) ───────────────────────────────────────────────────
+   Replaces the old right-hand `.globe-stage-rail`: AtmosphericEvidenceCard's
+   Layer 1 (name·unit·status, big value, compact band, quality/lineage) now
+   runs as one horizontal strip directly under the HUD, with ViewModeSwitch
+   docked to its right. The card's own DOM/tests are untouched — everything
+   below only restyles its existing atmos-* classes for a row instead of a
+   column, via `display: contents` on `.atmos-l1` (its four blocks become
+   direct flex items of the row) and an absolute popover for Layer 2+3
+   (`.atmos-evidence-body`, now nested inside the `<details>` — see
+   AtmosphericEvidenceCard.tsx), so opening it never reflows the canvas. */
+.obs-surface .globe-evidence-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--obs-void-line);
+}
+
+.obs-surface .globe-evidence-row .atmos-evidence {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: auto;
+  min-width: 0;
+  padding: 0 16px;
+  background: transparent;
+  border: 0;
+}
+
+.obs-surface .globe-evidence-row .atmos-l1 {
+  display: contents;
+}
+
+.obs-surface .globe-evidence-row .atmos-headline,
+.obs-surface .globe-evidence-row .atmos-value-block,
+.obs-surface .globe-evidence-row .atmos-band-compact,
+.obs-surface .globe-evidence-row .atmos-band-empty,
+.obs-surface .globe-evidence-row .atmos-field-range,
+.obs-surface .globe-evidence-row .atmos-honest-empty,
+.obs-surface .globe-evidence-row .atmos-quality-line {
+  flex: none;
+  padding: 8px 0;
+}
+
+.obs-surface .globe-evidence-row .atmos-status { margin-left: 12px; }
+
+/* Redundant with the compact band line right next to it in the strip. */
+.obs-surface .globe-evidence-row .atmos-value-caption { display: none; }
+
+.obs-surface .globe-evidence-row .atmos-band-compact,
+.obs-surface .globe-evidence-row .atmos-band-empty {
+  min-width: 150px;
+  background: transparent;
+  border-block: 0;
+}
+
+.obs-surface .globe-evidence-row .atmos-band-track { width: 100%; }
+
+/* Layer 2+3 trigger stays an inline chip in the strip; the disclosed body
+   (`.atmos-evidence-body`) pops over the canvas instead of pushing the row
+   taller. z-index 6 clears GlobeLegend (3) and CompareTray (4). */
+.obs-surface .globe-evidence-row .atmos-evidence-details {
+  position: relative;
+  flex: none;
+  align-self: center;
+}
+
+.obs-surface .globe-evidence-row .atmos-source-line {
+  padding: 4px 8px;
+  border: 1px solid rgba(232, 236, 244, .4);
+}
+
+.obs-surface .globe-evidence-row .atmos-evidence-details[open] .atmos-source-line {
+  border-color: var(--obs-cyan);
+}
+
+.obs-surface .globe-evidence-row .atmos-evidence-body {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 6;
+  width: 320px;
+  max-width: 80vw;
+  background: var(--glass-night-fill, rgba(5, 9, 16, .82));
+  border: 1px solid var(--obs-cyan);
+  box-shadow: 0 20px 60px rgba(5, 7, 13, .55);
+}
+
+.obs-surface .globe-evidence-row .view-mode-switch {
+  flex: none;
+  padding: 8px 16px;
+  border-bottom: 0;
+  border-left: 1px solid var(--obs-void-line);
+}
+
+/* Redundant in the compact row — same 3-button switch, no room for the copy. */
+.obs-surface .globe-evidence-row .vms-hint { display: none; }
 
 /* ── GlobeTableView ──────────────────────────────────────────────────────── */
 
@@ -601,32 +716,49 @@
 /* ── Narrow viewports ────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  /* Canvas on top, both rails collapse into stacked bottom sheets below it —
+  /* Canvas on top, the one remaining rail (T1 removed the right-hand evidence
+     rail — its content now lives in .globe-evidence-row above the grid, not
+     in this grid at all) collapses into a stacked bottom sheet below it —
      order (not DOM position) puts .globe-stage-main first regardless of its
-     middle position in markup. Each sheet caps at 40dvh + scrolls
-     internally, so however tall their content gets, the `minmax(0, 1fr)`
-     main row absorbs the rest — the outer 100dvh + overflow:hidden lock
-     (`.obs-surface.globe-page`) never gets a reason to grow past one
-     viewport. .globe-stage-main keeps min-height:0 (unset here on purpose)
-     so it can shrink instead of forcing an overflow. */
+     position in markup. The sheet caps at 40dvh + scrolls internally, so
+     however tall its content gets, the `minmax(0, 1fr)` main row absorbs the
+     rest — the outer 100dvh + overflow:hidden lock (`.obs-surface.globe-page`)
+     never gets a reason to grow past one viewport. .globe-stage-main keeps
+     min-height:0 (unset here on purpose) so it can shrink instead of forcing
+     an overflow. */
   .obs-surface .globe-stage {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
   .obs-surface .globe-stage-main { order: 1; }
-  .obs-surface .globe-stage-rail {
-    order: 2;
-    max-height: 40dvh;
-    overflow-y: auto;
-    border-left: 0;
-    border-top: 1px solid var(--obs-void-line);
-  }
   .obs-surface .globe-stage-left {
-    order: 3;
+    order: 2;
     max-height: 40dvh;
     overflow-y: auto;
     border-right: 0;
     border-top: 1px solid var(--obs-void-line);
+  }
+  /* Evidence row (T1 mobile — mockup frame 03): the strip wraps instead of
+     overflowing, and ViewModeSwitch drops to its own full-width row below it
+     rather than squeezing three buttons into whatever width the strip left. */
+  .obs-surface .globe-evidence-row {
+    flex-wrap: wrap;
+  }
+  .obs-surface .globe-evidence-row .atmos-evidence {
+    padding: 8px 12px;
+  }
+  .obs-surface .globe-evidence-row .view-mode-switch {
+    flex: 1 0 100%;
+    justify-content: stretch;
+    padding: 0;
+    border-left: 0;
+    border-top: 1px solid var(--obs-void-line);
+  }
+  .obs-surface .globe-evidence-row .vms-buttons {
+    flex: 1;
+  }
+  .obs-surface .globe-evidence-row .vms-btn {
+    flex: 1;
   }
   /* Both overlays go near-full-width at this size — the bottom-left anchor
      + reserved-width formula that keeps them apart on desktop doesn't leave

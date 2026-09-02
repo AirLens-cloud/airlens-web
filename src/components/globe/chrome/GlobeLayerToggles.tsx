@@ -18,7 +18,7 @@ import {
   OVERLAY_DISPLAY_LABELS,
   OVERLAY_PICKER_CATEGORIES,
 } from '../../../lib/config/globeOverlays'
-import { GLOBE_LAYER_TOGGLES } from '../../../lib/config/globeLayerToggles'
+import { GLOBE_LAYER_TOGGLES, type GlobeLayerToggleDef } from '../../../lib/config/globeLayerToggles'
 import type { OverlayType } from '../../../types/globe'
 import LiquidGlass from '../../fluid/LiquidGlass'
 
@@ -40,6 +40,28 @@ export default function GlobeLayerToggles() {
       GLOBE_LAYER_TOGGLES.map((t) => [t.flag, s[setterFor(t.flag) as keyof typeof s]]),
     ) as Record<string, (v: boolean) => void>),
   )
+
+  const renderSwitch = ({ flag, label, detail }: GlobeLayerToggleDef) => {
+    const on = flags[flag]
+    return (
+      <button
+        key={flag}
+        type="button"
+        className={`gl-switch${on ? ' is-on' : ''}`}
+        aria-pressed={on}
+        onClick={() => setters[flag](!on)}
+      >
+        <span className="gl-switch-copy">
+          <strong>{label}</strong>
+          <small>{detail}</small>
+        </span>
+        <span className="gl-switch-state" aria-hidden="true">{on ? 'ON' : 'OFF'}</span>
+      </button>
+    )
+  }
+
+  const primaryToggles = GLOBE_LAYER_TOGGLES.filter((t) => !t.secondary)
+  const secondaryToggles = GLOBE_LAYER_TOGGLES.filter((t) => t.secondary)
 
   const categories = OVERLAY_PICKER_CATEGORIES
     .map((c) => ({ ...c, overlays: c.overlays.filter((o) => GRID_RENDERABLE_OVERLAYS.includes(o)) }))
@@ -93,25 +115,16 @@ export default function GlobeLayerToggles() {
 
       <span className="gl-kicker" aria-hidden="true">LAYERS</span>
       <div className="gl-switches">
-        {GLOBE_LAYER_TOGGLES.map(({ flag, label, detail }) => {
-          const on = flags[flag]
-          return (
-            <button
-              key={flag}
-              type="button"
-              className={`gl-switch${on ? ' is-on' : ''}`}
-              aria-pressed={on}
-              onClick={() => setters[flag](!on)}
-            >
-              <span className="gl-switch-copy">
-                <strong>{label}</strong>
-                <small>{detail}</small>
-              </span>
-              <span className="gl-switch-state" aria-hidden="true">{on ? 'ON' : 'OFF'}</span>
-            </button>
-          )
-        })}
+        {primaryToggles.map(renderSwitch)}
       </div>
+      {secondaryToggles.length > 0 && (
+        <details className="gl-more">
+          <summary className="gl-more-summary">MORE ({secondaryToggles.length})</summary>
+          <div className="gl-switches">
+            {secondaryToggles.map(renderSwitch)}
+          </div>
+        </details>
+      )}
     </LiquidGlass>
   )
 }
