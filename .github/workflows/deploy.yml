@@ -78,29 +78,32 @@ jobs:
       # route chunk, and the globe textures, which ship outside the JS graph
       # and so can fail to upload while every bundle succeeds).
       - name: Verify the deploy actually landed
+        # Both HTTP surfaces are gated from this runner (measured 2026-09-02):
+        # airlens.cloud serves the zone's bot challenge (403 + cf-mitigated:
+        # challenge, run 33598172881) and <hash>.airlens.pages.dev sits behind
+        # Cloudflare Access (302 to airlens-pages.cloudflareaccess.com, run
+        # 33598937531). So the HARD assertion is the Pages API — the same
+        # CLOUDFLARE_PAGES_TOKEN that deployed can read back whether this
+        # run's deployment is the newest production deployment and finished
+        # its deploy stage. HTTP probes still run but downgrade to warnings
+        # when they hit the challenge or the Access wall; a clean HTTP
+        # response with the WRONG entry still fails hard, because a stale
+        # production alias is the failure this workflow exists to catch.
+        # Adding CF_ACCESS_CLIENT_ID / CF_ACCESS_CLIENT_SECRET repo secrets
+        # (a Cloudflare Access service token) restores full hard HTTP
+        # verification with no workflow change.
         env:
           SITE: https://airlens.cloud
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          ACCESS_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           set -u
           fail=0
 
-          # The zone serves a bot challenge (403 + cf-mitigated: challenge) to
-          # GitHub's datacenter IPs — run 33598172881 proved every $SITE probe
-          # reads <none> from this runner while browsers see the site fine. So
-          # all hard assertions run against the unique per-deploy URL
-          # (<hash>.airlens.pages.dev), which functions/_middleware.ts leaves
-          # reachable for QA and the zone challenge does not cover. $SITE gets
-          # one challenge-aware advisory check at the end.
-          if [ -z "$DEPLOY_URL" ]; then
-            echo "::error::wrangler-action returned no deployment-url — cannot verify this deploy"
-            exit 1
-          fi
-          echo "probing deployment URL: $DEPLOY_URL"
-
-          # Rollup emits exactly one entry chunk. More than one means the glob
-          # below is ambiguous and this check can no longer prove anything —
-          # stop rather than silently compare mismatched chunks.
+          # ---- local build integrity (no network) --------------------------
           local_entries=$(find dist/assets -maxdepth 1 -name 'index-*.js' | wc -l | tr -d ' ')
           if [ "$local_entries" != "1" ]; then
             echo "::error::expected exactly 1 dist/assets/index-*.js, found $local_entries — verification cannot identify the entry chunk"
@@ -108,72 +111,31 @@ jobs:
           fi
           local_entry=$(basename "$(find dist/assets -maxdepth 1 -name 'index-*.js')")
 
-          # The unique deploy URL serves this upload as soon as it exists, but
-          # give it a short window so slow propagation reads as slow, not as
-          # failure.
-          entry=""
-          for _ in $(seq 1 6); do
-            entry=$(curl -sf "$DEPLOY_URL/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
-            [ "$entry" = "$local_entry" ] && break
-            sleep 10
-          done
-          echo "entry — deployed: ${entry:-<none>} / built: $local_entry"
-          if [ "$entry" != "$local_entry" ]; then
-            curl -s -D /tmp/verify-headers -o /tmp/verify-body \
-              -w 'diagnostic — http_code: %{http_code}\n' "$DEPLOY_URL/" || true
-            grep -i -E '^(cf-mitigated|cf-ray|server):' /tmp/verify-headers || true
-            echo "diagnostic — body head:"
-            head -c 300 /tmp/verify-body || true; echo
-            echo "::error::deployed entry (${entry:-<none>}) != built entry ($local_entry) — the upload did not land"
-            exit 1
-          fi
-
-          # Every built asset the entry HTML does not name: route chunks and
-          # the static textures. Sampling these catches a partial upload.
-          probe() {
-            # `|| true`: a transport failure (DNS, refused, timeout) exits curl
-            # nonzero, and under the runner's errexit that would kill the whole
-            # verify step mid-list instead of recording this one probe as 000.
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$1" || true)
-            if [ "$code" = "200" ]; then
-              echo "  ok   $1"
-            else
-              echo "::error::$1 returned $code (expected 200) — this build's assets are not all served"
-              fail=1
-            fi
-          }
           # Named explicitly, not globbed from dist: a glob can only check what
           # the build happened to emit, so a texture silently dropped from
-          # public/ would vanish from the probe list instead of failing. These
+          # public/ would vanish from the check list instead of failing. These
           # three are what globe-presets.ts references; OceanSphere logs
           # "Texture load failed" and renders a flat sphere without them.
           for tex in earth-land-mask.png earth-bump.png earth-night-2k.jpg; do
             if [ ! -f "dist/textures/$tex" ]; then
               echo "::error::dist/textures/$tex is missing from the build — public/textures/ lost a file globe-presets.ts needs"
               fail=1
-              continue
             fi
-            probe "/textures/$tex"
           done
 
-          # Representative code-split chunks, resolved from this build. A name
-          # that stops matching must fail: silently skipping it would turn this
-          # gate into a pass that proves nothing. If a chunk is legitimately
-          # renamed or inlined into the entry, update this list in the same PR.
+          # Representative code-split chunks. A name that stops matching must
+          # fail: silently skipping it would turn this gate into a pass that
+          # proves nothing. If a chunk is legitimately renamed or inlined into
+          # the entry, update this list in the same PR.
           for name in Globe3DScene Insights idw.worker OceanSphere; do
-            chunk=$(find dist/assets -maxdepth 1 -name "$name-*.js" | head -1)
-            if [ -z "$chunk" ]; then
-              echo "::error::no dist/assets/$name-*.js in this build — update the probe list in this workflow"
+            if [ -z "$(find dist/assets -maxdepth 1 -name "$name-*.js" | head -1)" ]; then
+              echo "::error::no dist/assets/$name-*.js in this build — update the check list in this workflow"
               fail=1
-              continue
             fi
-            probe "/assets/$(basename "$chunk")"
           done
 
-          # Pages metadata files. These are not referenced by any bundle, so
-          # nothing above would notice them disappearing from public/ — and
-          # they are what carries the security headers and SPA fallback across
-          # a future deploy onto a different Pages project.
+          # Pages metadata files — they carry the security headers and SPA
+          # fallback, and no bundle references them.
           for meta in _headers _redirects; do
             if [ ! -f "dist/$meta" ]; then
               echo "::error::dist/$meta is missing — public/$meta was not copied into the build"
@@ -181,49 +143,97 @@ jobs:
             fi
           done
 
-          # A served CSP is the only proof _headers was applied; the file being
-          # in dist/ proves only that it was uploaded.
-          csp=$(curl -sI "$DEPLOY_URL/" | grep -ic '^content-security-policy:' || true)
-          if [ "$csp" = "0" ]; then
-            echo "::error::no Content-Security-Policy on $DEPLOY_URL/ — _headers did not take effect"
-            fail=1
-          else
-            echo "  ok   Content-Security-Policy served"
+          # ---- HARD: Pages API — did THIS deployment land as production? ---
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::wrangler-action returned no deployment-url — cannot identify this deployment"
+            exit 1
           fi
+          dep=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/pages/projects/airlens/deployments?env=production&per_page=1" \
+            | jq -r --arg url "$DEPLOY_URL" \
+              '.result[0] | "\(.url == $url) \(.latest_stage.name) \(.latest_stage.status)"' || echo "api-error")
+          [ -n "$dep" ] || dep="api-error"
+          echo "pages api — newest production deployment: is-this-run=$dep (expect: true deploy success)"
+          case "$dep" in
+            "true deploy success") echo "  ok   API confirms this run is the live production deployment" ;;
+            "api-error") echo "::error::Pages API query failed — cannot confirm the deployment landed"; fail=1 ;;
+            *) echo "::error::newest production deployment is not this run's, or its deploy stage is not success ($dep)"; fail=1 ;;
+          esac
 
-          # Client-routed paths. Read what this does and does not prove: every
-          # path on this site returns the same 200 index.html shell, including
-          # paths that do not exist, because routing happens in the browser.
-          # So a 200 here means "the SPA fallback is intact", NOT "this route
-          # renders". The nonexistent path is probed alongside them to keep
-          # that distinction visible in the log rather than inviting the next
-          # reader to mistake these greens for route coverage. Turning any of
-          # this into a real assertion needs per-route rendering, which this
-          # repo does not have.
-          for route in / /globe /weather /insights /__no_such_route__; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$route" || true)
-            echo "  $code  $route"
-            if [ "$code" != "200" ]; then
-              echo "::error::$route returned $code — SPA fallback is broken"
-              fail=1
+          # ---- HTTP probes: hard when reachable, warning when walled -------
+          # A service token (if configured) authenticates through Access.
+          acurl() { # curl with optional Access service-token headers
+            if [ -n "$ACCESS_ID" ] && [ -n "$ACCESS_SECRET" ]; then
+              curl -H "CF-Access-Client-Id: $ACCESS_ID" -H "CF-Access-Client-Secret: $ACCESS_SECRET" "$@"
+            else
+              curl "$@"
             fi
-          done
+          }
+          # blocked <headers-file> <code> → 0 when the response is the Access
+          # login redirect or the zone bot challenge (i.e. unverifiable here).
+          blocked() {
+            [ "$2" = "302" ] && grep -qi '^location: .*cloudflareaccess\.com' "$1" && return 0
+            grep -qi '^cf-mitigated: challenge' "$1" && return 0
+            return 1
+          }
 
-          # Production alias, challenge-aware. The unique URL above proves the
-          # upload; this is the only check that proves airlens.cloud actually
-          # serves it. A bot challenge makes that unknowable from this runner —
-          # warn and move on rather than recording a false red. A clean non-
-          # challenge response with the wrong entry IS the stale-alias failure
-          # this workflow was built to catch, so that still fails hard.
-          alias_entry=$(curl -s -D /tmp/alias-headers "$SITE/" | grep -o 'index-[A-Za-z0-9_-]*\.js' | head -1 || true)
-          if [ "$alias_entry" = "$local_entry" ]; then
-            echo "  ok   $SITE serves this build"
-          elif grep -qi '^cf-mitigated: challenge' /tmp/alias-headers; then
-            echo "::warning::$SITE served a bot challenge to this runner — alias unverifiable from CI; verified via $DEPLOY_URL instead"
-          else
-            echo "::error::$SITE serves entry ${alias_entry:-<none>}, built $local_entry — the production alias did not move to this deploy"
-            fail=1
+          check_host() { # $1 = base URL, $2 = label
+            code=$(acurl -s -D /tmp/vh -o /tmp/vb -w '%{http_code}' "$1/" || echo 000)
+            if blocked /tmp/vh "$code"; then
+              echo "::warning::$2 is walled from this runner (HTTP $code — Access login or bot challenge). Deployment already confirmed via the Pages API; add CF_ACCESS_CLIENT_ID/SECRET secrets for hard HTTP verification."
+              return 1
+            fi
+            entry=$(grep -o 'index-[A-Za-z0-9_-]*\.js' /tmp/vb | head -1 || true)
+            if [ "$entry" != "$local_entry" ]; then
+              echo "::error::$2 serves entry ${entry:-<none>} (HTTP $code), built $local_entry — it is NOT serving this deploy"
+              fail=1
+              return 1
+            fi
+            echo "  ok   $2 serves this build's entry"
+            return 0
+          }
+
+          if check_host "$DEPLOY_URL" "deployment URL"; then
+            # Reachable — run the full asset/header/fallback sample hard.
+            probe() {
+              code=$(acurl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$1" || true)
+              if [ "$code" = "200" ]; then
+                echo "  ok   $1"
+              else
+                echo "::error::$1 returned $code (expected 200) — this build's assets are not all served"
+                fail=1
+              fi
+            }
+            for tex in earth-land-mask.png earth-bump.png earth-night-2k.jpg; do
+              [ -f "dist/textures/$tex" ] && probe "/textures/$tex"
+            done
+            for name in Globe3DScene Insights idw.worker OceanSphere; do
+              chunk=$(find dist/assets -maxdepth 1 -name "$name-*.js" | head -1)
+              [ -n "$chunk" ] && probe "/assets/$(basename "$chunk")"
+            done
+            csp=$(acurl -sI "$DEPLOY_URL/" | grep -ic '^content-security-policy:' || true)
+            if [ "$csp" = "0" ]; then
+              echo "::error::no Content-Security-Policy on $DEPLOY_URL/ — _headers did not take effect"
+              fail=1
+            else
+              echo "  ok   Content-Security-Policy served"
+            fi
+            # SPA fallback: every path returns the same 200 shell (routing is
+            # client-side), so a 200 means "fallback intact", not "route
+            # renders" — the nonexistent path keeps that distinction visible.
+            for route in / /globe /weather /insights /__no_such_route__; do
+              code=$(acurl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL$route" || true)
+              echo "  $code  $route"
+              if [ "$code" != "200" ]; then
+                echo "::error::$route returned $code — SPA fallback is broken"
+                fail=1
+              fi
+            done
           fi
+
+          # Production alias — the only check that speaks for airlens.cloud
+          # itself. Same three-way logic: ok / walled warning / hard fail.
+          check_host "$SITE" "production alias airlens.cloud" || true
 
           [ "$fail" = "0" ] || exit 1
-          echo "deploy verified: entry hash matches, sampled assets are served, headers applied"
+          echo "deploy verified: Pages API confirms this deployment is live production; HTTP surfaces checked where reachable"
