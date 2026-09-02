@@ -7,4 +7,12 @@
 #
 # Note this returns the same 200 shell for paths that do not exist. Adding a
 # real 404 requires per-route rendering, which this repo does not have yet.
+#
+# /ko/* — the retired monorepo web served a full Korean URL tree (/ko/today,
+# /ko/blog/:slug, …) that search engines indexed. This app has no /ko routes
+# (locale is client-side), so 301 those URLs onto their en counterparts to
+# keep link equity through the cutover instead of dumping crawlers on the
+# SPA shell. Must stay above the /* catch-all.
+/ko/*  /:splat  301
+/ko  /  301
 /*  /index.html  200
