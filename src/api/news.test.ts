@@ -116,6 +116,19 @@ describe('fetchDispatchFeed — HTML-fragment summary (QA finding 2026-09-01)', 
 // long time. Without a TTL, a new article would never reach a crawler
 // response until the isolate happened to recycle — this pins that the cache
 // actually expires, not just that it exists.
+describe('fetchDispatchFeed — title entity decode (QA finding 2026-09-02)', () => {
+  it('decodes a numeric character reference in title, matching the existing summary decode', async () => {
+    mockFetch({
+      ok: true,
+      body: { articles: [{ ...ROW_A, title: 'El Ni&#xF1;o Risks Rising' }] },
+    })
+    const result = await fetchDispatchFeed()
+    expect(result.status).toBe('ready')
+    if (result.status !== 'ready') return
+    expect(result.articles[0].title).toBe('El Niño Risks Rising')
+  })
+})
+
 describe('fetchDispatchFeed — cache TTL (code review finding, Wave 1 SSR port)', () => {
   it('reuses the cached feed within the TTL, then refetches once it expires', async () => {
     vi.useFakeTimers()

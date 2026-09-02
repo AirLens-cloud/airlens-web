@@ -61,6 +61,21 @@ describe('htmlToPlainText', () => {
     expect(out).not.toContain('&lt;')
     expect(out).toBe('Critically endangered species threatened. Read more')
   })
+
+  // QA finding 2026-09-02: a Dispatch card title rendered a raw numeric
+  // character reference (`El Ni&#xF1;o Risks...`) verbatim — this pins the
+  // decode for both hex and decimal numeric refs, not just the named set.
+  it('decodes a hex numeric character reference', () => {
+    expect(htmlToPlainText('El Ni&#xF1;o Risks')).toBe('El Niño Risks')
+  })
+
+  it('decodes a decimal numeric character reference', () => {
+    expect(htmlToPlainText('El Ni&#241;o Risks')).toBe('El Niño Risks')
+  })
+
+  it('decodes an uppercase-hex numeric character reference the same way', () => {
+    expect(htmlToPlainText('El Ni&#XF1;o Risks')).toBe('El Niño Risks')
+  })
 })
 
 // Ported alongside the Wave 1 SSR port (plan airlens-airlens-web-2-curious-
@@ -96,6 +111,21 @@ describe('htmlToPlainText — no-DOMParser fallback (workerd)', () => {
   it('passes plain text through unchanged (fast path — never reaches the fallback)', () => {
     vi.stubGlobal('DOMParser', undefined)
     expect(htmlToPlainText('Just a normal sentence.')).toBe('Just a normal sentence.')
+  })
+
+  // QA finding 2026-09-02: the pre-fix fallback table only special-cased
+  // `&#39;` — every other numeric character reference (any hex ref, any
+  // other decimal code point) passed through unresolved in the SSR/workerd
+  // path specifically, since jsdom's real DOMParser masked this in every
+  // other test above.
+  it('decodes a hex numeric character reference without DOMParser', () => {
+    vi.stubGlobal('DOMParser', undefined)
+    expect(htmlToPlainText('El Ni&#xF1;o Risks')).toBe('El Niño Risks')
+  })
+
+  it('decodes a decimal numeric character reference without DOMParser', () => {
+    vi.stubGlobal('DOMParser', undefined)
+    expect(htmlToPlainText('El Ni&#241;o Risks')).toBe('El Niño Risks')
   })
 })
 

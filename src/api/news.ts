@@ -61,8 +61,13 @@ function computeEditorialTrust(row: RawNewsRow): EditorialTrust {
 
 function mapRow(row: RawNewsRow): NewsArticle | null {
   const slug = str(row.slug)
-  const title = str(row.title)
-  if (!slug || !title) return null // no slug -> no detail route, no title -> nothing to render
+  const rawTitle = str(row.title)
+  if (!slug || !rawTitle) return null // no slug -> no detail route, no title -> nothing to render
+  // Same entity/HTML-fragment decode as `summary` — some source feeds publish
+  // `title` with raw numeric character references (e.g. `El Ni&#xF1;o`, QA
+  // finding 2026-09-02) that previously reached the card/SSR shell verbatim
+  // because `title` skipped `strText`/`htmlToPlainText` entirely.
+  const title = htmlToPlainText(rawTitle)
   return {
     slug,
     title,
