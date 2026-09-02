@@ -32,6 +32,16 @@
   padding: 16px var(--pad-x) 0;
 }
 
+/* UI Tier-1 P3-B: sits below the sky-glass hero (not inside it — WeatherHero
+ * owns the one glass surface on this page). Only adds the page gutter
+ * (`--pad-x`, matching `.today-toolbar`'s left edge) — `.trust-line`'s own
+ * 560px cap (trust-line.css) is left alone, not fought with a second
+ * max-width here. */
+.today-hero__trust-line {
+  margin-left: var(--pad-x);
+  margin-right: var(--pad-x);
+}
+
 /* Embedded dark instrument panel — see file header. Width-capped + centered
  * like `.wx-shell` (weather.css) so it lines up with the hero/toolbar/
  * Conditions content above and below it. */

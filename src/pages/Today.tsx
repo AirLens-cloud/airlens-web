@@ -23,6 +23,7 @@ import { useTodayCams } from '../hooks/useTodayCams'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
 import { computeSourceAgreement } from '../lib/today/sourceAgreement'
 import WfSegmented from '../components/wireframe/WfSegmented'
+import TrustLine from '../components/wireframe/TrustLine'
 import WeatherHero from '../components/weather/WeatherHero'
 import TodayHud, { type TodayHudStatus } from '../components/today/TodayHud'
 import TodayAnswer from '../components/today/TodayAnswer'
@@ -121,6 +122,30 @@ export default function Today() {
   const validTimeIso =
     grid.status === 'ready' ? grid.updatedAt : cams.status === 'ready' ? (cams.series24h[0]?.time ?? cams.updatedAt) : null
 
+  // UI Tier-1 P3-B: same DQSS/p10-p90 honesty split as `useCapsuleData` —
+  // GRID (`gridSnapshot.ts`) carries a real `dqss` when the source artifact
+  // has one but never a p10/p90 band; CAMS (`forecastSource.ts`) is the
+  // reverse (band per hour, no DQSS at all). Never conflate the two sources'
+  // withheld reasons into one line.
+  const trustDqss =
+    primaryIsGrid && grid.status === 'ready' && grid.dqss !== undefined
+      ? { available: true as const, value: grid.dqss }
+      : {
+          available: false as const,
+          reason: primaryIsGrid ? 'not measured for this grid cell' : 'not measured for forecast-sourced readings',
+        }
+  const camsP10 = cams.status === 'ready' ? cams.series24h[0]?.p10 : null
+  const camsP90 = cams.status === 'ready' ? cams.series24h[0]?.p90 : null
+  const trustUncertainty =
+    !primaryIsGrid && camsP10 != null && camsP90 != null
+      ? { available: true as const, p10: camsP10, p90: camsP90, unit: 'µg/m³' }
+      : {
+          available: false as const,
+          reason: primaryIsGrid
+            ? 'this data source publishes no uncertainty range'
+            : "this forecast doesn't publish a range",
+        }
+
   return (
     <main className="today-page">
       <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
@@ -135,6 +160,14 @@ export default function Today() {
           weather={weatherData.weather}
           onRetry={weatherData.retry}
         />
+        {primaryPm25 !== null && (
+          <TrustLine
+            ageMs={updatedAgeMs}
+            dqss={trustDqss}
+            uncertainty={trustUncertainty}
+            className="today-hero__trust-line"
+          />
+        )}
       </div>
 
       <div className="today-toolbar fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>

@@ -136,6 +136,57 @@
   margin: var(--sp-4) 0;
 }
 
+/* ---- P1-B: fallback band + location CTAs (currentColor-based — the hero's
+   ink flips light/dark per AQI tint via `--glass-card-ink`, surfaces.css) --- */
+.home-hero__fallback-band {
+  border: 1px solid currentColor;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 13px;
+  max-width: 480px;
+  margin-top: var(--sp-1);
+}
+
+.home-hero__location-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.home-hero__cta {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-0);
+  cursor: pointer;
+}
+.home-hero__cta:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* Fill uses `--glass-card-ink` directly (surfaces.css — dark on the light-
+   tinted tiers, white on the dark ones), not `currentColor`: this rule also
+   sets its own `color`, and `currentColor` resolves against an element's OWN
+   computed color, not its parent's — using it here would make the label
+   invisible (background and text landing on the same value). */
+.home-hero__cta--primary {
+  background: var(--glass-card-ink, var(--tint-ink-dark));
+  border: 1px solid var(--glass-card-ink, var(--tint-ink-dark));
+  color: var(--bg-0);
+}
+.home-hero__cta--secondary {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+}
+
+.home-hero__location-note {
+  margin: var(--sp-1) 0 0;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 /* ============================= 24h strip ================================= */
 
 .home-strip {

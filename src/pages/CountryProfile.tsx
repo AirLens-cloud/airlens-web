@@ -31,6 +31,7 @@ import type { CountryPanel } from '../types/policy'
 import type { PolicyIndexEntry, PolicyImpact } from '../types/policy'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
+import TrustLine from '../components/wireframe/TrustLine'
 import '../styles/catalog.css'
 
 export interface CountryProfileProps {
@@ -203,6 +204,20 @@ export default function CountryProfile({ code }: CountryProfileProps) {
           </div>
           <span className="cat-value num">{latest.pm25.toFixed(1)} µg/m³</span>
         </header>
+
+        {/* UI Tier-1 P3-B: annual-aggregate data has no hourly timestamp, so
+            `ageLabel` (not `ageMs`) states the real granularity ("as of
+            {year}") rather than a misleading hour count. No DQSS field
+            exists on `CountryPanelPoint` — withheld, honestly, not guessed. */}
+        <TrustLine
+          ageLabel={`as of ${latest.year}`}
+          dqss={{ available: false, reason: 'not computed for this data source' }}
+          uncertainty={
+            latest.p10 !== null && latest.p90 !== null
+              ? { available: true, p10: latest.p10, p90: latest.p90, unit: 'µg/m³' }
+              : { available: false, reason: 'not published for this country/year' }
+          }
+        />
 
         <div className="cat-bars" role="img" aria-label={`${cc} annual mean vs WHO guideline and national standard`}>
           <BarRow label={`${cc} mean`} value={latest.pm25} max={maxBar} active />

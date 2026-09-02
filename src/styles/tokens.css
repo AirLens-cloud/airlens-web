@@ -51,6 +51,12 @@
   --accent: var(--orange);
   --highlighter: #ffd84a;
   --ink-on-accent: #ffffff;
+  /* Fixed (not theme-flipped), like --aqi-*: badges on the AqiCapsule's dark
+     glass never invert for light/dark theme, so their background tokens
+     can't either. Same hex as --orange-ink's light value — deliberately not
+     `var(--orange-ink)` since that resolves to the un-darkened #ff5c00 (only
+     ~3.1:1 with white text) under dark theme. */
+  --brand-notice-bg: #c74700; /* white text ~4.8:1 AA */
 
   /* ---- AQI 6-tier (K4 low-saturation palette — decision #4) ---- */
   --aqi-good: #4f7a4f;

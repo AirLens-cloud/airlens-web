@@ -11,7 +11,20 @@ import { fetchGlobalGridSnapshot } from '../api/gridSnapshot'
 
 export type TodayGridState =
   | { status: 'loading' }
-  | { status: 'ready'; pm25: number; updatedAt: string; stale: boolean; distanceKm: number }
+  | {
+      status: 'ready'
+      pm25: number
+      updatedAt: string
+      stale: boolean
+      distanceKm: number
+      /** Raw 0-100 DQSS score, when the source artifact carries one for this
+       * cell — absent otherwise (Glass-box: never fabricated). Already
+       * present on `fetchGlobalGridSnapshot`'s response; TrustLine (UI
+       * Tier-1 P3) is the first consumer, so it was not surfaced here
+       * before. Optional (not `| undefined`) so existing fixtures that omit
+       * it stay valid. */
+      dqss?: number
+    }
   | { status: 'missing' }
 
 export function useTodayGrid(lat: number, lon: number): TodayGridState {
@@ -35,6 +48,7 @@ export function useTodayGrid(lat: number, lon: number): TodayGridState {
           updatedAt: snapshot.updatedAt,
           stale: snapshot.stale ?? false,
           distanceKm: snapshot.nearbyCells[0]?.distanceKm ?? 0,
+          dqss: snapshot.dqss,
         })
       })
       .catch(() => {

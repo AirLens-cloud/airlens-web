@@ -82,6 +82,20 @@ describe('CountryProfile', () => {
     expect(screen.getByTestId('country-city-list').textContent).toContain('Seoul')
   })
 
+  it('renders TrustLine with a year-based age label and the real p10/p90 from the panel', async () => {
+    // Arrange
+    installFetch()
+    // Act
+    render(<CountryProfile code="KR" />)
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('trust-line')).toBeTruthy())
+    const text = screen.getByTestId('trust-line').textContent ?? ''
+    expect(text).toMatch(/obs age.*as of 2019/)
+    expect(text).toMatch(/10\.1–38\.2/)
+    // No DQSS field exists on CountryPanelPoint — always withheld, honestly.
+    expect(text).toMatch(/DQSS.*withheld/)
+  })
+
   it('renders an honest zero-city message rather than an empty grid when the country has no catalogued cities', async () => {
     // Arrange
     installFetch()

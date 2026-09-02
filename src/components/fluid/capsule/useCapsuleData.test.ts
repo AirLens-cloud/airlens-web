@@ -144,4 +144,92 @@ describe('useCapsuleData', () => {
     if (result.current.status !== 'ready') throw new Error('expected ready')
     expect(result.current.alert).toBe('unknown')
   })
+
+  it('exposes the current-hour p10/p90 bound (distinct from the 24h range envelope)', async () => {
+    // Arrange
+    vi.mocked(fetchForecast).mockResolvedValue(
+      forecast(Array.from({ length: 24 }, (_, i) => ({ pm25: 20 + i, pm25_p10: 20 + i - 2, pm25_p90: 20 + i + 2 }))),
+    )
+    // Act
+    const { result } = renderHook(() => useCapsuleData())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    // Assert
+    if (result.current.status !== 'ready') throw new Error('expected ready')
+    expect(result.current.p10).toBe(18)
+    expect(result.current.p90).toBe(22)
+    expect(result.current.isPersonalized).toBe(false)
+  })
+
+  it('reports p10=null/p90=null (never derived from range) when the source publishes no band', async () => {
+    vi.mocked(fetchForecast).mockResolvedValue(
+      forecast(Array.from({ length: 24 }, (_, i) => ({ pm25: 20 + i })), false),
+    )
+    const { result } = renderHook(() => useCapsuleData())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    if (result.current.status !== 'ready') throw new Error('expected ready')
+    expect(result.current.p10).toBeNull()
+    expect(result.current.p90).toBeNull()
+  })
+
+  it('resolves to the nearest city (not the thickest-air pick) when personalized', async () => {
+    // Arrange — two cities: Seoul (thin air, near the personalized point) and
+    // a "thickest air" city far away that the non-personalized pick favors.
+    const payload: ForecastPayload = {
+      generated_at: '2026-08-26T00:00:00Z',
+      model_version: 'test',
+      cities: [
+        {
+          name: 'Riyadh',
+          lat: 24.7,
+          lon: 46.7,
+          country_code: 'SA',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 247 }],
+        },
+        {
+          name: 'Seoul',
+          lat: 37.5,
+          lon: 127,
+          country_code: 'KR',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 20 }],
+        },
+      ],
+    }
+    vi.mocked(fetchForecast).mockResolvedValue(payload)
+    // Act — request personalized to a point near Seoul.
+    const { result } = renderHook(() => useCapsuleData({ lat: 37.6, lon: 127.1 }))
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    // Assert
+    if (result.current.status !== 'ready') throw new Error('expected ready')
+    expect(result.current.city).toBe('Seoul')
+    expect(result.current.isPersonalized).toBe(true)
+  })
+
+  it('keeps the thickest-air pick (isPersonalized=false) with no personalized location', async () => {
+    const payload: ForecastPayload = {
+      generated_at: '2026-08-26T00:00:00Z',
+      model_version: 'test',
+      cities: [
+        {
+          name: 'Riyadh',
+          lat: 24.7,
+          lon: 46.7,
+          country_code: 'SA',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 247 }],
+        },
+        {
+          name: 'Seoul',
+          lat: 37.5,
+          lon: 127,
+          country_code: 'KR',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 20 }],
+        },
+      ],
+    }
+    vi.mocked(fetchForecast).mockResolvedValue(payload)
+    const { result } = renderHook(() => useCapsuleData(null))
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    if (result.current.status !== 'ready') throw new Error('expected ready')
+    expect(result.current.city).toBe('Riyadh')
+    expect(result.current.isPersonalized).toBe(false)
+  })
 })

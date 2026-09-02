@@ -16,6 +16,7 @@
 // still handled — if one is published, the band comes back on its own.
 import { useEffect, useState } from 'react'
 import { fetchForecast } from '../../../lib/today/forecastSource'
+import { pickNearestCity } from '../../../lib/today/nearestCity'
 import type { ForecastCity, ForecastHourly } from '../../../types/forecast'
 import type { AqiTier } from '../../wireframe/AqiDot'
 
@@ -48,9 +49,19 @@ export interface CapsuleDataReady {
   /** null when the source publishes no p10/p90 — a deterministic forecast has
    * no band, and a lo===hi "range" would read as one measured at zero width. */
   range: CapsuleRange | null
+  /** Current-hour uncertainty bound, straight off `hourly[0]` — distinct from
+   * `range` (a 24h min/max envelope). Null under the same "source publishes
+   * none" condition; never derived from `range`. */
+  p10: number | null
+  p90: number | null
   series24h: CapsuleSeriesPoint[]
   updatedAt: string
   alert: CapsuleAlert
+  /** True when this reading was resolved from a viewer-chosen location
+   * (`useLocationPersonalization`) rather than the feed's "thickest air"
+   * fallback pick — callers use this to suppress the "not your location"
+   * warning and fallback CTAs once personalized. */
+  isPersonalized: boolean
 }
 
 export type CapsuleDataState = { status: 'loading' } | CapsuleDataReady | { status: 'missing' }
@@ -106,15 +117,29 @@ function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAle
   return sawFinite ? 'steady' : 'unknown'
 }
 
-export function useCapsuleData(): CapsuleDataState {
+/**
+ * @param personalizedLocation When set (`useLocationPersonalization`'s
+ * `choice`), resolves to the nearest feed city to that point instead of the
+ * feed-wide "thickest air" pick — same `pickNearestCity` lookup
+ * `useTodayCams` already uses for Today's location-specific reading, so this
+ * adds no new fetch or scoring logic of its own.
+ */
+export function useCapsuleData(personalizedLocation?: { lat: number; lon: number } | null): CapsuleDataState {
   const [state, setState] = useState<CapsuleDataState>({ status: 'loading' })
+  const personalizedLat = personalizedLocation?.lat ?? null
+  const personalizedLon = personalizedLocation?.lon ?? null
 
   useEffect(() => {
     let alive = true
     fetchForecast()
       .then((forecast) => {
         if (!alive) return
-        const city = forecast ? pickFeaturedCity(forecast.cities) : null
+        const isPersonalized = personalizedLat !== null && personalizedLon !== null
+        const city = forecast
+          ? isPersonalized
+            ? (pickNearestCity(forecast.cities, personalizedLat as number, personalizedLon as number)?.city ?? null)
+            : pickFeaturedCity(forecast.cities)
+          : null
         const now = city?.hourly[0]
         if (!forecast || !city || !now || !Number.isFinite(now.pm25)) {
           setState({ status: 'missing' })
@@ -151,9 +176,12 @@ export function useCapsuleData(): CapsuleDataState {
           current: now.pm25,
           tier,
           range: sawBand ? { lo, hi } : null,
+          p10: Number.isFinite(now.pm25_p10) ? (now.pm25_p10 as number) : null,
+          p90: Number.isFinite(now.pm25_p90) ? (now.pm25_p90 as number) : null,
           series24h,
           updatedAt: forecast.generated_at,
           alert: detectAlert(city.hourly, tier),
+          isPersonalized,
         })
       })
       .catch(() => {
@@ -162,7 +190,7 @@ export function useCapsuleData(): CapsuleDataState {
     return () => {
       alive = false
     }
-  }, [])
+  }, [personalizedLat, personalizedLon])
 
   return state
 }

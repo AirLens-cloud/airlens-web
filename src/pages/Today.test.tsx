@@ -326,4 +326,63 @@ describe('Today page', () => {
     // Assert
     expect(getByText(/2\/2 sources agree on tier/)).toBeTruthy()
   })
+
+  it('shows a real DQSS score in TrustLine when the GRID reading carries one', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1, dqss: 82 })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.textContent).toMatch(/DQSS.*82\/100/)
+    // GRID publishes no uncertainty band regardless of DQSS presence.
+    expect(trustLine?.textContent).toMatch(/not published/)
+  })
+
+  it('withholds DQSS honestly (with a reason) when the GRID reading carries none', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt: '2026-08-26T00:00:00Z', stale: false, distanceKm: 1 })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.textContent).toMatch(/DQSS.*withheld/)
+  })
+
+  it('shows a real p10/p90 band in TrustLine when CAMS is primary and publishes one', () => {
+    // Arrange — GRID missing, so CAMS becomes primary.
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams(
+      camsReady({
+        series24h: [{ time: '2026-08-26T00:00:00Z', p10: 18, p50: 22, p90: 26 }],
+      }),
+    )
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.textContent).toMatch(/18\.0–26\.0/)
+    // Forecast source publishes no DQSS regardless of the uncertainty band.
+    expect(trustLine?.textContent).toMatch(/withheld/)
+  })
+
+  it('renders no TrustLine when neither GRID nor CAMS resolves a reading', () => {
+    // Arrange
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('[data-testid="trust-line"]')).toBeNull()
+  })
 })
