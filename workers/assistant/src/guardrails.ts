@@ -1,12 +1,20 @@
 import type { ChatIntent, GuardrailResult } from './types';
 
 /**
- * Prompt injection / system-probe / out-of-scope detection — ported near-
- * verbatim from the retired chatbot worker's guardrails.ts (design §1 D-1:
- * "데이터 소스 독립적", stack-agnostic). Regex-only, zero extra LLM calls.
- * Fallback copy is reworded for this repo's no-account, no-live-API product
- * framing (dropped "sign in" / "실시간" language the retired worker's copy
- * still had).
+ * Best-effort domain gating (injection-pattern / system-probe / out-of-scope
+ * regex matches on the current turn) — ported near-verbatim from the retired
+ * chatbot worker's guardrails.ts (design §1 D-1: "데이터 소스 독립적",
+ * stack-agnostic). Regex-only, zero extra LLM calls. Fallback copy is
+ * reworded for this repo's no-account, no-live-API product framing (dropped
+ * "sign in" / "실시간" language the retired worker's copy still had).
+ *
+ * NOT a complete prompt-injection defense: `checkGuardrails` inspects only
+ * the current/last turn, never the full conversation history, so a
+ * multi-turn injection that builds up context across earlier messages is
+ * not caught here (PR #47 review — documented backlog item, out of scope
+ * for this module). Do not describe this module as "prompt-injection
+ * defense" anywhere (comments, docs, PR bodies) until that gap is closed —
+ * "domain gating (best-effort)" only.
  */
 const INJECTION_PATTERNS: RegExp[] = [
   // English — direct instruction override

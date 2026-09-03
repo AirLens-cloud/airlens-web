@@ -226,6 +226,52 @@ describe('buildDegradedStream', () => {
     expect(tokenEvent?.content).toContain('No matching documentation was found');
   });
 
+  it('never leaks model-facing instruction phrasing into the degraded-path token event when the honesty gate fires (att: null) — B1 regression', async () => {
+    // Arrange — a policy-intent question on a country page, with the fetched
+    // policy snapshot honesty-gated (att: null). The degraded path must
+    // render this through the user-facing (plain-text) summary, not the
+    // system-prompt-facing formatPolicyImpact block, which carries sentences
+    // like "Do NOT fabricate..." that read as bizarre/leaked instructions if
+    // ever shown to an end user verbatim.
+    clearSnapshotMemo();
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('predictions')) {
+        return { ok: true, json: async () => ({ generated_at: new Date().toISOString(), predictions: [] }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          country: 'KR',
+          method: 'sdid',
+          att: null,
+          ci_95: null,
+          p_value: null,
+          significant: null,
+          status: 'insufficient_controls',
+          treatment_year: null,
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+    const run = makeAiRun(['should not be reached']);
+    const env = makeEnv({ AI: { run } as unknown as Ai, HF_LIVE_BASE: 'https://example.invalid/live' });
+    // Act
+    const stream = await buildDegradedStream(env, 'why did the clean air policy fail', '/country/KR');
+    const events = (await collectEvents(stream)) as Array<{ type: string; content?: string }>;
+    // Assert
+    const tokenEvent = events.find((e) => e.type === 'token');
+    const body = tokenEvent?.content ?? '';
+    expect(body).not.toContain('do not invent one');
+    expect(body).not.toContain('Do NOT fabricate');
+    expect(body).not.toContain('never as a proven fact');
+    expect(body).not.toContain('do not state one');
+    // Still degrades gracefully — the underlying fact (no policy-impact
+    // estimate for this honesty-gated country) is conveyed honestly in
+    // plain words, not silently dropped.
+    const conveysHonestly = /insufficient_controls/i.test(body) || /no .*(policy|estimate).*available/i.test(body);
+    expect(conveysHonestly).toBe(true);
+  });
+
   it('includes a live-data block verbatim for a data_lookup intent, still with zero chat-model calls', async () => {
     // Arrange — live-data lookup is a plain HTTP fetch (zero neurons), so
     // including it here doesn't touch the budget the degraded path protects.

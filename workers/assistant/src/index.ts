@@ -141,6 +141,7 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   // an SSE stream — no RAG/generation ever starts for it.
   const guardrail = checkGuardrails(lastUserMessage);
   if (!guardrail.passed) {
+    console.warn('[assistant] guardrail blocked:', guardrail.reason);
     return errorJson(guardrail.fallback_message ?? 'Request blocked', 400, 'blocked', corsHeaders);
   }
 

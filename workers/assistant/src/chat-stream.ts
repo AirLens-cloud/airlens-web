@@ -2,7 +2,9 @@ import type { ChatBudgetStatus, ChatMessageWire, ChatStreamEvent, Env } from './
 import { buildGroundedContext, embedQuery, queryCorpus, toCitations } from './rag';
 import { buildMessages } from './prompts';
 import { classifyIntent } from './guardrails';
-import { buildStructuredContext, fetchLiveDataContext } from './liveData';
+import { buildStructuredContext, buildUserFacingSummary, fetchLiveDataContext, type LiveDataContext } from './liveData';
+
+const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, policy: null };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -95,11 +97,11 @@ export async function buildRagStream(
 
   const [queryVector, liveData] = await Promise.all([
     embedQuery(env, userMessage),
-    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve({ blocks: [] }),
+    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve(EMPTY_LIVE_DATA),
   ]);
   const matches = queryVector ? await queryCorpus(env, queryVector, parseInt(env.RAG_TOP_K, 10) || 5) : [];
   const citations = toCitations(matches);
-  const groundedContext = [buildGroundedContext(matches), buildStructuredContext(liveData.blocks)]
+  const groundedContext = [buildGroundedContext(matches), buildStructuredContext(liveData)]
     .filter(Boolean)
     .join('\n\n');
 
@@ -160,16 +162,24 @@ export async function buildDegradedStream(env: Env, userMessage: string, page?: 
 
   const [queryVector, liveData] = await Promise.all([
     embedQuery(env, userMessage),
-    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve({ blocks: [] }),
+    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve(EMPTY_LIVE_DATA),
   ]);
   const matches = queryVector ? await queryCorpus(env, queryVector, parseInt(env.RAG_TOP_K, 10) || 5) : [];
   const citations = toCitations(matches);
 
+  // B1 (PR #47 review): buildUserFacingSummary renders plain facts only —
+  // formatPrediction/formatPolicyImpact (used above in buildRagStream via
+  // buildStructuredContext) carry model-only instruction text ("do not
+  // invent one", "Do NOT fabricate…") that must never reach this raw
+  // token frame, since nothing downstream strips it before it streams to
+  // the user.
+  const liveDataSummary = buildUserFacingSummary(liveData);
+
   const parts: string[] = [`${BUDGET_EXHAUSTED_NOTICE_EN}\n${BUDGET_EXHAUSTED_NOTICE_KO}`];
-  if (liveData.blocks.length > 0) parts.push(liveData.blocks.join('\n\n'));
+  if (liveDataSummary.length > 0) parts.push(liveDataSummary.join('\n'));
   if (matches.length > 0) {
     parts.push(matches.map((m, i) => `${i + 1}. ${m.metadata.source_title} (${m.metadata.source_url})`).join('\n'));
-  } else if (liveData.blocks.length === 0) {
+  } else if (liveDataSummary.length === 0) {
     parts.push(NO_MATCHES_NOTICE);
   }
   const body = parts.join('\n\n');

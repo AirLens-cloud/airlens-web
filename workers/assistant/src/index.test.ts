@@ -290,7 +290,7 @@ describe('POST /api/chat', () => {
 
   it('blocks a prompt-injection attempt as a plain 400 JSON response, never starting a stream (C3 guardrails)', async () => {
     // Arrange
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const run = vi.fn(async () => {
       throw new Error('should never be called — the guardrail must short-circuit before any RAG/generation call');
     });
@@ -310,6 +310,13 @@ describe('POST /api/chat', () => {
     expect(body.code).toBe('blocked');
     expect(typeof body.error).toBe('string');
     expect(run).not.toHaveBeenCalled();
+    // S2 regression — a blocked request is a security-relevant event and
+    // must be server-side observable, not a silent 400. The log must carry
+    // the guardrail's block category (here: "injection"), not just a bare
+    // "blocked" note that can't distinguish injection/system_probe/out_of_scope.
+    expect(warnSpy).toHaveBeenCalled();
+    const loggedArgs = warnSpy.mock.calls.flat().map(String).join(' ');
+    expect(loggedArgs).toContain('injection');
   });
 
   it('classifies intent from the message and reports it in the done event (not hardcoded "general")', async () => {
