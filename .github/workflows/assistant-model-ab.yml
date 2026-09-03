@@ -1,0 +1,118 @@
+name: Assistant model A/B
+
+# 챗봇(workers/assistant) 후보 모델을 실제로 호출해 채점한다. Ported from the
+# retired chatbot worker's .github/workflows/chatbot-model-ab.yml
+# (AirLens-platform repo) — C4, Field Assistant v2 design §1 D-1: "eval/
+# 하네스... 그대로".
+#
+# 왜 로컬이 아닌 CI 인가: this repo's GitHub Secrets currently have
+# `CLOUDFLARE_ACCOUNT_ID` but not a Workers-AI-scoped token or a judge API
+# key (checked via `gh secret list` during the C4 port — 2026-09-03). BOTH
+# secrets below need to be provisioned before this workflow can run:
+#   CLOUDFLARE_WORKERS_AI_TOKEN — needs the "Workers AI" (Read/Run) AND
+#     "Vectorize" (Read) permission groups on the SAME token — retrieval.eval
+#     .test.ts's Vectorize query 401s without the latter even though
+#     generation already works with just Workers AI.
+#   A judge key — this workflow assumes an OpenAI-compatible endpoint
+#     (EVAL_JUDGE_URL/MODEL, keyed by EVAL_JUDGE_KEY) the same way the
+#     retired worker's workflow did (`secrets.OPENAI_API_KEY`); swap the env
+#     block below if this repo standardizes on a different judge provider.
+#
+# 왜 수동 dispatch 인가: 유료다. 후보 1개당 4문항 × (Workers AI 생성 1콜 +
+# judge 1콜). PR 마다 돌릴 이유가 없고, 돌리면 비용만 반복된다.
+#
+# 결과는 순위 보고일 뿐 자동 채택이 아니다 — CHAT_MODEL 교체는 사람이 로그를
+# 읽고 wrangler.toml 을 고치는 별도 결정이다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: '후보 모델 (쉼표 구분, Workers AI id). 현행 CHAT_MODEL 은 항상 자동 포함'
+        type: string
+        default: ''
+      include_quality:
+        description: 'quality eval 도 함께 (judge 검증 + 현행 모델 1문항, 3콜)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: assistant-model-ab
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    name: generate → judge → rank
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/assistant
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/assistant/package-lock.json
+
+      - run: npm ci
+
+      # 자격증명 없이 도는 순수 로직부터. 여기서 깨지면 유료 콜을 낭비할 이유가 없다.
+      - name: Unit tests (no credentials)
+        run: npx vitest run eval/generate.test.ts eval/judge.test.ts eval/routing.eval.test.ts eval/trajectory.eval.test.ts eval/safety.eval.test.ts
+
+      # BASELINE.md §다음 단계 2 references this step for retrieval_recall_at_3
+      # — it was missing from the first cut of this workflow (code review, PR
+      # #49) even though the doc already described it as the measurement path.
+      - name: Retrieval eval (recall@3 against the live Vectorize corpus)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/retrieval.eval.test.ts
+
+      - name: Quality eval (judge validity + deployed model)
+        if: ${{ inputs.include_quality }}
+        env:
+          EVAL_JUDGE_URL: https://api.openai.com/v1/chat/completions
+          EVAL_JUDGE_MODEL: gpt-4o-mini
+          EVAL_JUDGE_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/quality.eval.test.ts
+
+      - name: Model A/B
+        env:
+          EVAL_JUDGE_URL: https://api.openai.com/v1/chat/completions
+          EVAL_JUDGE_MODEL: gpt-4o-mini
+          EVAL_JUDGE_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+          EVAL_AB_MODELS: ${{ inputs.models }}
+        # pipefail: 없으면 종료코드가 tee 의 0 이 되어 실패한 A/B 가 초록불로 보고된다.
+        run: |
+          set -o pipefail
+          npx vitest run eval/model-ab.eval.test.ts 2>&1 | tee ab.log
+
+      # 로그는 job 출력에만 남으면 90일 뒤 사라진다. 판정 근거는 요약에 박아둔다.
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '## Assistant model A/B'
+            echo
+            echo '```'
+            grep '\[model-ab\]' ab.log || echo '(no A/B lines — the step was skipped, e.g. missing CLOUDFLARE_WORKERS_AI_TOKEN/judge key, or it failed before scoring)'
+            echo '```'
+            echo
+            echo '평균 점수는 1-5 judge 척도다. `empty` 는 모델이 빈 답변을 낸 문항 수 —'
+            echo '사용자에게는 빈 말풍선으로 도달하므로 점수와 별개로 실격 사유다.'
+            echo '`rule-fail` 은 cases.ts 의 결정론적 검사(금지어/필수 언급) 위반 수.'
+            echo
+            echo '모델 교체는 자동이 아니다 — wrangler.toml `CHAT_MODEL` 을 사람이 고친다.'
+          } >> "$GITHUB_STEP_SUMMARY"
