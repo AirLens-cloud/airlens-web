@@ -178,12 +178,24 @@ export function extractAnswer(json: unknown): { text: string; finishReason: stri
   }
   const choice = result.choices?.[0];
   const raw = typeof result.response === 'string' ? result.response : choice?.message?.content;
+  const finish = result.finish_reason ?? choice?.finish_reason;
   if (typeof raw !== 'string') {
+    // A-5 (2026-09-03): this exact throw fired against the real SYSTEM_PROMPT
+    // + a populated <retrieved_context> block on MAX_TOKENS=512 — the
+    // envelope's `message` object itself came back without a `content`
+    // field (not merely an empty string) when the reasoning model exhausted
+    // its token budget before emitting any answer, so this reads as a
+    // parsing bug rather than what it usually is: a budget problem. Surface
+    // finish_reason so the next person reads the real cause first, not
+    // "shape mismatch."
+    const hint =
+      typeof finish === 'string'
+        ? ` (finish_reason=${finish}${finish === 'length' ? ' — token budget exhausted?' : ''})`
+        : '';
     throw new Error(
-      'Workers AI response shape mismatch: neither result.response nor result.choices[0].message.content is a string',
+      `Workers AI response shape mismatch: neither result.response nor result.choices[0].message.content is a string${hint}`,
     );
   }
-  const finish = result.finish_reason ?? choice?.finish_reason;
   return { text: raw.trim(), finishReason: typeof finish === 'string' ? finish : null };
 }
 

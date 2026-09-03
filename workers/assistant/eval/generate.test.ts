@@ -143,6 +143,27 @@ describe('extractAnswer', () => {
     expect(() => extractAnswer({})).toThrow(/shape mismatch/);
   });
 
+  it('appends a budget hint when the shape mismatch carries finish_reason:"length" — the A-5 shape', () => {
+    // Arrange — the exact envelope shape a live probe hit against this
+    // account's CHAT_MODEL (2026-09-03, MAX_TOKENS=512): the reasoning model
+    // exhausted its token budget before emitting any answer, and the
+    // envelope's `message` object came back without a `content` field at
+    // all (not merely an empty string) — a real production case, not a
+    // hypothetical, that used to read as a plain "shape mismatch" with no
+    // clue toward the real cause.
+    const json = { result: { choices: [{ finish_reason: 'length' }] } };
+    // Act / Assert
+    expect(() => extractAnswer(json)).toThrow(/shape mismatch/);
+    expect(() => extractAnswer(json)).toThrow(/finish_reason=length/);
+    expect(() => extractAnswer(json)).toThrow(/token budget exhausted/);
+  });
+
+  it('omits the hint when finish_reason is present but not "length"', () => {
+    const json = { result: { choices: [{ finish_reason: 'stop' }] } };
+    expect(() => extractAnswer(json)).toThrow(/finish_reason=stop\)/);
+    expect(() => extractAnswer(json)).not.toThrow(/token budget exhausted/);
+  });
+
   it('surfaces a Workers AI error envelope', () => {
     expect(() => extractAnswer({ success: false, errors: [{ message: 'no such model' }] })).toThrow(
       /no such model/,
