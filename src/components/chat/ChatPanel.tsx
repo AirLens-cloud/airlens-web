@@ -172,8 +172,8 @@ export default function ChatPanel({ onClose, apiBaseOverride }: ChatPanelProps) 
               about that. Kept to one sentence so it informs rather than
               becoming the wall of text people learn to skip. */}
           <p className="t-caveat chat-privacy-note">
-            Messages are sent to Cloudflare Workers AI to generate a reply and are not stored by
-            AirLens — avoid personal details.{' '}
+            Messages are sent to Cloudflare Workers AI to generate a reply, and a copy with personal
+            details masked is kept to improve the assistant — avoid personal details.{' '}
             <a href="/legal/privacy">Privacy</a>
           </p>
 

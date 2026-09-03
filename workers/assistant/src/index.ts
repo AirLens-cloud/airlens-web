@@ -7,16 +7,19 @@ import type {
   ReindexRequestBody,
   ReindexResponseBody,
   SessionRequestBody,
+  TurnContext,
+  TurnOutcome,
 } from './types';
 import { buildCorsHeaders, getAllowedOrigins, getClientIp } from './cors';
 import { issueSessionToken, resolveIdentifier, verifySessionToken, verifyTurnstile } from './session';
 import { checkDailyQuota, checkGlobalBudget, checkRateLimit } from './quota';
 import { buildDegradedStream, buildRagStream } from './chat-stream';
 import { reindexChunks } from './rag';
-import { checkConversationGuardrails } from './guardrails';
+import { checkConversationGuardrails, classifyIntent } from './guardrails';
+import { chatlogEnabled, persistTurn } from './persist';
 
 export default {
-  async fetch(req: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = req.headers.get('Origin') ?? '';
     const allowed = getAllowedOrigins(env);
 
@@ -43,7 +46,7 @@ export default {
     }
 
     if (url.pathname === '/api/chat' && req.method === 'POST') {
-      return handleChat(req, env, corsHeaders);
+      return handleChat(req, env, ctx, corsHeaders);
     }
 
     if (url.pathname === '/api/admin/reindex' && req.method === 'POST') {
@@ -98,7 +101,13 @@ async function handleSession(req: Request, env: Env, corsHeaders: Record<string,
   }
 }
 
-async function handleChat(req: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
+async function handleChat(
+  req: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const startedAtMs = Date.now();
   let body: ChatRequestBody;
   try {
     body = (await req.json()) as ChatRequestBody;
@@ -168,9 +177,64 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   // caller's rate/daily budget, matching that precedent rather than giving
   // an unlimited-retry probe surface. A block is a plain JSON response, not
   // an SSE stream — no RAG/generation ever starts for it.
+  // Everything persist.ts needs that is known before generation. Assembled
+  // once here so the blocked path and the streaming path record the same
+  // shape. `question` is the raw text — redaction happens inside persistTurn,
+  // immediately before the only write, so no intermediate copy of the
+  // unsanitized string is passed around.
+  const turnContext: TurnContext = {
+    sid: payload.sid,
+    // How many user turns preceded this one — lets a stored turn be read in
+    // sequence without storing the conversation itself twice.
+    turnIndex: history.filter((m) => m.role === 'user').length,
+    question: lastUserMessage,
+    locale: body.locale,
+    page: body.page,
+    startedAtMs,
+    guardrailReason: null,
+  };
+  const loggingOn = chatlogEnabled(env);
+  // The outcome only exists after this handler has returned its Response (it
+  // is produced while the stream is being consumed), but `ctx.waitUntil` has
+  // to be called while the handler is still running. So the wait is
+  // registered NOW against a promise the stream resolves later — rather than
+  // calling waitUntil from inside the stream callback, where the request
+  // context may already be gone.
+  // EVERY exit below this point must call settleOutcome exactly once —
+  // returning without it leaves waitUntil holding a promise that never
+  // resolves, which keeps the request context alive until the platform kills
+  // it. (The guardrail-refusal path did exactly that until the test for it
+  // hung.)
+  let settleTurn: (turn: { context: TurnContext; outcome: TurnOutcome }) => void = () => {};
+  if (loggingOn) {
+    const turnReady = new Promise<{ context: TurnContext; outcome: TurnOutcome }>((resolve) => {
+      settleTurn = resolve;
+    });
+    ctx.waitUntil(turnReady.then(({ context, outcome }) => persistTurn(env, context, outcome)));
+  }
+  const settleOutcome = (outcome: TurnOutcome, context: TurnContext = turnContext) => {
+    settleTurn({ context, outcome });
+  };
+
   const guardrail = checkConversationGuardrails(lastUserMessage, history);
   if (!guardrail.passed) {
     console.warn('[assistant] guardrail blocked:', guardrail.reason);
+    // Refusals are recorded too: "what is being refused, and how often" is
+    // the only way to see either an abuse pattern or over-blocking of real
+    // questions. persistTurn drops the question text when an out-of-scope
+    // refusal also carried personal data.
+    settleOutcome(
+      {
+        answer: null,
+        intent: classifyIntent(lastUserMessage),
+        finishReason: null,
+        status: 'blocked',
+        citations: [],
+        topScore: null,
+        degraded: false,
+      },
+      { ...turnContext, guardrailReason: guardrail.reason },
+    );
     return errorJson(guardrail.fallback_message ?? 'Request blocked', 400, 'blocked', corsHeaders);
   }
 
@@ -183,9 +247,13 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
     // of C1's plain echo, since a real generation is the actual cost this
     // guard protects.
     const budget = await checkGlobalBudget(env);
+    // The stream reports how it ended (chat-stream.ts settle/cancel) — that
+    // is the only place the delivered answer, finish_reason and completion
+    // status exist, since all three are produced after the Response has
+    // already been returned to the client.
     stream = budget.allowed
-      ? await buildRagStream(env, lastUserMessage, history, 'ok', body.page)
-      : await buildDegradedStream(env, lastUserMessage, body.page);
+      ? await buildRagStream(env, lastUserMessage, history, 'ok', body.page, settleOutcome)
+      : await buildDegradedStream(env, lastUserMessage, body.page, settleOutcome);
   } catch (err) {
     // buildRagStream awaits env.AI.run(CHAT_MODEL, ...) before it ever
     // returns a stream — a Workers AI outage/error (quota, model down)
@@ -193,6 +261,18 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
     // still possible (unlike a mid-stream failure, which chat-stream.ts's
     // own try/catch already degrades gracefully into a `done` event).
     console.error('[assistant] chat stream setup failed:', err instanceof Error ? err.message : err);
+    // No stream was ever created, so nothing else will resolve the promise
+    // waitUntil is holding — settle it here, or the request context would
+    // stay pending until the platform times it out.
+    settleOutcome({
+      answer: null,
+      intent: classifyIntent(lastUserMessage),
+      finishReason: null,
+      status: 'stream_error',
+      citations: [],
+      topScore: null,
+      degraded: false,
+    });
     return errorJson('Chat service unavailable', 500, undefined, corsHeaders);
   }
 

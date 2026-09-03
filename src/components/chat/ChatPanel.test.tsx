@@ -56,8 +56,10 @@ describe('ChatPanel — active (ASSISTANT_API_BASE configured, the A-4 default)'
     // Cloudflare Workers AI). The panel used to say nothing about that; the
     // disclosure has to live next to the input, not only in the legal page.
     render(<ChatPanel onClose={() => {}} />)
-    // Assert
+    // Assert — both facts, since the second one (a copy is kept) is the one a
+    // visitor would be surprised to learn afterwards.
     expect(screen.getByText(/sent to Cloudflare Workers AI/i)).not.toBeNull()
+    expect(screen.getByText(/copy with personal\s+details masked is kept/i)).not.toBeNull()
     const link = screen.getByRole('link', { name: /privacy/i }) as HTMLAnchorElement
     expect(link.getAttribute('href')).toBe('/legal/privacy')
   })

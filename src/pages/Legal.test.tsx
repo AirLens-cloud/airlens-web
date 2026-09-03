@@ -57,9 +57,23 @@ describe('Legal — Privacy states what the chat actually does', () => {
     expect(screen.getByText(/Cloudflare Workers AI/i)).not.toBeNull()
   })
 
-  it('states plainly that no chat transcript is kept today', () => {
+  it('states that turns are kept, what is masked first, and for how long', () => {
+    // Replaces the earlier "nothing is kept" assertion, which became false
+    // the moment the worker gained a storage path. The policy has to describe
+    // the storage BEFORE the flag that enables it is switched on, so this
+    // test is the thing that fails if the two ever drift apart again.
     render(<Legal doc="privacy" />)
-    expect(screen.getByText(/does not currently keep those chat messages/i)).not.toBeNull()
+    expect(screen.getByText(/keeps a copy of those exchanges/i)).not.toBeNull()
+    expect(screen.getByText(/Masking happens in the same request, before anything is written/i)).not.toBeNull()
+    expect(screen.getByText(/destroyed after 90 days/i)).not.toBeNull()
+  })
+
+  it('admits it cannot delete one specific conversation on request', () => {
+    // The uncomfortable half. With no account there is no way to verify a
+    // conversation is yours — saying so is the honest version of "we respect
+    // your rights"; omitting it would let the reader assume a flow exists.
+    render(<Legal doc="privacy" />)
+    expect(screen.getByText(/cannot honour a request to delete a specific one/i)).not.toBeNull()
   })
 
   it('discloses the daily-rotating IP-derived abuse counter', () => {

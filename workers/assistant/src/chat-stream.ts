@@ -1,4 +1,11 @@
-import type { ChatBudgetStatus, ChatMessageWire, ChatStreamEvent, Env } from './types';
+import type {
+  ChatBudgetStatus,
+  ChatMessageWire,
+  ChatStreamEvent,
+  Env,
+  TurnCompletionStatus,
+  TurnOutcome,
+} from './types';
 import { buildGroundedContext, embedQuery, queryCorpus, toCitations } from './rag';
 import { buildMessages } from './prompts';
 import { classifyIntent } from './guardrails';
@@ -123,6 +130,13 @@ export async function buildRagStream(
   history: ChatMessageWire[],
   budgetStatus: ChatBudgetStatus,
   page?: string,
+  /** Called exactly once, on whichever path the stream ends by — normal close,
+   *  canary trip, zero tokens, upstream error, or client cancellation. Left
+   *  optional so every existing caller and test keeps working; index.ts uses
+   *  it to hand the turn to persist.ts inside ctx.waitUntil. Delivered as a
+   *  callback rather than a returned promise for the same reason `finishOut`
+   *  above is a ref: the value only exists once start() is already running. */
+  onOutcome?: (outcome: TurnOutcome) => void,
 ): Promise<ReadableStream<Uint8Array>> {
   const intent = classifyIntent(userMessage);
   const wantsLiveData = intent !== 'general';
@@ -134,6 +148,10 @@ export async function buildRagStream(
   ]);
   const matches = queryVector ? await queryCorpus(env, queryVector, parseInt(env.RAG_TOP_K, 10) || 5) : [];
   const citations = toCitations(matches);
+  // Vectorize returns best-first, so the head is the retrieval-quality
+  // signal: a run of low top scores is what "the corpus doesn't cover this
+  // question" looks like in aggregate.
+  const topScore = matches[0]?.score ?? null;
   const groundedContext = [buildGroundedContext(matches), buildStructuredContext(liveData)]
     .filter(Boolean)
     .join('\n\n');
@@ -162,13 +180,33 @@ export async function buildRagStream(
     stream: true,
   })) as ReadableStream<Uint8Array>;
 
+  // Answer text as the USER received it — only what actually left through the
+  // gate below is appended, so text the model produced but we withheld is
+  // never recorded as an answer we gave.
+  const answerParts: string[] = [];
+  const finishOut: { value: string | null } = { value: null };
+  let settled = false;
+  let cancelled = false;
+  const settle = (status: TurnCompletionStatus) => {
+    if (settled || !onOutcome) return;
+    settled = true;
+    onOutcome({
+      answer: answerParts.length > 0 ? answerParts.join('') : null,
+      intent,
+      finishReason: finishOut.value,
+      status,
+      citations,
+      topScore,
+      degraded: false,
+    });
+  };
+
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       if (citations.length > 0) {
         controller.enqueue(sseLine({ type: 'citations', citations }));
       }
       let tokenCount = 0;
-      const finishOut: { value: string | null } = { value: null };
       // Output-side gate (output-filter.ts): prompts.ts ASKS the model not to
       // leak its instructions; this ENFORCES it, and rewrites internal field
       // names on the way out. It holds the tail back, so token events are
@@ -181,11 +219,19 @@ export async function buildRagStream(
           if (gate.tripped) break;
           if (safe) {
             tokenCount++;
+            answerParts.push(safe);
             controller.enqueue(sseLine({ type: 'token', content: safe }));
           }
         }
       } catch (err) {
         console.error('[assistant] gemma stream error:', err instanceof Error ? err.message : err);
+        // A client that walked away mid-answer makes `controller.enqueue`
+        // throw, which lands here — indistinguishable from a genuine upstream
+        // failure except for the flag `cancel()` sets. If cancel() has not run
+        // yet when we get here, this is recorded as stream_error; the two are
+        // not perfectly separable, and the stored counts should be read with
+        // that in mind rather than as an exact abort rate.
+        settle(cancelled ? 'client_abort' : 'stream_error');
       }
       if (gate.tripped) {
         // Greppable token: a model that reached this branch is one talked out
@@ -194,12 +240,17 @@ export async function buildRagStream(
         console.warn('ASSISTANT_OUTPUT_LEAK_BLOCKED [assistant] system-prompt canary in model output — stream cut, intent:', intent);
         controller.enqueue(sseLine({ type: 'token', content: LEAK_NOTICE }));
         controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent, finish_reason: 'blocked' }));
+        // The turn did complete from the user's side (they got the notice);
+        // what was cut is visible as finish_reason 'blocked' on the record.
+        finishOut.value = 'blocked';
+        settle('complete');
         controller.close();
         return;
       }
       const tail = gate.flush();
       if (tail) {
         tokenCount++;
+        answerParts.push(tail);
         controller.enqueue(sseLine({ type: 'token', content: tail }));
       }
       if (tokenCount === 0) {
@@ -218,7 +269,19 @@ export async function buildRagStream(
       // tell a truncated answer from a complete one without re-running the
       // whole diagnostic every time.
       controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent, finish_reason: finishOut.value }));
+      // 'empty' is kept distinct from 'complete' on purpose: a turn that
+      // streamed the honest "couldn't answer" notice and one that answered
+      // must not average together, or the A-5 failure shape disappears into
+      // a healthy-looking mean.
+      settle(tokenCount === 0 ? 'empty' : 'complete');
       controller.close();
+    },
+    cancel() {
+      // The client closed the connection mid-answer. Without this handler the
+      // worker never learns that happened, and the turn's outcome would only
+      // surface as whatever error the next enqueue threw.
+      cancelled = true;
+      settle('client_abort');
     },
   });
 }
@@ -242,7 +305,12 @@ const NO_MATCHES_NOTICE = 'No matching documentation was found. / 관련 문서�
  * neurons (a plain HTTP fetch), so including it here is free even though
  * the budget guard exists specifically to stop gemma calls.
  */
-export async function buildDegradedStream(env: Env, userMessage: string, page?: string): Promise<ReadableStream<Uint8Array>> {
+export async function buildDegradedStream(
+  env: Env,
+  userMessage: string,
+  page?: string,
+  onOutcome?: (outcome: TurnOutcome) => void,
+): Promise<ReadableStream<Uint8Array>> {
   const intent = classifyIntent(userMessage);
   const wantsLiveData = intent !== 'general';
 
@@ -277,6 +345,18 @@ export async function buildDegradedStream(env: Env, userMessage: string, page?: 
       // No env.AI.run() call happens on this degraded path — finish_reason
       // is not applicable (never generated, never truncated).
       controller.enqueue(sseLine({ type: 'done', budget: 'exhausted', intent, finish_reason: null }));
+      // Recorded like any other turn, flagged degraded — these are the turns
+      // that cost nothing and therefore never decrement the budget, so
+      // dropping them would hide exactly the days that ran out.
+      onOutcome?.({
+        answer: body,
+        intent,
+        finishReason: null,
+        status: 'complete',
+        citations,
+        topScore: matches[0]?.score ?? null,
+        degraded: true,
+      });
       controller.close();
     },
   });
