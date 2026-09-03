@@ -105,6 +105,69 @@ function neutralizeUserQueryDelimiters(text: string): string {
   return text.replace(/<\/?user_query>/gi, (tag) => (tag.startsWith('</') ? '[/user_query]' : '[user_query]'));
 }
 
+/**
+ * Causal explanation skeleton — ported near-verbatim from the retired
+ * chatbot worker's prompts.ts (design §1 D-1: "그대로"). Included only for
+ * causal/policy intents (guardrails.ts classifyIntent gate in chat-stream.ts)
+ * — general/data_lookup requests skip these ~700 tokens per call.
+ */
+const CAUSAL_REASONING_SECTION = `<causal_reasoning>
+## Causal Explanation Skeleton — use when the user asks WHY air quality or
+## weather is a certain way right now (e.g. "why is PM2.5 high today",
+## "왜 오늘 미세먼지가 심한가요"). Follow this order:
+
+1. **Observe**: state the current observed/retrieved value first, with its
+   uncertainty range if available (per Glass-box rule 1 above). If
+   <retrieved_context> or <structured_context> report no matching evidence,
+   say so before anything else — do not skip straight to an explanation.
+
+2. **Decompose into candidate contributing factors** — only discuss factors
+   the retrieved evidence or the user's question actually supports; never
+   list all of them by default:
+   - **Meteorological stagnation**: low planetary boundary layer height (PBLH)
+     combined with low wind speed reduces vertical dilution → concentration
+     tends to rise. Precipitation increases wet scavenging → concentration
+     tends to fall.
+   - **Transport (inferred, not measured)**: wind direction can suggest
+     transboundary or regional transport. Phrase this as a possibility
+     ("북서풍이 이송에 기여했을 가능성이 있습니다" / "may have contributed"),
+     never as a precise contribution percentage — AirLens does not run a
+     chemical transport model (CTM); this is a qualitative, direction-based
+     inference, not a HYSPLIT-grade backtrajectory.
+   - **Emission sources**: AirLens does not currently attribute concentration
+     to specific emission sources (no PMF/CMB source apportionment). If asked,
+     say this is a known limitation rather than guessing a source.
+   - **Ozone (O3) vs particulate matter — different mitigation**: O3 is a
+     gaseous pollutant; particulate-filtering masks (KF94/N95) do NOT reduce
+     O3 exposure. When O3 is the elevated pollutant, advise reducing outdoor
+     activity (especially afternoon peak hours) instead of recommending a
+     mask. Never transfer PM2.5 mitigation advice to O3 or vice versa.
+   - **Seasonal pattern**: mention only if the retrieved context or general
+     knowledge supports a recurring seasonal effect for the pollutant/region.
+
+3. **Measured vs. estimated — always distinguish explicitly.** Label each
+   number as either 실측/measured (a station or co-located observation) or
+   추정/estimated (a model prediction, a wind-direction inference, or a
+   prediction band). Never state an estimated quantity with the same false
+   precision as a measured one.
+
+4. **Policy causal claims (SDID)**: when citing a Synthetic DiD policy impact
+   result from <structured_context>, ALWAYS pair the ATT with its 95%
+   confidence interval and p-value, and note the parallel-trends /
+   robustness caveat. Never state that a policy "caused" an outcome as a
+   bare fact — frame it as an estimated causal effect under stated
+   assumptions.
+
+5. **Stale data**: <structured_context> reports a snapshot age in hours
+   (obs_age_h-equivalent) instead of a timestamp — read that number and,
+   if it is large relative to "today", label the figure as dated rather
+   than implying it is current.
+
+6. **Citations**: reference the numbered evidence entries in
+   <retrieved_context> as [1], [2], etc. Do not invent a citation number
+   that was not provided.
+</causal_reasoning>`;
+
 /** Fallback used when `maxTurns` fails to parse to a positive finite number
  *  (env.MAX_HISTORY_TURNS misconfigured/absent) — mirrors MAX_HISTORY_TURNS's
  *  own wrangler.toml default. Without this guard, `history.slice(-NaN)`
@@ -114,22 +177,27 @@ function neutralizeUserQueryDelimiters(text: string): string {
 const DEFAULT_MAX_HISTORY_TURNS = 10;
 
 /**
- * Wraps the retrieval-grounded context block (rag.ts buildGroundedContext)
- * plus the system prompt and trimmed history into the message array
- * env.AI.run expects. Intent-conditional sections (the retired worker's
- * causal_reasoning block) are C3 scope per the design doc §4 stage
- * boundary — this worker always answers in `general` mode for now.
+ * Wraps the retrieval-grounded context block (rag.ts buildGroundedContext,
+ * plus liveData.ts buildStructuredContext when the caller has one) and the
+ * system prompt and trimmed history into the message array env.AI.run
+ * expects. `includeCausalReasoning` is intent-gated by the caller
+ * (chat-stream.ts, via guardrails.ts classifyIntent) — true only for
+ * causal/policy intents, matching the retired worker's token-budget policy.
  */
 export function buildMessages(
   userMessage: string,
   history: ChatMessageWire[],
   maxTurns: number,
   groundedContext: string,
+  includeCausalReasoning = false,
 ): Array<{ role: string; content: string }> {
   const safeMaxTurns = Number.isFinite(maxTurns) && maxTurns > 0 ? maxTurns : DEFAULT_MAX_HISTORY_TURNS;
   const trimmedHistory = history.slice(-safeMaxTurns * 2);
 
-  const systemContent = `${SYSTEM_PROMPT}\n\n${groundedContext}`;
+  const sections = [SYSTEM_PROMPT];
+  if (includeCausalReasoning) sections.push(CAUSAL_REASONING_SECTION);
+  if (groundedContext) sections.push(groundedContext);
+  const systemContent = sections.join('\n\n');
 
   const messages: Array<{ role: string; content: string }> = [{ role: 'system', content: systemContent }];
 

@@ -13,6 +13,7 @@ import { issueSessionToken, resolveIdentifier, verifySessionToken, verifyTurnsti
 import { checkDailyQuota, checkGlobalBudget, checkRateLimit } from './quota';
 import { buildDegradedStream, buildRagStream } from './chat-stream';
 import { reindexChunks } from './rag';
+import { checkGuardrails } from './guardrails';
 
 export default {
   async fetch(req: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -131,6 +132,18 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
     return errorJson('Daily chat limit reached. Try again tomorrow.', 429, 'quota_exceeded', corsHeaders, dailyQuota.retryAfterSeconds);
   }
 
+  // Domain gating (guardrails.ts checkGuardrails, ported from the retired
+  // chatbot worker — design §1 D-1) runs on the current turn only, AFTER
+  // the quota guards above (same order as the retired worker's index.ts) —
+  // a request that would be rejected here still counted against the
+  // caller's rate/daily budget, matching that precedent rather than giving
+  // an unlimited-retry probe surface. A block is a plain JSON response, not
+  // an SSE stream — no RAG/generation ever starts for it.
+  const guardrail = checkGuardrails(lastUserMessage);
+  if (!guardrail.passed) {
+    return errorJson(guardrail.fallback_message ?? 'Request blocked', 400, 'blocked', corsHeaders);
+  }
+
   let stream: ReadableStream<Uint8Array>;
   try {
     // Global budget exhaustion degrades the response (reported via the
@@ -141,8 +154,8 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
     // guard protects.
     const budget = await checkGlobalBudget(env);
     stream = budget.allowed
-      ? await buildRagStream(env, lastUserMessage, history, 'ok')
-      : await buildDegradedStream(env, lastUserMessage);
+      ? await buildRagStream(env, lastUserMessage, history, 'ok', body.page)
+      : await buildDegradedStream(env, lastUserMessage, body.page);
   } catch (err) {
     // buildRagStream awaits env.AI.run(CHAT_MODEL, ...) before it ever
     // returns a stream — a Workers AI outage/error (quota, model down)
