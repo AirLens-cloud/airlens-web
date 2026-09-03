@@ -28,12 +28,19 @@ async function ensureSession(): Promise<string | null> {
   if (cachedSession && cachedSession.expiresAt - SESSION_REFRESH_SLACK_MS > Date.now()) {
     return cachedSession.token
   }
+  // Declared outside the try so the finally block below can still see it —
+  // a token is spent (and must be reset) whether fetch() resolves, rejects,
+  // or throws outright (a network error, or AbortSignal firing on timeout).
+  // A prior version only reset on the resolved-response path, which left
+  // resetTurnstileToken() unreachable exactly when a caller most needs the
+  // widget to recover: a network hiccup (code review, PR #50).
+  let turnstileToken: string | null = null
   try {
     // A null token (widget never mounted, script blocked) is not treated as
     // a local error — the worker decides what a missing token means:
     // turnstile_failed in production, a dev-bypass pass with
     // TURNSTILE_SECRET unset. Either way the request still goes out.
-    const turnstileToken = await getTurnstileToken()
+    turnstileToken = await getTurnstileToken()
     const requestBody: ChatSessionRequest = turnstileToken ? { turnstileToken } : {}
     const res = await fetch(`${ASSISTANT_API_BASE}/api/session`, {
       method: 'POST',
@@ -41,9 +48,6 @@ async function ensureSession(): Promise<string | null> {
       body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(SESSION_FETCH_TIMEOUT_MS),
     })
-    // Tokens are single-use — spent whether the worker accepted or rejected
-    // it, so the widget must start solving a fresh one either way.
-    if (turnstileToken) resetTurnstileToken()
     if (!res.ok) return null
     const body = (await res.json()) as ChatSessionResponse
     if (typeof body.session !== 'string' || typeof body.expiresAt !== 'number') return null
@@ -51,6 +55,10 @@ async function ensureSession(): Promise<string | null> {
     return body.session
   } catch {
     return null
+  } finally {
+    // Tokens are single-use — spent whether the worker accepted it,
+    // rejected it, or the request never completed at all.
+    if (turnstileToken) resetTurnstileToken()
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CloseIcon } from '../icons'
 import { ASSISTANT_API_BASE, TURNSTILE_SITE_KEY } from '../../lib/config/dataSources'
 import { streamAssistantReply } from '../../api/assistant'
-import { mountTurnstileWidget } from '../../lib/turnstile'
+import { mountTurnstileWidget, unmountTurnstileWidget } from '../../lib/turnstile'
 import ChatMessageBubble from './ChatMessageBubble'
 import type { ChatCitation, ChatMessage } from '../../types/chat'
 
@@ -26,6 +26,12 @@ import type { ChatCitation, ChatMessage } from '../../types/chat'
  */
 interface ChatPanelProps {
   onClose: () => void
+  /** Test/demo-only override for ASSISTANT_API_BASE. The /design gallery's
+   *  ChatPanel demo passes '' so it stays visibly offline instead of
+   *  silently inheriting the live baked default and spending a real
+   *  session/budget every time someone opens that page (code review, PR
+   *  #50) — production usage (ChatWidget) never passes this. */
+  apiBaseOverride?: string
 }
 
 const SUGGESTIONS = ['Is it safe to run tonight?', 'Compare with a nearby city'] as const
@@ -44,8 +50,9 @@ function applyAssistantUpdate(
   return next
 }
 
-export default function ChatPanel({ onClose }: ChatPanelProps) {
-  const isActive = ASSISTANT_API_BASE !== ''
+export default function ChatPanel({ onClose, apiBaseOverride }: ChatPanelProps) {
+  const apiBase = apiBaseOverride ?? ASSISTANT_API_BASE
+  const isActive = apiBase !== ''
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -61,10 +68,16 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
   // Start solving a token the moment the panel goes active — see the file
   // header. A rejection (script blocked, ad-blocker) is swallowed here:
   // ensureSession() in api/assistant.ts already treats a missing token as
-  // "let the worker decide", not a local failure.
+  // "let the worker decide", not a local failure. The cleanup tears the
+  // widget down on unmount (ChatFAB fully unmounts ChatPanel on close) —
+  // without it, reopening the panel would try to reuse a widget bound to a
+  // container DOM node the FAB already removed (code review, PR #50;
+  // turnstile.ts also self-heals this independently, but tearing down
+  // immediately on close is cheaper than waiting for the next mount).
   useEffect(() => {
     if (!isActive || !turnstileRef.current) return
     mountTurnstileWidget(turnstileRef.current, TURNSTILE_SITE_KEY).catch(() => {})
+    return () => unmountTurnstileWidget()
   }, [isActive])
 
   // Cancel an in-flight stream if the panel unmounts mid-response.

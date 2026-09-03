@@ -14,6 +14,19 @@
  * Turnstile tokens are single-use: `resetTurnstileToken()` must be called
  * after a token is spent so the widget starts solving a fresh one before
  * the next session exchange needs it.
+ *
+ * ChatPanel fully unmounts when the FAB closes (ChatFAB gates its children
+ * on `isOpen`), which destroys the container `<div>` a widget was rendered
+ * into — but `widgetId`/`tokenPromise` here are module-level state that
+ * outlives that unmount. Two defenses against the resulting "reopen the
+ * chat, widget is dead" failure mode (code review, PR #50):
+ *   1. `unmountTurnstileWidget()` — call from ChatPanel's unmount cleanup to
+ *      tear the widget down and clear this module's state immediately.
+ *   2. `mountTurnstileWidget()` also compares the incoming container against
+ *      the one it last rendered into, and self-heals (removes the stale
+ *      widget, mounts fresh) if they differ — so a caller that skips (1), or
+ *      any other consumer of this module, still can't get stuck reusing a
+ *      widget bound to a container that's no longer in the document.
  */
 
 interface TurnstileRenderOptions {
@@ -57,6 +70,7 @@ function loadScript(): Promise<void> {
 }
 
 let widgetId: string | null = null
+let mountedContainer: HTMLElement | null = null
 let tokenPromise: Promise<string> | null = null
 let resolveToken: ((token: string) => void) | null = null
 let rejectToken: ((err: Error) => void) | null = null
@@ -68,16 +82,33 @@ function armTokenPromise(): void {
   })
 }
 
+/** Tears down the current widget (if any) without touching whether a new
+ *  one gets mounted — shared by unmountTurnstileWidget() and the
+ *  stale-container self-heal in mountTurnstileWidget() below. */
+function teardown(): void {
+  if (widgetId !== null) window.turnstile?.remove(widgetId)
+  widgetId = null
+  mountedContainer = null
+  tokenPromise = null
+  resolveToken = null
+  rejectToken = null
+}
+
 /**
- * Renders the widget into `container` and starts it solving. Idempotent —
- * a second call while a widget is already mounted (e.g. a StrictMode
- * double-effect) is a no-op rather than a second widget instance.
+ * Renders the widget into `container` and starts it solving. Idempotent for
+ * the SAME container (e.g. a StrictMode double-effect) — a no-op rather
+ * than a second widget instance. A DIFFERENT container (ChatPanel remounted
+ * after the FAB closed and reopened, without its unmount cleanup having run)
+ * tears down the stale widget first rather than silently no-op'ing against
+ * a container that's no longer in the document — see the file header.
  */
 export async function mountTurnstileWidget(container: HTMLElement, sitekey: string): Promise<void> {
-  if (widgetId !== null) return
+  if (widgetId !== null && mountedContainer === container) return
+  if (widgetId !== null) teardown()
   await loadScript()
   if (!window.turnstile) throw new Error('Turnstile unavailable')
   armTokenPromise()
+  mountedContainer = container
   widgetId = window.turnstile.render(container, {
     sitekey,
     appearance: 'interaction-only',
@@ -120,11 +151,20 @@ export function resetTurnstileToken(): void {
   window.turnstile.reset(widgetId)
 }
 
+/**
+ * Removes the mounted widget and clears all module state. Call this from
+ * ChatPanel's unmount cleanup (the panel fully unmounts when the FAB
+ * closes) — without it, `widgetId` survives pointing at a widget whose
+ * container DOM node is gone, and `mountTurnstileWidget()`'s own
+ * stale-container self-heal only catches this on the NEXT mount rather than
+ * cleaning up the orphaned widget the moment it's actually orphaned.
+ */
+export function unmountTurnstileWidget(): void {
+  teardown()
+}
+
 /** Test-only: drops all module state so each test starts from a clean slate. */
 export function __resetTurnstileModuleStateForTests(): void {
-  widgetId = null
-  tokenPromise = null
-  resolveToken = null
-  rejectToken = null
+  teardown()
   scriptPromise = null
 }

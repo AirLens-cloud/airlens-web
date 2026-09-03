@@ -249,4 +249,24 @@ describe('streamAssistantReply — Turnstile token wiring (A-4)', () => {
 
     expect(turnstile.resetTurnstileToken).not.toHaveBeenCalled()
   })
+
+  it('still resets the widget when fetch() itself throws (network error, timeout) — not just when it resolves not-ok', async () => {
+    // A prior version only called resetTurnstileToken() on the resolved-
+    // response path, so a rejected/thrown fetch() (offline, AbortSignal
+    // timeout firing) left the spent token stuck forever (code review, PR
+    // #50 LOW #2). The "resolves ok:false" test above doesn't cover this —
+    // fetch() there still resolves, it just isn't `.ok`.
+    turnstile.getTurnstileToken.mockResolvedValueOnce('tok-turnstile-3')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('network error')
+      }),
+    )
+    const stream = await freshStreamAssistantReply()
+
+    await collect(stream(MESSAGES, 'en', '/today'))
+
+    expect(turnstile.resetTurnstileToken).toHaveBeenCalledTimes(1)
+  })
 })

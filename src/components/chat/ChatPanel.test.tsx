@@ -18,6 +18,7 @@ vi.mock('../../lib/config/dataSources', () => dataSources)
 
 const turnstile = vi.hoisted(() => ({
   mountTurnstileWidget: vi.fn(async (_container: HTMLElement, _sitekey: string) => {}),
+  unmountTurnstileWidget: vi.fn(),
 }))
 vi.mock('../../lib/turnstile', () => turnstile)
 
@@ -31,6 +32,7 @@ afterEach(cleanup)
 beforeEach(() => {
   dataSources.ASSISTANT_API_BASE = 'https://assistant.example'
   turnstile.mountTurnstileWidget.mockClear()
+  turnstile.unmountTurnstileWidget.mockClear()
   // jsdom doesn't implement scrollIntoView — ChatPanel's messages-list
   // autoscroll effect (`listEndRef.current?.scrollIntoView(...)`) calls it
   // on every mount/message change and would otherwise throw. No other test
@@ -57,6 +59,27 @@ describe('ChatPanel — active (ASSISTANT_API_BASE configured, the A-4 default)'
     const [container, sitekey] = turnstile.mountTurnstileWidget.mock.calls[0]
     expect(container).toBeInstanceOf(HTMLElement)
     expect(sitekey).toBe('sitekey-under-test')
+  })
+
+  it('tears the widget down on unmount — ChatFAB fully unmounts ChatPanel on close, so this must run every time or the widget outlives its container (code review, PR #50 HIGH)', () => {
+    // Arrange
+    const { unmount } = render(<ChatPanel onClose={() => {}} />)
+    expect(turnstile.unmountTurnstileWidget).not.toHaveBeenCalled()
+    // Act
+    unmount()
+    // Assert
+    expect(turnstile.unmountTurnstileWidget).toHaveBeenCalledTimes(1)
+  })
+
+  it('never mounts (or unmounts) the widget when apiBaseOverride forces the panel offline, regardless of the live default', () => {
+    // Arrange / Act — the /design gallery demo passes apiBaseOverride=''
+    // specifically so it never touches the real worker (code review, PR #50
+    // MEDIUM); ASSISTANT_API_BASE here is still the live default.
+    const { unmount } = render(<ChatPanel onClose={() => {}} apiBaseOverride="" />)
+    unmount()
+    // Assert
+    expect(turnstile.mountTurnstileWidget).not.toHaveBeenCalled()
+    expect(turnstile.unmountTurnstileWidget).not.toHaveBeenCalled()
   })
 })
 

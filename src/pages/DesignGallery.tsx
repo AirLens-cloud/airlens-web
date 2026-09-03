@@ -364,7 +364,10 @@ export default function DesignGallery() {
       <Section title="ChatFAB + ChatPanel" note="Real panel structure (Wave 4 Block 3) — input is always disabled, no chat backend is wired up.">
         <div className="gallery-fab-demo">
           <ChatFAB isOpen={chatOpen} onToggle={() => setChatOpen((v) => !v)}>
-            <ChatPanel onClose={() => setChatOpen(false)} />
+            {/* apiBaseOverride='' — keeps this demo offline regardless of
+                ASSISTANT_API_BASE's live baked default (A-4); this page is a
+                component gallery, never a real chat session/budget spend. */}
+            <ChatPanel onClose={() => setChatOpen(false)} apiBaseOverride="" />
           </ChatFAB>
         </div>
       </Section>
