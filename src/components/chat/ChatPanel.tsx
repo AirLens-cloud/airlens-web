@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CloseIcon } from '../icons'
-import { ASSISTANT_API_BASE } from '../../lib/config/dataSources'
+import { ASSISTANT_API_BASE, TURNSTILE_SITE_KEY } from '../../lib/config/dataSources'
 import { streamAssistantReply } from '../../api/assistant'
+import { mountTurnstileWidget } from '../../lib/turnstile'
 import ChatMessageBubble from './ChatMessageBubble'
 import type { ChatCitation, ChatMessage } from '../../types/chat'
 
@@ -9,18 +10,19 @@ import type { ChatCitation, ChatMessage } from '../../types/chat'
  * ChatPanel — Field Assistant surface (mockup §06b "템플릿 E", Wave 4 Block 3,
  * Δ4). Structural port of AirLens-platform apps/web/src/components/chat/ChatPanel.tsx.
  *
- * C1 (workers/assistant/, Field Assistant v2 design §4) wires this up to a
- * real backend for the first time — but only when `VITE_ASSISTANT_API_BASE`
- * is configured. With it unset (the default — the worker is not deployed
- * yet), this renders the same disabled "coming back soon" state as before:
- * rendering a fake conversation here would violate Glass-box (a scripted
- * demo could be mistaken for a live answer). See ChatMessageBubble/
- * CitationCard for that machinery, demonstrated with explicitly-synthetic
- * data in the /design gallery instead.
+ * Live since A-4: RAG + intent-classified answers against
+ * `workers/assistant/` (C1 scaffold → C2 RAG → C3 intent/live-data → C4
+ * eval-verified), gated on `VITE_ASSISTANT_API_BASE` being configured. With
+ * it unset, this renders the disabled "coming back soon" state: rendering a
+ * fake conversation here would violate Glass-box (a scripted demo could be
+ * mistaken for a live answer). See ChatMessageBubble/CitationCard for that
+ * machinery, demonstrated with explicitly-synthetic data in the /design
+ * gallery instead.
  *
- * C1 is SSE echo only (no RAG, no LLM) — the assistant's reply is literally
- * the user's own message streamed back token-by-token. That is expected
- * scaffold behavior, not a bug; C2 wires the real model.
+ * Mounts a managed, non-interactive Turnstile widget the moment the panel
+ * goes active (`../../lib/turnstile.ts`) — the worker's `/api/session`
+ * requires a verification token once its `TURNSTILE_SECRET` is set, and
+ * pre-solving here means the first send doesn't wait on it.
  */
 interface ChatPanelProps {
   onClose: () => void
@@ -50,10 +52,20 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
   const [isStreaming, setIsStreaming] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const listEndRef = useRef<HTMLDivElement | null>(null)
+  const turnstileRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: 'end' })
   }, [messages])
+
+  // Start solving a token the moment the panel goes active — see the file
+  // header. A rejection (script blocked, ad-blocker) is swallowed here:
+  // ensureSession() in api/assistant.ts already treats a missing token as
+  // "let the worker decide", not a local failure.
+  useEffect(() => {
+    if (!isActive || !turnstileRef.current) return
+    mountTurnstileWidget(turnstileRef.current, TURNSTILE_SITE_KEY).catch(() => {})
+  }, [isActive])
 
   // Cancel an in-flight stream if the panel unmounts mid-response.
   useEffect(() => {
@@ -114,6 +126,10 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
 
       {isActive ? (
         <>
+          {/* Managed Turnstile widget — invisible unless Cloudflare decides
+              an interactive challenge is needed (appearance: 'interaction-only',
+              src/lib/turnstile.ts). Kept out of the message log/input flow. */}
+          <div ref={turnstileRef} className="chat-turnstile" aria-hidden="true" />
           <div className="chat-msgs" role="log" aria-live="polite">
             {messages.length === 0 ? (
               <p className="t-lede chat-msgs-empty">
