@@ -17,7 +17,7 @@ const dataSources = vi.hoisted(() => ({
 vi.mock('../../lib/config/dataSources', () => dataSources)
 
 const turnstile = vi.hoisted(() => ({
-  mountTurnstileWidget: vi.fn(async () => {}),
+  mountTurnstileWidget: vi.fn(async (_container: HTMLElement, _sitekey: string) => {}),
 }))
 vi.mock('../../lib/turnstile', () => turnstile)
 

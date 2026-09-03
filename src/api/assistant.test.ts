@@ -200,7 +200,7 @@ describe('streamAssistantReply — Turnstile token wiring (A-4)', () => {
   it('sends turnstileToken in the /api/session body when a token is available', async () => {
     turnstile.getTurnstileToken.mockResolvedValueOnce('tok-turnstile-1')
     const sse = sseResponse(['data: {"type":"done","budget":"ok","intent":"general"}\n\n'])
-    const fetchSpy = vi.fn(async (url: string) =>
+    const fetchSpy = vi.fn(async (url: string, _init?: RequestInit) =>
       url.endsWith('/api/session') ? jsonResponse({ session: 'tok-1', expiresAt: Date.now() + 3_600_000 }) : sse,
     )
     vi.stubGlobal('fetch', fetchSpy)
@@ -217,7 +217,7 @@ describe('streamAssistantReply — Turnstile token wiring (A-4)', () => {
   it('sends an empty body — no turnstileToken key — when no token is available, leaving the dev-bypass-vs-401 call to the worker', async () => {
     turnstile.getTurnstileToken.mockResolvedValueOnce(null)
     const sse = sseResponse(['data: {"type":"done","budget":"ok","intent":"general"}\n\n'])
-    const fetchSpy = vi.fn(async (url: string) =>
+    const fetchSpy = vi.fn(async (url: string, _init?: RequestInit) =>
       url.endsWith('/api/session') ? jsonResponse({ session: 'tok-1', expiresAt: Date.now() + 3_600_000 }) : sse,
     )
     vi.stubGlobal('fetch', fetchSpy)

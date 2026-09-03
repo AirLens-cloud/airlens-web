@@ -128,8 +128,14 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
         <>
           {/* Managed Turnstile widget — invisible unless Cloudflare decides
               an interactive challenge is needed (appearance: 'interaction-only',
-              src/lib/turnstile.ts). Kept out of the message log/input flow. */}
-          <div ref={turnstileRef} className="chat-turnstile" aria-hidden="true" />
+              src/lib/turnstile.ts). No aria-hidden here: WAI-ARIA forbids
+              hiding a container that can end up holding focusable content —
+              on the rare visitor who does get a checkbox, aria-hidden would
+              remove it from the accessibility tree while it stayed visible
+              and clickable, silently blocking assistive-tech users (ux-reviewer
+              finding, PR #50). Empty in the common case, so this is a no-op
+              for everyone else. */}
+          <div ref={turnstileRef} className="chat-turnstile" />
           <div className="chat-msgs" role="log" aria-live="polite">
             {messages.length === 0 ? (
               <p className="t-lede chat-msgs-empty">
