@@ -231,3 +231,83 @@ describe('mount -> unmount -> remount (PR #50 HIGH — reopening the chat panel)
     expect(fake.remove).not.toHaveBeenCalled()
   })
 })
+
+describe('StrictMode mount -> cleanup -> mount race (sec-review-50 HIGH)', () => {
+  // React StrictMode (dev only) double-invokes an effect synchronously:
+  // mount -> cleanup -> mount, all within one tick, before either
+  // mountTurnstileWidget() call's `await loadScript()` has resolved. These
+  // tests reproduce that ordering directly (no React needed) against the
+  // real module's generation counter.
+
+  it('collapses a mount -> unmount -> remount double-invoke into exactly one rendered widget', async () => {
+    // Arrange
+    const fake = installFakeTurnstile()
+    const container = document.createElement('div')
+    // Act — fire all three calls synchronously, matching how React invokes
+    // effect -> cleanup -> effect within one tick, THEN let the suspended
+    // loadScript() awaits resolve.
+    const firstMount = mountTurnstileWidget(container, SITEKEY)
+    unmountTurnstileWidget()
+    const secondMount = mountTurnstileWidget(container, SITEKEY)
+    await Promise.all([firstMount, secondMount])
+    // Assert — the superseded first call bailed before rendering; only the
+    // second, still-current call actually created a widget.
+    expect(fake.render).toHaveBeenCalledTimes(1)
+    fake.lastOptions().callback?.('tok-after-race')
+    expect(await getTurnstileToken()).toBe('tok-after-race')
+  })
+
+  it('never renders when mount is immediately followed by unmount with no remount after it', async () => {
+    // Arrange — this is the case an earlier version of the fix (bumping
+    // `generation` only inside teardown()'s `if (widgetId !== null)` guard)
+    // would have missed: the in-flight mount hasn't set widgetId yet, so a
+    // conditional bump wouldn't invalidate it, and it would render into a
+    // container React already tore down with nothing left to clean it up.
+    const fake = installFakeTurnstile()
+    const container = document.createElement('div')
+    // Act
+    const mount = mountTurnstileWidget(container, SITEKEY)
+    unmountTurnstileWidget()
+    await mount
+    // Assert
+    expect(fake.render).not.toHaveBeenCalled()
+    expect(await getTurnstileToken()).toBeNull()
+  })
+})
+
+describe('getTurnstileToken degrade-after-timeout (sec-review-50 LOW)', () => {
+  it('resolves to null after 10s if the widget never solves, rather than hanging the caller indefinitely', async () => {
+    // Arrange — a real interactive-challenge promotion nobody has clicked
+    // through yet; the widget's callback is deliberately never invoked.
+    vi.useFakeTimers()
+    try {
+      installFakeTurnstile()
+      await mountTurnstileWidget(document.createElement('div'), SITEKEY)
+      // Act
+      const pending = getTurnstileToken()
+      await vi.advanceTimersByTimeAsync(10_000)
+      // Assert — degrades through the same null contract as a blocked
+      // script or a widget error; does not throw, does not hang.
+      await expect(pending).resolves.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('still resolves with the real token if the widget solves before the timeout', async () => {
+    // Arrange
+    vi.useFakeTimers()
+    try {
+      const fake = installFakeTurnstile()
+      await mountTurnstileWidget(document.createElement('div'), SITEKEY)
+      const pending = getTurnstileToken()
+      // Act — solve well within the 10s bound
+      await vi.advanceTimersByTimeAsync(1_000)
+      fake.lastOptions().callback?.('tok-solved-in-time')
+      // Assert
+      await expect(pending).resolves.toBe('tok-solved-in-time')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

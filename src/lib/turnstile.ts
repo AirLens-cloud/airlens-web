@@ -27,6 +27,20 @@
  *      widget, mounts fresh) if they differ — so a caller that skips (1), or
  *      any other consumer of this module, still can't get stuck reusing a
  *      widget bound to a container that's no longer in the document.
+ *
+ * A third, independent race (security review, PR #50): React StrictMode
+ * double-invokes an effect as mount -> cleanup -> mount within one
+ * synchronous tick (dev only). Two `mountTurnstileWidget()` calls for the
+ * same container can then both be mid-`await loadScript()` at once —
+ * without tracking which is still wanted, BOTH would go on to call
+ * `render()`, leaving one widget an orphan the module's single `widgetId`
+ * no longer points at (or, if the surviving call is actually an unmount
+ * with no remount after it, a widget rendered into a container React has
+ * already torn down, with no cleanup ever coming to remove it). A
+ * `generation` counter — bumped unconditionally by every `teardown()` and
+ * by every `mountTurnstileWidget()` call — lets each in-flight call check,
+ * right after its own await, whether something else has superseded it; if
+ * so it bails before ever calling `render()`.
  */
 
 interface TurnstileRenderOptions {
@@ -75,6 +89,12 @@ let tokenPromise: Promise<string> | null = null
 let resolveToken: ((token: string) => void) | null = null
 let rejectToken: ((err: Error) => void) | null = null
 
+// Bumped by every teardown() and every mountTurnstileWidget() call — see the
+// file header's third race. Unconditional (not gated on widgetId) so a
+// mount that's still awaiting loadScript() when a teardown fires is always
+// invalidated, even if that teardown had nothing yet to remove.
+let generation = 0
+
 function armTokenPromise(): void {
   tokenPromise = new Promise((resolve, reject) => {
     resolveToken = resolve
@@ -86,6 +106,7 @@ function armTokenPromise(): void {
  *  one gets mounted — shared by unmountTurnstileWidget() and the
  *  stale-container self-heal in mountTurnstileWidget() below. */
 function teardown(): void {
+  generation++
   if (widgetId !== null) window.turnstile?.remove(widgetId)
   widgetId = null
   mountedContainer = null
@@ -105,7 +126,14 @@ function teardown(): void {
 export async function mountTurnstileWidget(container: HTMLElement, sitekey: string): Promise<void> {
   if (widgetId !== null && mountedContainer === container) return
   if (widgetId !== null) teardown()
+  // Snapshot AFTER any self-heal teardown() above (which already bumped
+  // generation once) so this call's own identity reflects the state it's
+  // actually mounting into — then re-check against the live counter once
+  // the await below returns, in case a cleanup or a newer mount call ran
+  // while this one was suspended (see the file header's third race).
+  const myGeneration = ++generation
   await loadScript()
+  if (myGeneration !== generation) return
   if (!window.turnstile) throw new Error('Turnstile unavailable')
   armTokenPromise()
   mountedContainer = container
@@ -126,18 +154,36 @@ export async function mountTurnstileWidget(container: HTMLElement, sitekey: stri
   })
 }
 
+// A managed widget promoted to an interactive challenge (rare — appearance:
+// 'interaction-only' only shows it when Cloudflare judges the visitor
+// suspicious) waits on a real person clicking a checkbox. Without a bound,
+// getTurnstileToken() would await that indefinitely, and ensureSession()'s
+// own AbortSignal.timeout only covers the /api/session fetch AFTER this —
+// so the chat's send button could stay disabled forever (security review,
+// PR #50 LOW). This degrades through the exact same `null` contract as a
+// blocked script or a widget error: the worker decides what a missing
+// token means, this module doesn't need to.
+const TOKEN_WAIT_TIMEOUT_MS = 10_000
+
 /**
  * Resolves with the current verification token, or `null` if the widget
- * never mounted (script blocked, ad-blocker) or errored. `null` is not an
- * error state for the caller: `verifyTurnstile()` treats a missing token as
- * a real 401 in production and a no-op pass in local dev
- * (`TURNSTILE_SECRET` unset) — this module has no way to know which, and
- * doesn't need to.
+ * never mounted (script blocked, ad-blocker), errored, or hasn't solved
+ * within `TOKEN_WAIT_TIMEOUT_MS`. `null` is not an error state for the
+ * caller: `verifyTurnstile()` treats a missing token as a real 401 in
+ * production and a no-op pass in local dev (`TURNSTILE_SECRET` unset) —
+ * this module has no way to know which, and doesn't need to.
+ *
+ * A timeout here does NOT reset the widget — `tokenPromise` is left running
+ * in the background so a solve that completes after this call gave up is
+ * still available (unspent) to the next getTurnstileToken() call.
  */
 export async function getTurnstileToken(): Promise<string | null> {
   if (!tokenPromise) return null
   try {
-    return await tokenPromise
+    return await Promise.race([
+      tokenPromise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), TOKEN_WAIT_TIMEOUT_MS)),
+    ])
   } catch {
     return null
   }
