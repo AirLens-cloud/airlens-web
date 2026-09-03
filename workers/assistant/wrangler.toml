@@ -87,6 +87,12 @@ TEMPERATURE = "0.3"
 # worker's rag.ts.
 RAG_TOP_K = "5"
 
+# C3 live-data tool call (src/liveData.ts) — the same public, keyless HF
+# dataset repo this repo's own frontend reads (src/lib/config/dataSources.ts
+# HF_LIVE_BASE). Server-Collect: fetched from the worker, not the browser,
+# but it is the identical public URL either way — no new exposure surface.
+HF_LIVE_BASE = "https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main"
+
 # Secrets (set via `npx wrangler secret put <NAME>`):
 #   SESSION_HMAC_SECRET  — signs/verifies the session token (HMAC-SHA256).
 #                          Required; there is no dev fallback for this one —

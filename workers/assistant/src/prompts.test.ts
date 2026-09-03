@@ -55,4 +55,21 @@ describe('buildMessages', () => {
     expect(messages.length).toBeLessThan(1 + 40 + 1);
     expect(messages).toHaveLength(1 + 20 + 1);
   });
+
+  it('omits the causal_reasoning section by default (token budget — general/data_lookup intents)', () => {
+    // Act
+    const messages = buildMessages('what is pm2.5', [], 10, GROUNDED);
+    const system = messages[0] as { content: string };
+    // Assert
+    expect(system.content).not.toContain('<causal_reasoning>');
+  });
+
+  it('includes the causal_reasoning section when the caller gates it in (causal/policy intents)', () => {
+    // Act
+    const messages = buildMessages('why is pm2.5 high today', [], 10, GROUNDED, true);
+    const system = messages[0] as { content: string };
+    // Assert
+    expect(system.content).toContain('<causal_reasoning>');
+    expect(system.content).toContain('Measured vs. estimated');
+  });
 });

@@ -1,6 +1,10 @@
 import type { ChatBudgetStatus, ChatMessageWire, ChatStreamEvent, Env } from './types';
 import { buildGroundedContext, embedQuery, queryCorpus, toCitations } from './rag';
 import { buildMessages } from './prompts';
+import { classifyIntent } from './guardrails';
+import { buildStructuredContext, buildUserFacingSummary, fetchLiveDataContext, type LiveDataContext } from './liveData';
+
+const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, policy: null };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -68,28 +72,41 @@ async function* upstreamTokens(upstream: ReadableStream<Uint8Array>): AsyncGener
 }
 
 /**
- * C2 RAG stream: embeds the query (bge-m3), retrieves the topK nearest
- * corpus chunks (Vectorize), streams a grounded gemma answer, and — only
- * when retrieval actually found something — emits one `citations` event
- * before the first `token` event (retrieval finishes before generation
- * starts here, unlike the retired worker's post-hoc X-RAG-Citations header;
- * design §2 "스트리밍 정합"). RAG failure (embedding or Vectorize error) is
- * fail-open: the model still answers, just without citations, using
- * rag.ts's NO_EVIDENCE_BLOCK framing so it says so rather than fabricating.
+ * C3 RAG + live-data stream: classifies intent (guardrails.ts
+ * classifyIntent — zero LLM calls), embeds the query (bge-m3) and, for
+ * data_lookup/causal/policy intents, concurrently fetches the live-data
+ * snapshot context (liveData.ts) — both best-effort, both fail-open. Streams
+ * a grounded gemma answer, and — only when retrieval actually found
+ * something — emits one `citations` event before the first `token` event
+ * (retrieval finishes before generation starts here, unlike the retired
+ * worker's post-hoc X-RAG-Citations header; design §2 "스트리밍 정합").
+ * causal_reasoning is included in the system prompt only for causal/policy
+ * intents (design §1 D-1 token-budget policy). The `done` event reports the
+ * classified intent, not a hardcoded 'general' (C2's placeholder).
  */
 export async function buildRagStream(
   env: Env,
   userMessage: string,
   history: ChatMessageWire[],
   budgetStatus: ChatBudgetStatus,
+  page?: string,
 ): Promise<ReadableStream<Uint8Array>> {
-  const queryVector = await embedQuery(env, userMessage);
+  const intent = classifyIntent(userMessage);
+  const wantsLiveData = intent !== 'general';
+  const includeCausalReasoning = intent === 'causal' || intent === 'policy';
+
+  const [queryVector, liveData] = await Promise.all([
+    embedQuery(env, userMessage),
+    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve(EMPTY_LIVE_DATA),
+  ]);
   const matches = queryVector ? await queryCorpus(env, queryVector, parseInt(env.RAG_TOP_K, 10) || 5) : [];
   const citations = toCitations(matches);
-  const groundedContext = buildGroundedContext(matches);
+  const groundedContext = [buildGroundedContext(matches), buildStructuredContext(liveData)]
+    .filter(Boolean)
+    .join('\n\n');
 
   const maxTurns = parseInt(env.MAX_HISTORY_TURNS, 10);
-  const messages = buildMessages(userMessage, history, maxTurns, groundedContext);
+  const messages = buildMessages(userMessage, history, maxTurns, groundedContext, includeCausalReasoning);
 
   const maxTokens = parseInt(env.MAX_TOKENS, 10);
   const temperature = parseFloat(env.TEMPERATURE);
@@ -114,7 +131,7 @@ export async function buildRagStream(
       } catch (err) {
         console.error('[assistant] gemma stream error:', err instanceof Error ? err.message : err);
       }
-      controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent: 'general' }));
+      controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent }));
       controller.close();
     },
   });
@@ -132,27 +149,46 @@ const NO_MATCHES_NOTICE = 'No matching documentation was found. / 관련 문서�
  * Degraded path when the daily neuron budget is exhausted (quota.ts
  * checkGlobalBudget) — never calls env.AI.run for generation, only the
  * (cheap, ~0.05-neuron) query embedding, so a request in this path costs
- * effectively zero of the exhausted budget. RAG matches are listed verbatim
- * as a single `token` frame, never summarized by the model (Glass-box: no
- * invented certainty) — same policy as the retired worker's
- * buildDegradedResponse, ported to this worker's SSE event shape.
+ * effectively zero of the exhausted budget. RAG matches AND (for
+ * data_lookup/causal/policy intents) the live-data snapshot are listed
+ * verbatim as a single `token` frame, never summarized by the model
+ * (Glass-box: no invented certainty) — live-data lookup itself costs zero
+ * neurons (a plain HTTP fetch), so including it here is free even though
+ * the budget guard exists specifically to stop gemma calls.
  */
-export async function buildDegradedStream(env: Env, userMessage: string): Promise<ReadableStream<Uint8Array>> {
-  const queryVector = await embedQuery(env, userMessage);
+export async function buildDegradedStream(env: Env, userMessage: string, page?: string): Promise<ReadableStream<Uint8Array>> {
+  const intent = classifyIntent(userMessage);
+  const wantsLiveData = intent !== 'general';
+
+  const [queryVector, liveData] = await Promise.all([
+    embedQuery(env, userMessage),
+    wantsLiveData ? fetchLiveDataContext(env, userMessage, page) : Promise.resolve(EMPTY_LIVE_DATA),
+  ]);
   const matches = queryVector ? await queryCorpus(env, queryVector, parseInt(env.RAG_TOP_K, 10) || 5) : [];
   const citations = toCitations(matches);
 
-  const body =
-    matches.length > 0
-      ? `${BUDGET_EXHAUSTED_NOTICE_EN}\n${BUDGET_EXHAUSTED_NOTICE_KO}\n\n` +
-        matches.map((m, i) => `${i + 1}. ${m.metadata.source_title} (${m.metadata.source_url})`).join('\n')
-      : `${BUDGET_EXHAUSTED_NOTICE_EN}\n${BUDGET_EXHAUSTED_NOTICE_KO}\n\n${NO_MATCHES_NOTICE}`;
+  // B1 (PR #47 review): buildUserFacingSummary renders plain facts only —
+  // formatPrediction/formatPolicyImpact (used above in buildRagStream via
+  // buildStructuredContext) carry model-only instruction text ("do not
+  // invent one", "Do NOT fabricate…") that must never reach this raw
+  // token frame, since nothing downstream strips it before it streams to
+  // the user.
+  const liveDataSummary = buildUserFacingSummary(liveData);
+
+  const parts: string[] = [`${BUDGET_EXHAUSTED_NOTICE_EN}\n${BUDGET_EXHAUSTED_NOTICE_KO}`];
+  if (liveDataSummary.length > 0) parts.push(liveDataSummary.join('\n'));
+  if (matches.length > 0) {
+    parts.push(matches.map((m, i) => `${i + 1}. ${m.metadata.source_title} (${m.metadata.source_url})`).join('\n'));
+  } else if (liveDataSummary.length === 0) {
+    parts.push(NO_MATCHES_NOTICE);
+  }
+  const body = parts.join('\n\n');
 
   return new ReadableStream<Uint8Array>({
     start(controller) {
       if (citations.length > 0) controller.enqueue(sseLine({ type: 'citations', citations }));
       controller.enqueue(sseLine({ type: 'token', content: body }));
-      controller.enqueue(sseLine({ type: 'done', budget: 'exhausted', intent: 'general' }));
+      controller.enqueue(sseLine({ type: 'done', budget: 'exhausted', intent }));
       controller.close();
     },
   });

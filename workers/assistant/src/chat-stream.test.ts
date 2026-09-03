@@ -1,8 +1,9 @@
 // chat-stream.test.ts — buildRagStream/buildDegradedStream SSE shape. AAA
 // pattern; env.AI and env.VECTORIZE are hand-rolled mocks so no live model
 // or index call happens.
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { buildDegradedStream, buildRagStream } from './chat-stream';
+import { clearSnapshotMemo } from './liveData';
 import type { CorpusVectorMetadata, Env } from './types';
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
@@ -59,6 +60,10 @@ async function collectEvents(stream: ReadableStream<Uint8Array>): Promise<unknow
     .map((frame) => JSON.parse(frame.slice('data:'.length).trim()));
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 const SAMPLE_METADATA: CorpusVectorMetadata = {
   source_title: 'AQI scale',
   source_url: '/faq#aqi-scale',
@@ -113,6 +118,64 @@ describe('buildRagStream', () => {
     // Assert
     expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general' });
   });
+
+  it('reports the classified intent in the done event instead of a hardcoded "general" (C3)', async () => {
+    // Arrange — "지금 미세먼지 얼마" has both a time cue and an air-quality
+    // subject → data_lookup (guardrails.ts classifyIntent).
+    const run = makeAiRun(['ok']);
+    const env = makeEnv({ AI: { run } as unknown as Ai }); // HF_LIVE_BASE unset — liveData fetch short-circuits
+    // Act
+    const stream = await buildRagStream(env, '지금 미세먼지 얼마야', [], 'ok');
+    const events = await collectEvents(stream);
+    // Assert
+    expect(events.at(-1)).toMatchObject({ type: 'done', intent: 'data_lookup' });
+  });
+
+  it('includes the causal_reasoning system-prompt section only for a causal-intent question', async () => {
+    // Arrange
+    const run = makeAiRun(['because...']);
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    await buildRagStream(env, 'why is pm2.5 high today', [], 'ok');
+    // Assert — the chat call (input.messages set) carries the system message.
+    const chatCall = run.mock.calls.find((call) => (call[1] as { messages?: unknown }).messages !== undefined);
+    const systemMsg = (chatCall![1] as { messages: Array<{ role: string; content: string }> }).messages[0];
+    expect(systemMsg.content).toContain('<causal_reasoning>');
+  });
+
+  it('omits the causal_reasoning section for a general-intent question', async () => {
+    // Arrange
+    const run = makeAiRun(['hi there']);
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    await buildRagStream(env, 'hello', [], 'ok');
+    // Assert
+    const chatCall = run.mock.calls.find((call) => (call[1] as { messages?: unknown }).messages !== undefined);
+    const systemMsg = (chatCall![1] as { messages: Array<{ role: string; content: string }> }).messages[0];
+    expect(systemMsg.content).not.toContain('<causal_reasoning>');
+  });
+
+  it('folds a fetched live-data block into <structured_context> in the system prompt for a data_lookup intent', async () => {
+    // Arrange
+    clearSnapshotMemo();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        generated_at: new Date().toISOString(),
+        predictions: [{ name: 'Seoul', lat: 37.5, lon: 127, predicted_p10: 18, predicted_p50: 25, predicted_p90: 32 }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const run = makeAiRun(['ok']);
+    const env = makeEnv({ AI: { run } as unknown as Ai, HF_LIVE_BASE: 'https://example.invalid/live' });
+    // Act
+    await buildRagStream(env, '지금 seoul 미세먼지 얼마야', [], 'ok');
+    // Assert
+    const chatCall = run.mock.calls.find((call) => (call[1] as { messages?: unknown }).messages !== undefined);
+    const systemMsg = (chatCall![1] as { messages: Array<{ role: string; content: string }> }).messages[0];
+    expect(systemMsg.content).toContain('<structured_context>');
+    expect(systemMsg.content).toContain('Seoul');
+  });
 });
 
 describe('buildDegradedStream', () => {
@@ -161,5 +224,77 @@ describe('buildDegradedStream', () => {
     expect(events.some((e) => e.type === 'citations')).toBe(false);
     const tokenEvent = events.find((e) => e.type === 'token');
     expect(tokenEvent?.content).toContain('No matching documentation was found');
+  });
+
+  it('never leaks model-facing instruction phrasing into the degraded-path token event when the honesty gate fires (att: null) — B1 regression', async () => {
+    // Arrange — a policy-intent question on a country page, with the fetched
+    // policy snapshot honesty-gated (att: null). The degraded path must
+    // render this through the user-facing (plain-text) summary, not the
+    // system-prompt-facing formatPolicyImpact block, which carries sentences
+    // like "Do NOT fabricate..." that read as bizarre/leaked instructions if
+    // ever shown to an end user verbatim.
+    clearSnapshotMemo();
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('predictions')) {
+        return { ok: true, json: async () => ({ generated_at: new Date().toISOString(), predictions: [] }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          country: 'KR',
+          method: 'sdid',
+          att: null,
+          ci_95: null,
+          p_value: null,
+          significant: null,
+          status: 'insufficient_controls',
+          treatment_year: null,
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+    const run = makeAiRun(['should not be reached']);
+    const env = makeEnv({ AI: { run } as unknown as Ai, HF_LIVE_BASE: 'https://example.invalid/live' });
+    // Act
+    const stream = await buildDegradedStream(env, 'why did the clean air policy fail', '/country/KR');
+    const events = (await collectEvents(stream)) as Array<{ type: string; content?: string }>;
+    // Assert
+    const tokenEvent = events.find((e) => e.type === 'token');
+    const body = tokenEvent?.content ?? '';
+    expect(body).not.toContain('do not invent one');
+    expect(body).not.toContain('Do NOT fabricate');
+    expect(body).not.toContain('never as a proven fact');
+    expect(body).not.toContain('do not state one');
+    // Still degrades gracefully — the underlying fact (no policy-impact
+    // estimate for this honesty-gated country) is conveyed honestly in
+    // plain words, not silently dropped.
+    const conveysHonestly = /insufficient_controls/i.test(body) || /no .*(policy|estimate).*available/i.test(body);
+    expect(conveysHonestly).toBe(true);
+  });
+
+  it('includes a live-data block verbatim for a data_lookup intent, still with zero chat-model calls', async () => {
+    // Arrange — live-data lookup is a plain HTTP fetch (zero neurons), so
+    // including it here doesn't touch the budget the degraded path protects.
+    clearSnapshotMemo();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        generated_at: new Date().toISOString(),
+        predictions: [{ name: 'Seoul', lat: 37.5, lon: 127, predicted_p10: 18, predicted_p50: 25, predicted_p90: 32 }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const run = makeAiRun(['should not be reached']);
+    const env = makeEnv({ AI: { run } as unknown as Ai, HF_LIVE_BASE: 'https://example.invalid/live' });
+    // Act
+    const stream = await buildDegradedStream(env, '지금 seoul 미세먼지 얼마야');
+    const events = await collectEvents(stream) as Array<{ type: string; content?: string }>;
+    // Assert
+    const tokenEvent = events.find((e) => e.type === 'token');
+    expect(tokenEvent?.content).toContain('Seoul');
+    expect(events.at(-1)).toMatchObject({ type: 'done', budget: 'exhausted', intent: 'data_lookup' });
+    for (const call of run.mock.calls) {
+      expect((call[1] as { messages?: unknown }).messages).toBeUndefined();
+    }
   });
 });

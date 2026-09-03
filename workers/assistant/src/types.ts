@@ -52,6 +52,15 @@ export interface Env {
   TEMPERATURE: string;
   /** Vectorize topK per query (design §1 D-3, ported RAG_TOP_K=5 default). */
   RAG_TOP_K: string;
+
+  /** Base URL for the public HF live-data dataset this repo reads as its data
+   *  primary (`src/lib/config/dataSources.ts` HF_LIVE_BASE — same repo, same
+   *  publish pipeline). C3 live-data tool calls (liveData.ts) fetch
+   *  `${HF_LIVE_BASE}/ml-data/predictions/grid_latest.json` (city PM2.5
+   *  predictions) and `${HF_LIVE_BASE}/insights-data/policy-impact/{cc}.json`
+   *  (SDID policy impact) from here — a worker-side var rather than
+   *  `import.meta.env` (Vite-only, unavailable to a plain Workers deploy). */
+  HF_LIVE_BASE: string;
 }
 
 export type ChatRole = 'user' | 'assistant';
@@ -77,6 +86,15 @@ export interface SessionRequestBody {
 export type ChatIntent = 'causal' | 'policy' | 'data_lookup' | 'general';
 export type ChatBudgetStatus = 'ok' | 'exhausted';
 
+/** guardrails.ts checkGuardrails result — ported from the retired chatbot
+ *  worker's types.ts. `reason`/`fallback_message` are non-null together
+ *  (`passed: false`) or both null (`passed: true`). */
+export interface GuardrailResult {
+  passed: boolean;
+  reason: 'injection' | 'system_probe' | 'out_of_scope' | null;
+  fallback_message: string | null;
+}
+
 /** SSE payload shapes streamed from POST /api/chat — design §2. A `citations`
  *  event is emitted only when Vectorize actually returned matches — an empty
  *  array would look like "we searched and found nothing" rather than "we
@@ -96,7 +114,16 @@ export interface ChatCitationWire {
   excerpt?: string;
 }
 
-export type ChatErrorCode = 'turnstile_failed' | 'rate_limited' | 'quota_exceeded' | 'origin_denied' | 'invalid_body';
+export type ChatErrorCode =
+  | 'turnstile_failed'
+  | 'rate_limited'
+  | 'quota_exceeded'
+  | 'origin_denied'
+  | 'invalid_body'
+  /** guardrails.ts checkGuardrails rejected the message (injection attempt,
+   *  system-probe, or out-of-scope topic) — see GuardrailResult.reason for
+   *  which. */
+  | 'blocked';
 
 export interface ChatErrorBody {
   error: string;
