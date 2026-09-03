@@ -18,6 +18,14 @@ import { reindexChunks } from './rag';
 import { checkConversationGuardrails, classifyIntent } from './guardrails';
 import { chatlogEnabled, persistTurn } from './persist';
 
+/**
+ * Shown when a quota guard refuses because its counter store is down, not
+ * because the caller ran out of anything. It says which of the two happened,
+ * because the user can act on one ("wait for tomorrow") and not the other.
+ */
+const QUOTA_UNAVAILABLE_MESSAGE =
+  'The assistant is temporarily unavailable — usage limits cannot be verified right now, so requests are paused rather than served without a cap. Please try again shortly.';
+
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = req.headers.get('Origin') ?? '';
@@ -160,14 +168,23 @@ async function handleChat(
   const ip = getClientIp(req);
   const identifier = await resolveIdentifier(env, payload.sid, ip);
 
+  // Both guards fail CLOSED when their KV store is unreadable (quota.ts,
+  // 2026-09-03). That refusal is reported as what it is — a temporary
+  // service fault, 503 — and never as "you hit your limit", which would be
+  // a false statement about the caller. Silent blocking is the thing this
+  // is specifically not allowed to become.
   const rateLimit = await checkRateLimit(env, identifier);
   if (!rateLimit.allowed) {
-    return errorJson('Too many requests. Please wait a moment.', 429, 'rate_limited', corsHeaders, rateLimit.retryAfterSeconds);
+    return rateLimit.reason === 'store_unavailable'
+      ? errorJson(QUOTA_UNAVAILABLE_MESSAGE, 503, 'quota_unavailable', corsHeaders, rateLimit.retryAfterSeconds)
+      : errorJson('Too many requests. Please wait a moment.', 429, 'rate_limited', corsHeaders, rateLimit.retryAfterSeconds);
   }
 
   const dailyQuota = await checkDailyQuota(env, identifier);
   if (!dailyQuota.allowed) {
-    return errorJson('Daily chat limit reached. Try again tomorrow.', 429, 'quota_exceeded', corsHeaders, dailyQuota.retryAfterSeconds);
+    return dailyQuota.reason === 'store_unavailable'
+      ? errorJson(QUOTA_UNAVAILABLE_MESSAGE, 503, 'quota_unavailable', corsHeaders, dailyQuota.retryAfterSeconds)
+      : errorJson('Daily chat limit reached. Try again tomorrow.', 429, 'quota_exceeded', corsHeaders, dailyQuota.retryAfterSeconds);
   }
 
   // Domain gating (guardrails.ts checkGuardrails, ported from the retired
