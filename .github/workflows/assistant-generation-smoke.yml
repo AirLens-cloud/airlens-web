@@ -1,24 +1,41 @@
-name: Assistant generation smoke
+name: Assistant PR gates (live)
 
-# One live Workers AI call per run, asserting generation isn't silently
-# empty — the exact gap that let the A-5 incident (2026-09-03) ship
-# unnoticed. No eval in this repo had ever called CHAT_MODEL with both the
-# real SYSTEM_PROMPT AND a populated <retrieved_context> block at once (see
-# eval/generation-smoke.eval.test.ts's own comment) until this one, and
-# nothing exercising that combination ran automatically on a PR — the only
-# existing eval close to it (eval/retrieval.eval.test.ts) lives inside
-# assistant-model-ab.yml, which is workflow_dispatch-only (manual, paid,
-# never runs on push/PR). Mirroring that placement here would have
+# Two live Cloudflare calls per run, gating on the two failure shapes no PR
+# check caught before the A-5 incident (2026-09-03):
+#
+#   1. Generation smoke — asserts the assistant isn't silently empty. No
+#      eval in this repo had ever called CHAT_MODEL with both the real
+#      SYSTEM_PROMPT AND a populated <retrieved_context> block at once (see
+#      eval/generation-smoke.eval.test.ts's own comment) until this one.
+#   2. Retrieval recall@3 — asserts the corpus still finds the right chunk
+#      for known questions (eval/retrieval.eval.test.ts). This eval already
+#      existed and already worked; it just never ran automatically.
+#
+# Neither ran on push/PR before this workflow — the only place either lived
+# was assistant-model-ab.yml, which is workflow_dispatch-only (manual,
+# paid, never runs on push/PR). Mirroring that placement here would have
 # reproduced the exact same blind spot, so this is a separate, dedicated,
 # PR-gating workflow instead — deliberately NOT folded into
-# assistant-model-ab.yml.
+# assistant-model-ab.yml (which stays for the paid, human-invoked model A/B
+# + judge-scored quality eval).
 #
-# Cost: 1 generation call (no judge) per run, only when workers/assistant
-# changed. Uses the same CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_WORKERS_AI_TOKEN
-# secrets assistant-model-ab.yml already has provisioned. Private repo — no
-# fork-PR secret-exposure concern — but the smoke test itself SKIPS loudly
-# (never fakes a pass) if either secret is absent, so a misconfigured secret
-# fails safe either way.
+# Cost: 1 generation call + 6 embed/query pairs per run, only when
+# workers/assistant changed. Uses the same CLOUDFLARE_ACCOUNT_ID /
+# CLOUDFLARE_WORKERS_AI_TOKEN secrets assistant-model-ab.yml already has
+# provisioned (the token needs both the "Workers AI" and "Vectorize" (Read)
+# permission groups — retrieval.eval.test.ts's own header documents why).
+# Private repo — no fork-PR secret-exposure concern.
+#
+# Both eval files SKIP loudly (never fake a pass) when either secret is
+# absent — correct for a local `npx vitest run`, where missing creds mean
+# "not testing this right now," not "it's broken." In THIS workflow, though,
+# that same skip is a trap: 0 tests run -> the job exits 0 -> the PR check
+# goes green, with nothing actually verified — a secret typo, rotation, or
+# deletion would silently turn this gate into a no-op, the same
+# "not-running reads as passing" shape that let A-5 ship in the first
+# place. The "secrets present" step below exists specifically to convert
+# that silent skip into a hard CI failure — presence only, names never
+# values, and neither eval step runs without both secrets confirmed.
 
 on:
   push:
@@ -33,15 +50,15 @@ on:
       - '.github/workflows/assistant-generation-smoke.yml'
 
 concurrency:
-  group: assistant-generation-smoke-${{ github.ref }}
+  group: assistant-pr-gates-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  smoke:
-    name: generation is not silently empty
+  live-gates:
+    name: generation not empty + retrieval recall@3
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,8 +76,28 @@ jobs:
 
       - run: npm ci
 
+      # Fails the job (not skip) when a required secret is missing — a
+      # skipped test suite exits 0, which would otherwise let this gate go
+      # green while verifying nothing. Names only, never values.
+      - name: Secrets present (fail loud, not skip-to-green)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: |
+          missing=0
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "::error::missing secret: CLOUDFLARE_ACCOUNT_ID"; missing=1; }
+          [ -n "$CLOUDFLARE_WORKERS_AI_TOKEN" ] || { echo "::error::missing secret: CLOUDFLARE_WORKERS_AI_TOKEN"; missing=1; }
+          [ "$missing" = "0" ] || exit 1
+          echo "required secrets present (values masked)"
+
       - name: Generation smoke (A-5 regression — real prompt shape, live Workers AI)
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
         run: npx vitest run eval/generation-smoke.eval.test.ts
+
+      - name: Retrieval eval (recall@3 against the live Vectorize corpus)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/retrieval.eval.test.ts
