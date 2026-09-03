@@ -35,14 +35,17 @@ export const LEGAL_DOCS: LegalDoc[] = [
     id: 'privacy',
     order: 1,
     title: 'Privacy',
-    lastUpdated: '2026-09-01',
+    lastUpdated: '2026-09-03',
     summary: 'What AirLens collects, and what it deliberately does not.',
     body: [
-      'AirLens has no user accounts. There is no sign-up, no email address on file, and no persistent device identifier tied to a person.',
+      'AirLens has no user accounts. There is no sign-up, no email address on file, and no account identifier tied to a person.',
       'Location used to center the map or a forecast is coarse and opt-in — it is used in the browser to pick what to show, and AirLens does not log precise coordinates against a visitor.',
       'Anything you build in the Lab (queries, saved views, exported bundles) is stored locally in your browser. Nothing in the Lab is transmitted to an AirLens server as part of normal use.',
       'If you submit a bundle to Research Commons, the submission carries only what you choose to attach — a display name and contact are optional, and no account identifier is issued or required.',
-      'This build ships no analytics or tracking code at all — the analytics module in the codebase is a documented no-op with no vendor wired in, so nothing about your visit is sent anywhere to be recorded.',
+      'The Field Assistant chat is optional and does nothing until you open it and send something. When you do, that message and the recent turns of the same conversation are sent to an AirLens worker running on Cloudflare, which passes them to Cloudflare Workers AI to generate the reply — Cloudflare processes that text on AirLens’s behalf. Text you type into the chat leaves your browser by design, so do not put personal or confidential information into it.',
+      'AirLens does not currently keep those chat messages. No transcript is written to an AirLens database or file store, and nothing you type is linked to you. If that ever changes, this page will state what is kept, for how long, and what is masked before the change goes live — not after.',
+      'To stop a single visitor from exhausting the shared daily budget the assistant runs on, the chat worker counts requests against a key derived from your IP address. That key is a salted hash, recomputed each UTC day, so it rotates daily and cannot be read back to an address; the raw IP is not stored, and the counter holds nothing but a number. This is the one place where something derived from your network address is used, and it exists for abuse control only.',
+      'This build ships no analytics or tracking code at all — the analytics module in the codebase is a documented no-op with no vendor wired in. Browsing AirLens sends nothing about your visit anywhere to be recorded; the chat described above is the one feature that transmits what you type.',
       'Because there is no account, there is no "delete my account" flow to offer. Data saved in your browser is under your control — clearing site storage removes it.',
     ],
   },
@@ -57,7 +60,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       'AirLens is free to use and involves no payment, subscription, or billing relationship of any kind.',
       'Public API and MCP access is offered as-is; rate limits and acceptable use are described in the AUP.',
       'If you export or submit a research bundle, you retain responsibility for the content of that bundle — see Data Contribution and AUP for submission conditions.',
-      'Because there are no accounts, AirLens keeps no per-user record of activity. This limits AirLens’s ability to identify a specific submitter in a dispute — that limitation is disclosed here rather than glossed over.',
+      'Because there are no accounts, AirLens keeps no per-user record of activity — only the daily-rotating abuse counters described in Privacy, which hold a count and nothing else. This limits AirLens’s ability to identify a specific submitter in a dispute — that limitation is disclosed here rather than glossed over.',
       'This is a V0.1 draft and has not been reviewed by counsel (see the banner on every legal page).',
     ],
   },
@@ -65,12 +68,13 @@ export const LEGAL_DOCS: LegalDoc[] = [
     id: 'ai-disclaimer',
     order: 3,
     title: 'AI Disclaimer',
-    lastUpdated: '2026-09-01',
-    summary: 'What each deployed model actually claims, and its limits — only for models that render values on this site.',
+    lastUpdated: '2026-09-03',
+    summary: 'What each deployed model actually claims, and its limits — only for models that produce output on this site.',
     body: [
-      'This disclaimer covers only the models that currently render a value on airlens-web. Models under research or planned for a future mobile app are not listed here — listing a model that produces nothing on this site would misrepresent what is actually live.',
+      'This disclaimer covers only the models that currently produce output on airlens-web. Models under research or planned for a future mobile app are not listed here — listing a model that produces nothing on this site would misrepresent what is actually live.',
       'PM2.5 forecast grid (Globe / Weather): a satellite-derived, model-based estimate. It is not a ground measurement. Every rendered value ships with a p10–p90 uncertainty band and a DQSS quality grade — see Glossary.',
       'SDID / policy impact estimate (Insights): a statistical causal-inference estimate (synthetic difference-in-differences), not an observed fact. It answers "what likely changed," with an uncertainty range, not "what definitely changed."',
+      'Field Assistant (chat, every page): a language model answering from AirLens documentation it retrieves at question time, not a source of new measurements. It can be wrong, and it can be confidently wrong — check the citations it shows, and treat any number it repeats as coming from the cited page, with that page’s uncertainty band, rather than from the model.',
       'No model on this site is intended for medical, legal, or investment decisions. Values described as forecast or inferred are estimates, and this site says so at the value, not only in this document.',
       'Where a value cannot be produced with acceptable confidence, AirLens withholds it rather than guessing — see the Glossary entry for "withheld."',
     ],
@@ -129,9 +133,16 @@ export interface DeployedModelCardEntry {
 }
 
 /**
- * Model Card §5 Rule 1: only models that actually render a value on
- * airlens-web today. Camera AI / MoodCast / RAG Chat / TFT / sky segmentation
- * are App PRD territory with no route here and are deliberately absent.
+ * Model Card §5 Rule 1: only models that actually produce output on
+ * airlens-web today. Camera AI / MoodCast / TFT / sky segmentation are App
+ * PRD territory with no route here and are deliberately absent.
+ *
+ * The Field Assistant used to be on that absent list too — it is not any
+ * more: the chat worker went live on this site (SiteChrome mounts ChatWidget
+ * on every page), so leaving it out would have understated what runs here.
+ * It is listed with `nature: generated text` because, unlike the three
+ * forecast/inference entries, it renders prose rather than a number with a
+ * p10–p90 band — see the AI Disclaimer for what that answer is and is not.
  */
 export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
   {
@@ -156,6 +167,15 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     name: 'SDID policy impact (ROI)',
     usedAt: { label: 'Insights', href: '/insights' },
     nature: 'inferred / policy',
+    hfCardUrl: null,
+    lastPublished: null,
+    contentHash: null,
+    status: 'tbd',
+  },
+  {
+    name: 'Field Assistant (gemma-4-26b-a4b-it via Cloudflare Workers AI)',
+    usedAt: { label: 'Chat (every page)', href: '/legal/ai-disclaimer' },
+    nature: 'generated text / retrieval-grounded',
     hfCardUrl: null,
     lastPublished: null,
     contentHash: null,
