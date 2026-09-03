@@ -27,6 +27,7 @@ import { dqssScoreToGrade } from '../lib/config/globeOntology'
 import { pm25ToGrade } from '../lib/globe/gradeColor'
 import { ATMOSPHERIC_MODES } from '../lib/config/atmosphericModes'
 import { fetchTimelineManifest } from '../api/timeline'
+import { formatElapsed } from '../lib/home/whyNow'
 import type { AtmosphericMode } from '../types/globe'
 import GlobeFallback from '../components/globe/GlobeFallback'
 import GlobeObsHud, { type GlobeObsHudStatus } from '../components/globe/observatory/GlobeObsHud'
@@ -88,14 +89,16 @@ function utcLabel(value: number | null): string {
  * Freshness line (`evidence-rail-compare-tray.md` §4.1). `null` when there is
  * no time to measure against, which the card renders as "—", never "just now".
  */
+/**
+ * Thin wrapper over the shared `formatElapsed` (whyNow.ts) — this file's
+ * own "since a timestamp" framing over that util's "already-elapsed ms"
+ * one. Delegating avoids a 3rd reimplementation of the same age-label
+ * logic (whyNow's `formatElapsed` / AqiCapsule's now-removed
+ * `formatDataAge` were the other two).
+ */
 function freshnessLabel(sinceMs: number | null): string | null {
   if (sinceMs == null || !Number.isFinite(sinceMs)) return null
-  const deltaMin = Math.round((Date.now() - sinceMs) / 60_000)
-  if (deltaMin < 0) return null
-  if (deltaMin < 60) return `${deltaMin}m ago`
-  const deltaHr = Math.round(deltaMin / 60)
-  if (deltaHr < 48) return `${deltaHr}h ago`
-  return `${Math.round(deltaHr / 24)}d ago`
+  return formatElapsed(Date.now() - sinceMs)
 }
 
 export default function Globe() {

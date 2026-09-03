@@ -14,6 +14,7 @@ import AqiDot from '../../wireframe/AqiDot'
 import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
 import { useLocationPersonalization } from '../../../hooks/useLocationPersonalization'
+import { formatElapsed } from '../../../lib/home/whyNow'
 
 const CAPSULE_SPRING = { damping: 0.68, response: 0.38 }
 const COLLAPSED_W = 220
@@ -56,15 +57,6 @@ function formatCountdown(ms: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-/** Shown when the mirror is older than REFRESH_INTERVAL_MS — a stale feed
- * must read as "old data", never as an imminent refresh (0:00). */
-function formatDataAge(ms: number): string {
-  const h = Math.floor(ms / (60 * 60 * 1000))
-  if (h >= 48) return `${Math.floor(h / 24)}d ago`
-  if (h >= 1) return `${h}h ago`
-  return `${Math.max(1, Math.floor(ms / 60000))}m ago`
 }
 
 function getFocusable(container: HTMLElement): HTMLElement[] {
@@ -273,7 +265,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
           <span className="aq-capsule__value">{Math.round(data.current)}</span>
           <span className="aq-capsule__unit">µg/m³</span>
           <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined}>
-            {remaining > 0 ? formatCountdown(remaining) : formatDataAge(elapsed)}
+            {remaining > 0 ? formatCountdown(remaining) : formatElapsed(elapsed)}
           </span>
         </span>
       </>

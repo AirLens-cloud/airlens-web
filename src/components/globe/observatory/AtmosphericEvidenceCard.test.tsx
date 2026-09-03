@@ -195,6 +195,13 @@ describe('AtmosphericEvidenceCard — Layer 3 (collapsed details)', () => {
     expect(screen.getByText(/v2026\.09\.03 · sha256 a1b2c3d4…/)).toBeTruthy()
     expect(screen.queryByText(/not yet published/)).toBeNull()
   })
+
+  it('falls back to the honest-pending default for an empty or whitespace-only lineage label', () => {
+    // Arrange / Act
+    render(<AtmosphericEvidenceCard {...baseProps({ lineageLabel: '   ' })} />)
+    // Assert
+    expect(screen.getByText(/not yet published — Evidence Contract producer \(B1\) pending/)).toBeTruthy()
+  })
 })
 
 describe('AtmosphericEvidenceCard — events mode', () => {

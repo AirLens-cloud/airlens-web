@@ -520,7 +520,12 @@ canvas.cursor-trail { z-index: 2; }
 /* LINEAGE (`evidence-rail-compare-tray.md` §4.1) — same visual family as
    .atmos-coverage/.atmos-caveat (a quiet trailing note in the disclosed
    body), distinct from .atmos-source-line (provider name, always visible). */
-.obs-surface .atmos-lineage { margin: 0; padding: 4px 14px 10px; color: var(--obs-hud-dim); font: 500 10px/1.45 var(--obs-display); }
+.obs-surface .atmos-lineage {
+  margin: 0;
+  padding: 4px 14px 10px; /* design-lint-ok: spacing — matches the 14px horizontal rhythm of the sibling .atmos-caveat/.atmos-coverage/.atmos-provenance-tags rules in this disclosed body, same convention as .atmos-source-line above */
+  color: var(--obs-hud-dim);
+  font: 500 10px/1.45 var(--obs-display);
+}
 .obs-surface .atmos-lineage-label { color: var(--obs-hud); font: 700 7px/1 var(--obs-mono); letter-spacing: .12em; text-transform: uppercase; }
 
 /* ── DawnReport ── */

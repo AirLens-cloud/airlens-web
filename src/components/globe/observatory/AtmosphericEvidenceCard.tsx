@@ -261,7 +261,7 @@ export default function AtmosphericEvidenceCard({
               the producer doesn't publish this yet (§11 gap table), so this
               renders that absence rather than a fabricated version string. */}
           <p className="atmos-lineage">
-            <span className="atmos-lineage-label">Lineage</span> · {lineageLabel ?? LINEAGE_PENDING}
+            <span className="atmos-lineage-label">Lineage</span> · {lineageLabel?.trim() || LINEAGE_PENDING}
           </p>
         </div>
       </details>
