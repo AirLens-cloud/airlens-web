@@ -9,6 +9,23 @@ const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, policy: null };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+const VALID_REASONING_EFFORTS = new Set(['low', 'medium', 'high']);
+
+// Zero-token generation is a real, user-visible failure (an empty answer
+// bubble next to real citation links) even though the upstream request
+// itself succeeds — upstreamTokens() simply never yields. Before
+// REASONING_EFFORT existed (A-5 incident) this happened silently: no
+// exception, no console log, `done` reported budget: 'ok' as if nothing were
+// wrong (CHAT_MODEL's reasoning ate the whole MAX_TOKENS budget before any
+// answer content). This notice is the fallback of last resort in case a
+// future question still exhausts the budget despite REASONING_EFFORT, so
+// users are never shown a blank bubble (Glass-box — a silent failure is
+// worse than an honest "couldn't answer").
+const GENERATION_EMPTY_NOTICE_EN =
+  '[AirLens] The assistant could not produce an answer for this question. Please try rephrasing it, or check the sources below if any are listed.';
+const GENERATION_EMPTY_NOTICE_KO =
+  '[AirLens] 이 질문에 대한 답변을 생성하지 못했습니다. 다른 표현으로 다시 질문해 주시거나, 아래 출처를 확인해 주세요.';
+
 function sseLine(event: ChatStreamEvent): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
 }
@@ -110,12 +127,18 @@ export async function buildRagStream(
 
   const maxTokens = parseInt(env.MAX_TOKENS, 10);
   const temperature = parseFloat(env.TEMPERATURE);
+  const reasoningEffortVar = env.REASONING_EFFORT?.trim().toLowerCase();
+  const reasoningEffort = reasoningEffortVar && VALID_REASONING_EFFORTS.has(reasoningEffortVar) ? reasoningEffortVar : 'low';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const upstream = (await env.AI.run(env.CHAT_MODEL as any, {
     messages,
     max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 512,
     temperature: Number.isFinite(temperature) ? temperature : 0.3,
+    // CHAT_MODEL is a reasoning-capable model — without this, its thinking
+    // tokens can consume the entire max_tokens budget above and stream zero
+    // answer tokens (see the module-level comment on GENERATION_EMPTY_NOTICE_EN).
+    reasoning_effort: reasoningEffort,
     stream: true,
   })) as ReadableStream<Uint8Array>;
 
@@ -124,12 +147,24 @@ export async function buildRagStream(
       if (citations.length > 0) {
         controller.enqueue(sseLine({ type: 'citations', citations }));
       }
+      let tokenCount = 0;
       try {
         for await (const token of upstreamTokens(upstream)) {
+          tokenCount++;
           controller.enqueue(sseLine({ type: 'token', content: token }));
         }
       } catch (err) {
         console.error('[assistant] gemma stream error:', err instanceof Error ? err.message : err);
+      }
+      if (tokenCount === 0) {
+        // Never silent — a request that "succeeds" (no exception, HTTP 200)
+        // but produces zero visible content is still a failure the user
+        // must be told about, not a blank bubble next to real citations.
+        console.error(
+          '[assistant] gemma stream produced zero token events (reasoning likely exhausted the token budget) for intent:',
+          intent,
+        );
+        controller.enqueue(sseLine({ type: 'token', content: `${GENERATION_EMPTY_NOTICE_EN}\n${GENERATION_EMPTY_NOTICE_KO}` }));
       }
       controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent }));
       controller.close();

@@ -50,6 +50,16 @@ export interface Env {
   EMBEDDING_MODEL: string;
   MAX_TOKENS: string;
   TEMPERATURE: string;
+  /** 'low' | 'medium' | 'high' — CHAT_MODEL is a reasoning-capable model
+   *  whose thinking tokens draw from the SAME MAX_TOKENS budget as the
+   *  visible answer (Workers AI catalog: gemma-4-26b-a4b-it accepts
+   *  `reasoning_effort` as a distinct param from `max_tokens`/
+   *  `max_completion_tokens`). Left unset in production, some questions
+   *  spent the entire 512-token budget on reasoning and streamed zero
+   *  `token` events — citations only, an empty answer bubble, no error
+   *  anywhere (A-5 incident, chat-stream.ts buildRagStream). 'low' leaves
+   *  more of the fixed budget for the actual answer. */
+  REASONING_EFFORT: string;
   /** Vectorize topK per query (design §1 D-3, ported RAG_TOP_K=5 default). */
   RAG_TOP_K: string;
 

@@ -35,6 +35,7 @@ export interface WranglerVars {
   maxTokens: number;
   temperature: number;
   maxHistoryTurns: number;
+  reasoningEffort: string;
 }
 
 /**
@@ -47,6 +48,9 @@ export interface WranglerVars {
  * against this account: CHAT_MODEL returned an empty `content` with
  * `finish_reason: "length"` at a 20-token cap — see prompts.ts's own
  * DEFAULT_MAX_HISTORY_TURNS comment for the analogous NaN-guard rationale).
+ * reasoningEffort (added A-5) is that same finding's production fix — this
+ * eval must send it too, or an A/B run measures a reasoning-token spend the
+ * deployed worker no longer has.
  */
 export function parseWranglerVars(toml: string): WranglerVars {
   const read = (key: string): string => {
@@ -64,6 +68,7 @@ export function parseWranglerVars(toml: string): WranglerVars {
     maxTokens: num('MAX_TOKENS'),
     temperature: num('TEMPERATURE'),
     maxHistoryTurns: num('MAX_HISTORY_TURNS'),
+    reasoningEffort: read('REASONING_EFFORT'),
   };
 }
 
@@ -208,7 +213,7 @@ export async function generateAnswer(
   if (fetchImpl === fetch && !GENERATOR_ENABLED) {
     throw new Error('generator env not set (CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_WORKERS_AI_TOKEN)');
   }
-  const { maxTokens, temperature } = wranglerVars();
+  const { maxTokens, temperature, reasoningEffort } = wranglerVars();
   const messages = buildEvalMessages(req);
 
   let res!: Response;
@@ -221,7 +226,7 @@ export async function generateAnswer(
           Authorization: `Bearer ${AI_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages, max_tokens: maxTokens, temperature }),
+        body: JSON.stringify({ messages, max_tokens: maxTokens, temperature, reasoning_effort: reasoningEffort }),
       },
     );
     if (res.ok || !RETRYABLE_STATUSES.has(res.status) || attempt === GENERATE_ATTEMPTS) break;

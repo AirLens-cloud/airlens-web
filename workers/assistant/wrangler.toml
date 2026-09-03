@@ -83,6 +83,15 @@ CHAT_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 EMBEDDING_MODEL = "@cf/baai/bge-m3"
 MAX_TOKENS = "512"
 TEMPERATURE = "0.3"
+# CHAT_MODEL is a reasoning-capable model — its thinking tokens draw from the
+# SAME MAX_TOKENS budget as the visible answer. Left unset, some questions
+# spent the whole 512-token budget on reasoning and streamed zero answer
+# tokens (citations only, silent empty bubble — A-5 incident). "low" leaves
+# more of the fixed budget for the actual answer; confirmed via the Workers
+# AI catalog schema (developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it)
+# that `reasoning_effort` is a distinct low/medium/high param, not a
+# max_tokens substitute.
+REASONING_EFFORT = "low"
 # Vectorize topK per query — ported RAG_TOP_K=5 from the retired chatbot
 # worker's rag.ts.
 RAG_TOP_K = "5"
