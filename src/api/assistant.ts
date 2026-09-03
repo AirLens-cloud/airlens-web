@@ -17,6 +17,12 @@ import { getTurnstileToken, resetTurnstileToken } from '../lib/turnstile'
 import type { ChatMessage, ChatRequest, ChatSessionRequest, ChatSessionResponse, ChatStreamEvent } from '../types/chat'
 
 const SESSION_FETCH_TIMEOUT_MS = 8000
+/** Mirrors the worker's own ceiling: MAX_HISTORY_TURNS (10) * 2. The worker
+ *  400s a longer array (workers/assistant/src/index.ts handleChat) and its
+ *  prompt builder trims to the same number, so sending more is rejected
+ *  payload, not extra context. Kept in sync by hand — both sides state the
+ *  derivation, and assistant.test.ts pins this side. */
+const MAX_MESSAGES_PER_REQUEST = 20
 // Refresh a little before the token's real expiry so a chat request never
 // races an about-to-expire session.
 const SESSION_REFRESH_SLACK_MS = 30_000
@@ -87,7 +93,12 @@ export async function* streamAssistantReply(
 
   const payload: ChatRequest = {
     session,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    // Trimmed to the same ceiling the worker enforces (MAX_HISTORY_TURNS*2 =
+    // 20; it 400s anything longer) — and the worker's prompt builder trims to
+    // that number anyway, so the dropped entries were never going to reach
+    // the model. Without this, a conversation past ~10 turns would start
+    // failing outright, since ChatPanel accumulates the full history.
+    messages: messages.slice(-MAX_MESSAGES_PER_REQUEST).map((m) => ({ role: m.role, content: m.content })),
     locale,
     page,
   }

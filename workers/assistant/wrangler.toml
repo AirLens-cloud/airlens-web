@@ -12,6 +12,33 @@ compatibility_flags = ["nodejs_compat"]
 binding = "CHAT_QUOTA"
 id = "74c95e440afe4bc191128f0b1c774b24"
 
+# ── Abuse gate (native Rate Limiting binding) ───────────────────────────────
+#
+# Atomic, unlike the read-then-write KV counters in quota.ts — which is why
+# the two endpoints that must not be farmable sit behind it: POST /api/session
+# (minting sessions, index.ts handleSession) and POST /api/admin/reindex
+# (guessing ADMIN_REINDEX_SECRET). Documented constraints
+# (developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/):
+# `period` must be 10 or 60 seconds, and counting is per Cloudflare location —
+# so this binding CANNOT express a daily cap. The daily cap stays in quota.ts,
+# keyed by the daily-salted per-caller hash from session.ts resolveIdentifier;
+# the two are a set, neither works alone. `namespace_id` is a local integer
+# label (not an account resource — nothing to provision out-of-band).
+[[ratelimits]]
+name = "SESSION_RATE_LIMIT"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+# ── Observability ────────────────────────────────────────────────────────────
+#
+# Workers Logs retention, so the fail-open token the Turnstile bypass emits
+# (session.ts: ASSISTANT_TURNSTILE_FAIL_OPEN) is queryable after the fact
+# rather than only visible in a live `wrangler tail`. Without this block a
+# bot gate silently off in production leaves no searchable trace.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # ── Workers AI ───────────────────────────────────────────────────────────────
 #
 # Always remote, even under `wrangler dev` — see wrangler's own docs. Model

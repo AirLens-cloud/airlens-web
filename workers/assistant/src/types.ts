@@ -14,6 +14,18 @@ export interface Env {
    *  an operator provisions the KV namespace). */
   CHAT_QUOTA?: KVNamespace;
 
+  /** Cloudflare native Rate Limiting binding (wrangler.toml [[ratelimits]]) —
+   *  guards session issuance and reindex auth. Unlike the KV counters in
+   *  quota.ts this one is ATOMIC, which is why the two endpoints that must
+   *  not be farmable (mint-a-session, guess-the-admin-secret) sit behind it
+   *  rather than behind a read-then-write KV counter. Its `period` can only
+   *  be 10 or 60 seconds and counting is per Cloudflare location, so it
+   *  cannot express a daily cap — that stays in quota.ts, keyed by the
+   *  per-caller identifier from session.ts resolveIdentifier.
+   *  Optional: absent (dev/test, or before the binding is provisioned) means
+   *  the check is skipped, same fail-open convention as CHAT_QUOTA. */
+  SESSION_RATE_LIMIT?: RateLimit;
+
   /** Workers AI binding — bge-m3 embeddings (RAG query + reindex) and the
    *  gemma chat model (design §1 D-4). Always remote, even in `wrangler dev`. */
   AI: Ai;

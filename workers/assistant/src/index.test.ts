@@ -54,6 +54,25 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
 
 const ctx = {} as ExecutionContext;
 
+/** A KV mock that actually stores what it is given — the quota guards are
+ *  read-then-write, so a `get`-only stub can never show a counter advancing
+ *  across requests (which is exactly what the per-caller cap tests assert). */
+function countingQuotaKv(store: Map<string, string> = new Map()): KVNamespace {
+  return {
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    put: vi.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+  } as unknown as KVNamespace;
+}
+
+/** Cloudflare's native Rate Limiting binding (wrangler.toml [[ratelimits]]):
+ *  `limit({ key })` → `{ success }`. Unlike the KV counters this one is
+ *  atomic, which is why it guards session issuance. */
+function rateLimiterStub(success: boolean) {
+  return { limit: vi.fn(async (_opts: { key: string }) => ({ success })) };
+}
+
 async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
@@ -101,12 +120,53 @@ describe('POST /api/session', () => {
   });
 });
 
+describe('POST /api/session — abuse gate', () => {
+  it('rejects with 429 when the native rate limiter denies the caller', async () => {
+    // Arrange — sessions are anonymous and free to mint; without an atomic
+    // per-IP gate here, a script can farm sessions and (before the IP-keyed
+    // daily counter) multiply its whole daily message budget.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const limiter = rateLimiterStub(false);
+    const env = makeEnv({ SESSION_RATE_LIMIT: limiter as unknown as RateLimit });
+    const req = new Request('https://worker.example/api/session', {
+      method: 'POST',
+      headers: { Origin: ORIGIN, 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.9' },
+      body: '{}',
+    });
+    // Act
+    const res = await worker.fetch(req, env, ctx);
+    // Assert
+    expect(res.status).toBe(429);
+    expect((await readJson<{ code?: string }>(res)).code).toBe('rate_limited');
+    expect(limiter.limit).toHaveBeenCalledWith(expect.objectContaining({ key: expect.stringContaining('203.0.113.9') }));
+  });
+
+  it('still issues a session when the rate limiter allows the caller', async () => {
+    // Arrange
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const env = makeEnv({ SESSION_RATE_LIMIT: rateLimiterStub(true) as unknown as RateLimit });
+    const req = new Request('https://worker.example/api/session', {
+      method: 'POST',
+      headers: { Origin: ORIGIN, 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.9' },
+      body: '{}',
+    });
+    // Act
+    const res = await worker.fetch(req, env, ctx);
+    // Assert
+    expect(res.status).toBe(200);
+  });
+});
+
 describe('POST /api/chat', () => {
-  async function issueSession(env: Env): Promise<string> {
+  async function issueSession(env: Env, ip = ''): Promise<string> {
     const res = await worker.fetch(
       new Request('https://worker.example/api/session', {
         method: 'POST',
-        headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+        headers: {
+          Origin: ORIGIN,
+          'Content-Type': 'application/json',
+          ...(ip ? { 'CF-Connecting-IP': ip } : {}),
+        },
         body: '{}',
       }),
       env,
@@ -268,6 +328,79 @@ describe('POST /api/chat', () => {
     expect((await readJson<{ code?: string }>(res)).code).toBe('invalid_body');
   });
 
+  it('counts the daily cap per caller, not per session — a fresh session from the same IP does not reset it', async () => {
+    // Arrange — reproduction of the denial-of-wallet hole: /api/session is
+    // anonymous and unlimited, so a session-keyed DAILY_MESSAGE_LIMIT is a
+    // cap on nothing. Limit of 2, same IP, two different sessions.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const IP = '203.0.113.55';
+    const env = makeEnv({ DAILY_MESSAGE_LIMIT: '2', CHAT_QUOTA: countingQuotaKv() });
+    const chat = (session: string) =>
+      worker.fetch(
+        new Request('https://worker.example/api/chat', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'Content-Type': 'application/json', 'CF-Connecting-IP': IP },
+          body: JSON.stringify({ session, messages: [{ role: 'user', content: 'hello world' }] }),
+        }),
+        env,
+        ctx,
+      );
+    const sessionA = await issueSession(env, IP);
+    // Act — burn the daily allowance on session A, then mint a new session.
+    const first = await chat(sessionA);
+    const second = await chat(sessionA);
+    const sessionB = await issueSession(env, IP);
+    const third = await chat(sessionB);
+    // Assert
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(third.status).toBe(429);
+    expect((await readJson<{ code?: string }>(third)).code).toBe('quota_exceeded');
+  });
+
+  it('rejects a messages array longer than MAX_HISTORY_TURNS*2 (the prompt is trimmed there anyway)', async () => {
+    // Arrange — without an array-length bound, the ledger
+    // (REQUEST_COST_ESTIMATE) and the real prompt size diverge: a client can
+    // send hundreds of short messages, each under MAX_MESSAGE_LENGTH.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const env = makeEnv({ MAX_HISTORY_TURNS: '10' }); // → 20-message ceiling
+    const session = await issueSession(env);
+    const messages = Array.from({ length: 21 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `m${i}`,
+    }));
+    const req = new Request('https://worker.example/api/chat', {
+      method: 'POST',
+      headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session, messages }),
+    });
+    // Act
+    const res = await worker.fetch(req, env, ctx);
+    // Assert
+    expect(res.status).toBe(400);
+    expect((await readJson<{ code?: string }>(res)).code).toBe('invalid_body');
+  });
+
+  it('accepts a messages array exactly at the ceiling', async () => {
+    // Arrange
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const env = makeEnv({ MAX_HISTORY_TURNS: '10' });
+    const session = await issueSession(env);
+    const messages = Array.from({ length: 20 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `m${i}`,
+    }));
+    const req = new Request('https://worker.example/api/chat', {
+      method: 'POST',
+      headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session, messages }),
+    });
+    // Act
+    const res = await worker.fetch(req, env, ctx);
+    // Assert
+    expect(res.status).toBe(200);
+  });
+
   it('returns 500 (not an unhandled rejection) when env.AI.run rejects before the stream starts', async () => {
     // Arrange
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -358,6 +491,23 @@ describe('POST /api/admin/reindex', () => {
     const res = await worker.fetch(req({ chunks: [CHUNK] }, { 'x-admin-secret': 'anything' }), env, ctx);
     // Assert
     expect(res.status).toBe(401);
+  });
+
+  it('rate-limits secret guessing — 429 before the auth comparison runs', async () => {
+    // Arrange — ADMIN_REINDEX_SECRET is the corpus-poisoning key; an
+    // unthrottled endpoint is an unlimited guessing oracle.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const limiter = rateLimiterStub(false);
+    const env = makeEnv({ ADMIN_REINDEX_SECRET: 'correct-secret', SESSION_RATE_LIMIT: limiter as unknown as RateLimit });
+    // Act
+    const res = await worker.fetch(
+      req({ chunks: [CHUNK] }, { 'x-admin-secret': 'guess', 'CF-Connecting-IP': '203.0.113.77' }),
+      env,
+      ctx,
+    );
+    // Assert
+    expect(res.status).toBe(429);
+    expect(limiter.limit).toHaveBeenCalled();
   });
 
   it('rejects a request with no x-admin-secret header', async () => {
