@@ -67,6 +67,15 @@ jobs:
       - name: Unit tests (no credentials)
         run: npx vitest run eval/generate.test.ts eval/judge.test.ts eval/routing.eval.test.ts eval/trajectory.eval.test.ts eval/safety.eval.test.ts
 
+      # BASELINE.md §다음 단계 2 references this step for retrieval_recall_at_3
+      # — it was missing from the first cut of this workflow (code review, PR
+      # #49) even though the doc already described it as the measurement path.
+      - name: Retrieval eval (recall@3 against the live Vectorize corpus)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/retrieval.eval.test.ts
+
       - name: Quality eval (judge validity + deployed model)
         if: ${{ inputs.include_quality }}
         env:
@@ -98,7 +107,7 @@ jobs:
             echo '## Assistant model A/B'
             echo
             echo '```'
-            grep '\[model-ab\]' ab.log || echo '(no A/B lines — the step failed before scoring)'
+            grep '\[model-ab\]' ab.log || echo '(no A/B lines — the step was skipped, e.g. missing CLOUDFLARE_WORKERS_AI_TOKEN/judge key, or it failed before scoring)'
             echo '```'
             echo
             echo '평균 점수는 1-5 judge 척도다. `empty` 는 모델이 빈 답변을 낸 문항 수 —'

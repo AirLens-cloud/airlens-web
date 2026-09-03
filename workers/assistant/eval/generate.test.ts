@@ -92,6 +92,24 @@ describe('buildEvalMessages', () => {
     // Assert
     expect(messages[0].content).not.toContain('<causal_reasoning>');
   });
+
+  it('drops the structured-context layer for a general-intent question even when the fixture supplies blocks — regression for the missing wantsLiveData gate (code review, PR #49)', () => {
+    // Arrange — same 'general' question as trajectory.eval.test.ts's assemble(),
+    // but here a case explicitly hands buildEvalMessages a non-empty
+    // structuredBlocks: the pre-fix version wrapped it anyway because it never
+    // checked `intent !== 'general'` before chat-stream.ts:95's gate does.
+    const testCase = {
+      question: 'Globe 페이지 사용법 알려줘',
+      structuredBlocks: ['[P] own-ML PM2.5 prediction — city: Seoul'],
+      matches: [],
+    };
+    // Act
+    const messages = buildEvalMessages(testCase);
+    // Assert — closing tag, per the note above: the opening tag name always
+    // appears in the base system prompt's own response_format prose.
+    expect(messages[0].content).not.toContain('</structured_context>');
+    expect(messages[0].content).not.toContain('city: Seoul');
+  });
 });
 
 describe('extractAnswer', () => {

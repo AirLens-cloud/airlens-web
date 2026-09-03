@@ -120,16 +120,23 @@ export interface GenerateResult {
  * Build the system+user messages the deployed worker would send for this
  * case — mirrors chat-stream.ts buildRagStream exactly: intent classified
  * from the question (zero LLM calls), causal_reasoning included only for
- * causal/policy intents, grounded context = corpus matches + structured
- * evidence joined the same way buildRagStream joins them.
+ * causal/policy intents, corpus retrieval (buildGroundedContext) runs
+ * unconditionally, and the structured-context (live-data) layer is gated
+ * on `wantsLiveData = intent !== 'general'` — chat-stream.ts:95's exact
+ * gate — so a `general`-intent case never sees structuredBlocks even if
+ * the fixture supplied them (matches trajectory.eval.test.ts's assemble()).
  */
 export function buildEvalMessages(
   req: EvidenceRequest,
 ): Array<{ role: string; content: string }> {
   const { maxHistoryTurns } = wranglerVars();
   const intent = classifyIntent(req.question);
+  const wantsLiveData = intent !== 'general';
   const includeCausalReasoning = intent === 'causal' || intent === 'policy';
-  const groundedContext = [buildGroundedContext(req.matches ?? []), wrapStructuredContext(req.structuredBlocks ?? [])]
+  const groundedContext = [
+    buildGroundedContext(req.matches ?? []),
+    wrapStructuredContext(wantsLiveData ? req.structuredBlocks ?? [] : []),
+  ]
     .filter(Boolean)
     .join('\n\n');
   return buildMessages(req.question, [], maxHistoryTurns, groundedContext, includeCausalReasoning);
