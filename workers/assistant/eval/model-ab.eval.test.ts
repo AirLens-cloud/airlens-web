@@ -56,6 +56,12 @@ interface CaseOutcome {
   caseId: string;
   chars: number;
   finishReason: string | null;
+  /** Cloudflare's own reported per-call neuron cost, null when the envelope
+   *  carried none (2026-09-03, A-5 follow-up round 2 — non-reasoning model
+   *  A/B needs real neurons/turn, not just judge scores, since the whole
+   *  point of a non-reasoning candidate is that the same neuron spend goes
+   *  to more answer and fewer thinking tokens). */
+  neurons: number | null;
   /** null when the answer was empty — it was never scored. */
   scores: JudgeScores | null;
   /** Deterministic checks from cases.ts (mustAvoid / mustMentionOneOf). */
@@ -116,6 +122,7 @@ describe.skipIf(!enabled)('candidate-model A/B (opt-in, paid)', () => {
               caseId: testCase.id,
               chars: 0,
               finishReason: null,
+              neurons: null,
               scores: null,
               rulesPassed: false,
               ruleNotes: [],
@@ -130,6 +137,7 @@ describe.skipIf(!enabled)('candidate-model A/B (opt-in, paid)', () => {
             caseId: testCase.id,
             chars: generated.text.length,
             finishReason: generated.finishReason,
+            neurons: generated.neurons,
             scores:
               generated.text.length === 0
                 ? null
@@ -173,8 +181,13 @@ describe.skipIf(!enabled)('candidate-model A/B (opt-in, paid)', () => {
         const errored = outcomes.filter((o) => o.error !== null).length;
         const empties = outcomes.length - scored.length - errored;
         const ruleFails = outcomes.filter((o) => o.error === null && !o.rulesPassed).length;
+        const meanChars = mean(outcomes.filter((o) => o.error === null).map((o) => o.chars));
+        const neuronSamples = outcomes.map((o) => o.neurons).filter((n): n is number => n !== null);
+        const meanNeurons = mean(neuronSamples);
         console.log(
-          `[model-ab] ${model}: ${axisMeans} | empty ${empties}/${outcomes.length} | rule-fail ${ruleFails}/${outcomes.length} | error ${errored}/${outcomes.length}`,
+          `[model-ab] ${model}: ${axisMeans} | chars ${fmt(meanChars)} | neurons/turn ${fmt(meanNeurons)}` +
+            `${neuronSamples.length < outcomes.length ? ` (${neuronSamples.length}/${outcomes.length} reported usage)` : ''}` +
+            ` | empty ${empties}/${outcomes.length} | rule-fail ${ruleFails}/${outcomes.length} | error ${errored}/${outcomes.length}`,
         );
         for (const o of outcomes) {
           const scoreText = o.error
@@ -184,7 +197,7 @@ describe.skipIf(!enabled)('candidate-model A/B (opt-in, paid)', () => {
               : 'EMPTY';
           const notes = o.ruleNotes.length > 0 ? ` ⚠ ${o.ruleNotes.join('; ')}` : '';
           console.log(
-            `[model-ab]   ${o.caseId}: ${scoreText} chars=${o.chars} finish=${o.finishReason}${notes}`,
+            `[model-ab]   ${o.caseId}: ${scoreText} chars=${o.chars} finish=${o.finishReason} neurons=${o.neurons ?? '—'}${notes}`,
           );
         }
       }
