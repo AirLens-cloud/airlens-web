@@ -287,7 +287,7 @@ export default function Globe() {
           focus={focus}
           range={view.range ? [view.range[0], view.range[1]] : null}
           band={band ? { low: band.low, center: band.center, high: band.high } : null}
-          dqssGrade={focus ? dqssScoreToGrade(focus.dqss) : null}
+          dqssGrade={focus?.dqssProvenance === 'measured' ? dqssScoreToGrade(focus.dqss) : null}
           mode={view.mode}
           uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
           eventCoverage={view.eventCoverage}

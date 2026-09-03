@@ -114,6 +114,14 @@ async function readDQSSManifest(url: string): Promise<Partial<DataQualityRespons
   }
 }
 
+/**
+ * The fallback only fires when the HF fetch itself fails (network error,
+ * non-2xx, unparseable body — `readDQSSManifest` returns null in all three
+ * cases). A *successful* HF response with an empty `stations: []` array is
+ * not a failure — it stands as-is and does NOT fall through to the bundled
+ * copy, since an empty live array is real (honest) coverage information,
+ * not an outage.
+ */
 async function fetchDQSSData(): Promise<DQSSCache> {
   const json =
     (await readDQSSManifest(HF_DQSS_PATH)) ??
