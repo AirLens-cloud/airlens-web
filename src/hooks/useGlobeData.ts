@@ -13,6 +13,7 @@ import { useCachedResource } from './useCachedResource';
 import { fetchGlobalMarkers } from '../api/globeMarkers';
 import { fetchGlobalGridSnapshot, GLOBAL_GRID_SAMPLE_LIMIT } from '../api/gridSnapshot';
 import { fetchCityPredictions } from '../api/predictions';
+import { HF_LIVE_BASE } from '../lib/config/dataSources';
 import { GLOBE_CONFIG } from '../lib/config/globe';
 import { wrapDeltaLon } from '../lib/earth/geo';
 import type { CityPrediction } from '../types/ml';
@@ -24,8 +25,11 @@ import type {
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const DEG2RAD = Math.PI / 180;
-/** Bundled DQSS station scores — see `fetchDQSSData` on why this is absent today. */
+/** HF live DQSS publish (`ml-predict` → `hf_publish.py`, W1 honest-publishing). */
+const HF_DQSS_PATH = `${HF_LIVE_BASE}/aq-data/data_quality.json`;
+/** Bundled DQSS station scores — fallback when the HF live copy is unreachable. */
 const DQSS_SOURCE_PATH = '/data/data_quality.json';
+const DQSS_FETCH_TIMEOUT_MS = 5000;
 
 // ── Globe Markers ──
 
@@ -90,21 +94,31 @@ function readProvenance(meta: DataQualityMeta | undefined): DQSSProvenance | nul
 }
 
 /**
- * `data_quality.json` has no publisher in this repo's data cascade yet — the
- * monorepo bundled it, and the HF live dataset does not carry it (verified
- * 2026-08-26: no `*quality*` path in `Robeedau/airlens-live`). Until a source
- * exists this resolves to an empty station set, which is the honest degraded
- * state: `lookupDQSSScore` returns null and `dqssToOpacity(null)` falls to the
- * DEFAULT tier. Nothing here invents a score.
+ * `data_quality.json` is now published to the HF live dataset by the
+ * monorepo's DQSS pipeline (`aq-data/data_quality.json`, W1 honest-publishing
+ * — verified 2026-09-03, superseding the 2026-08-26 "no publisher yet" note).
+ * HF is the primary source; the bundled static copy is a fallback for when the
+ * live fetch fails. A `meta.source` value outside `'seed' | 'measured'`
+ * (`'partial'`, `'withheld'`, …) is not an error — `readProvenance` already
+ * treats it as "not measured" (honest-empty), so `lookupDQSSScore` and
+ * `dqssToOpacity(null)` degrade the same way whether the file is absent or
+ * merely not yet fully measured. Nothing here invents a score.
  */
-async function fetchDQSSData(): Promise<DQSSCache> {
-  let json: Partial<DataQualityResponse> = { stations: [] };
+async function readDQSSManifest(url: string): Promise<Partial<DataQualityResponse> | null> {
   try {
-    const res = await fetch(DQSS_SOURCE_PATH);
-    if (res.ok) json = (await res.json()) as Partial<DataQualityResponse>;
+    const res = await fetch(url, { signal: AbortSignal.timeout(DQSS_FETCH_TIMEOUT_MS) });
+    if (!res.ok) return null;
+    return (await res.json()) as Partial<DataQualityResponse>;
   } catch {
-    /* absent or unparseable — keep the empty set */
+    return null;
   }
+}
+
+async function fetchDQSSData(): Promise<DQSSCache> {
+  const json =
+    (await readDQSSManifest(HF_DQSS_PATH)) ??
+    (await readDQSSManifest(DQSS_SOURCE_PATH)) ??
+    { stations: [] };
   const stations = (json.stations ?? []).filter(
     (s) => isFinite(s.lat) && isFinite(s.lon) && isFinite(s.final_score),
   );

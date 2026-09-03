@@ -84,6 +84,26 @@ describe('atmosphericViewModel', () => {
     expect(view.validTime).toBeNull()
   })
 
+  it('passes the selected station\'s dqss_provenance through to focus.dqssProvenance', () => {
+    const measured = buildAtmosphericViewModel({
+      ...BASE,
+      selectedStation: { lat: 37.5, lon: 127, pm25: 18, name: 'Measured station', dqss: 82, dqss_provenance: 'measured' },
+    })
+    expect(measured.focus).toMatchObject({ dqss: 82, dqssProvenance: 'measured' })
+
+    const seeded = buildAtmosphericViewModel({
+      ...BASE,
+      selectedStation: { lat: 37.5, lon: 127, pm25: 18, name: 'Seeded station', dqss: 82, dqss_provenance: 'seed' },
+    })
+    expect(seeded.focus).toMatchObject({ dqss: 82, dqssProvenance: 'seed' })
+
+    const undeclared = buildAtmosphericViewModel({
+      ...BASE,
+      selectedStation: { lat: 37.5, lon: 127, pm25: 18, name: 'No provenance declared', dqss: 82 },
+    })
+    expect(undeclared.focus).toMatchObject({ dqss: 82, dqssProvenance: null })
+  })
+
   it('builds a scaled band only from ordered, finite real quantiles', () => {
     expect(scaleUncertaintyBand(10, 20, 40)).toMatchObject({ low: expect.any(Number), center: expect.any(Number), high: expect.any(Number) })
     expect(scaleUncertaintyBand(30, 20, 40)).toBeNull()

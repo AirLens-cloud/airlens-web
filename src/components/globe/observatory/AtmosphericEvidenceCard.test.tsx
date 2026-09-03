@@ -118,6 +118,29 @@ describe('AtmosphericEvidenceCard — Layer 1 (always visible)', () => {
     // Assert
     expect(screen.getByText('Not applicable')).toBeTruthy()
   })
+
+  it('shows the numeric DQSS score only when the score is provenance-tagged "measured"', () => {
+    // Arrange
+    const props = baseProps()
+    props.focus = { ...props.focus!, dqss: 82, dqssProvenance: 'measured' }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('82/100')).toBeTruthy()
+    expect(screen.queryByText('DQSS —')).toBeNull()
+  })
+
+  it('withholds the numeric DQSS score (renders "DQSS —") when a score exists but is not provenance-tagged "measured"', () => {
+    // Arrange — e.g. a 'seed' demo score, or no provenance declared at all
+    // (undefined). Glass-box: a value must never be shown without its lineage.
+    const props = baseProps()
+    props.focus = { ...props.focus!, dqss: 82, dqssProvenance: undefined }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('DQSS —')).toBeTruthy()
+    expect(screen.queryByText('82/100')).toBeNull()
+  })
 })
 
 describe('AtmosphericEvidenceCard — Layer 2 (conditional caveat)', () => {

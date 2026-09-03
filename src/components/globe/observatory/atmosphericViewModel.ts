@@ -12,6 +12,7 @@
 import type { ActiveGridMeta, SelectedStation } from '../../../store/globeStore'
 import type {
   AtmosphericMode,
+  DQSSProvenance,
   FireCoverage,
   OverlayType,
   SelectedCountry,
@@ -38,6 +39,8 @@ export interface AtmosphericFocus {
   p10: number | null
   p90: number | null
   dqss: number | null
+  /** `dqss` 값의 출처. 'measured' 가 아니면 카드는 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
+  dqssProvenance: DQSSProvenance | null
   qualityGrade: string | null
   source: string | null
   version: string | null
@@ -132,6 +135,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p10: finite(station.p10) ? station.p10 : null,
       p90: finite(station.p90) ? station.p90 : null,
       dqss: finite(station.dqss) ? station.dqss : null,
+      dqssProvenance: station.dqss_provenance ?? null,
       qualityGrade: null,
       source: station.source ?? null,
       version: null,
@@ -148,6 +152,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p10: prediction.p10,
       p90: prediction.p90,
       dqss: null,
+      dqssProvenance: null,
       qualityGrade: prediction.confidenceGrade ?? null,
       source: prediction.source ?? null,
       version: prediction.modelVersion ?? null,
@@ -163,6 +168,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p10: null,
       p90: null,
       dqss: null,
+      dqssProvenance: null,
       qualityGrade: null,
       source: null,
       version: null,

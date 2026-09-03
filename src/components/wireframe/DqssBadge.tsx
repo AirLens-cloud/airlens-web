@@ -18,6 +18,13 @@ export interface DqssBadgeProps {
   variant?: 'compact' | 'default' | 'verbose'
   /** Optional unit for p10/p90 range (verbose variant). */
   unit?: string
+  /**
+   * Prefix label. Default 'DQSS' (sensor Data Quality Scoring System). Callers
+   * badging a *different* A–F quantity (e.g. self-trained-model prediction
+   * confidence, `CityPredictionCard`) must override this — reusing the "DQSS"
+   * prefix on a non-DQSS grade misrepresents its provenance (§5 Glass-box).
+   */
+  label?: string
   className?: string
 }
 
@@ -41,6 +48,7 @@ export default function DqssBadge({
   p90,
   variant = 'default',
   unit,
+  label = 'DQSS',
   className,
 }: DqssBadgeProps) {
   const classes = ['dqss-badge', `dqss-badge--${variant}`]
@@ -56,10 +64,10 @@ export default function DqssBadge({
     <span
       className={classes.join(' ')}
       data-dqss={dqss}
-      aria-label={`DQSS ${letter} — ${description}`}
+      aria-label={`${label} ${letter} — ${description}`}
       role="status"
     >
-      {variant !== 'compact' && <span className="dqss-badge-prefix">DQSS</span>}
+      {variant !== 'compact' && <span className="dqss-badge-prefix">{label}</span>}
       <span className="dqss-badge-letter">{letter}</span>
       {rangeLabel ? <span className="dqss-badge-range">{rangeLabel}</span> : null}
     </span>

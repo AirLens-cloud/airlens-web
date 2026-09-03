@@ -30,7 +30,7 @@
  * per-type subtotal) — band/quality/details structure is unchanged, so the
  * panel doesn't need to "relearn" itself on mode change.
  */
-import type { AtmosphericMode } from '../../../types/globe'
+import type { AtmosphericMode, DQSSProvenance } from '../../../types/globe'
 
 export interface AtmosphericEvidenceFocus {
   label: string
@@ -40,6 +40,8 @@ export interface AtmosphericEvidenceFocus {
   p90: number | null
   kind: string
   dqss?: number | null
+  /** `dqss` 값의 출처. 'measured' 가 아니면 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
+  dqssProvenance?: DQSSProvenance | null
   qualityGrade?: string | null
   version?: string | null
 }
@@ -194,7 +196,13 @@ export default function AtmosphericEvidenceCard({
                 <b>{qualityTag}</b>
               </>
             )}
-            {focus?.dqss != null && <em>{Math.round(focus.dqss)}/100</em>}
+            {focus?.dqss != null && (
+              focus.dqssProvenance === 'measured' ? (
+                <em>{Math.round(focus.dqss)}/100</em>
+              ) : (
+                <em>DQSS —</em>
+              )
+            )}
             {lineageTag && <em className="atmos-lineage-tag">{lineageTag}</em>}
           </div>
         )}
