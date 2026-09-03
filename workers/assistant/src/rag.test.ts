@@ -138,6 +138,30 @@ describe('toCitations / buildGroundedContext', () => {
     expect(context).toContain('NOT a DQSS quality score');
   });
 
+  it('labels each entry with its category so a paper cannot pass as AirLens documentation', () => {
+    // The corpus gained a sixth source — external published literature
+    // (src/content/literature.ts). The block used to open with "documents from
+    // AirLens's own documentation", which is false for a literature card and
+    // invites the model to attribute a third party's measurement to AirLens.
+    // Arrange
+    const paper: CorpusVectorMetadata = {
+      source_title: 'Conformalized Quantile Regression (Romano et al., 2019)',
+      source_url: 'https://arxiv.org/abs/1905.03222',
+      category: 'literature',
+      excerpt: 'Split CQR recalibrates quantile-regression intervals.',
+    };
+    // Act
+    const context = buildGroundedContext([
+      { id: 'faq:aqi-scale', score: 0.9, metadata: SAMPLE_METADATA },
+      { id: 'literature:cqr', score: 0.8, metadata: paper },
+    ]);
+    // Assert
+    expect(context).toContain('category: faq');
+    expect(context).toContain('category: literature');
+    expect(context).toContain('published by someone else');
+    expect(context).not.toContain("documents from AirLens's own documentation");
+  });
+
   it('neutralizes a literal </retrieved_context> inside chunk text so it cannot close the boundary early', () => {
     // Arrange — a chunk whose excerpt contains the closing tag itself
     // (whatever its provenance — reindex-time validation is a second,

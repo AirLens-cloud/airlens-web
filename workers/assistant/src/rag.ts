@@ -112,13 +112,24 @@ export function buildGroundedContext(matches: RetrievedMatch[]): string {
       const title = neutralizeContextDelimiters(m.metadata.source_title);
       const url = neutralizeContextDelimiters(m.metadata.source_url);
       const excerpt = neutralizeContextDelimiters(m.metadata.excerpt);
-      return `[${i + 1}] source: ${title} (${url}) | retrieval relevance: ${m.score.toFixed(2)}\n${excerpt}`;
+      const category = neutralizeContextDelimiters(m.metadata.category);
+      return `[${i + 1}] source: ${title} (${url}) | category: ${category} | retrieval relevance: ${m.score.toFixed(2)}\n${excerpt}`;
     })
     .join('\n\n');
 
   return `<retrieved_context>
-The following documents from AirLens's own documentation (methodology,
-glossary, FAQ, about, legal) were retrieved as relevant to the question.
+The following entries were retrieved as relevant to the question. Each is
+labeled with the category it came from, and the two kinds are NOT
+interchangeable:
+
+- methodology / glossary / faq / about / legal — AirLens's own documentation.
+  These describe what AirLens does and what AirLens measured.
+- literature — a card about work published by someone else. These are NOT
+  AirLens measurements and NOT AirLens's documentation. Attribute any figure
+  from one of these to the paper it names, never to AirLens, and keep the
+  card's stated scope (region, period, split design) with the number. Two
+  figures from two literature cards are usually not on the same scale.
+
 "retrieval relevance" is a cosine-similarity score (0-1) from the search
 step — it is NOT a DQSS quality score and NOT a statistical confidence
 interval; do not present it to the user as either. Cite sources as [1], [2],
