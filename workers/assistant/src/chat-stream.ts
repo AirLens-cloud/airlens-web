@@ -2,6 +2,7 @@ import type { ChatBudgetStatus, ChatMessageWire, ChatStreamEvent, Env } from './
 import { buildGroundedContext, embedQuery, queryCorpus, toCitations } from './rag';
 import { buildMessages } from './prompts';
 import { classifyIntent } from './guardrails';
+import { createOutputGate, LEAK_NOTICE } from './output-filter';
 import { buildStructuredContext, buildUserFacingSummary, fetchLiveDataContext, type LiveDataContext } from './liveData';
 
 const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, policy: null };
@@ -168,13 +169,38 @@ export async function buildRagStream(
       }
       let tokenCount = 0;
       const finishOut: { value: string | null } = { value: null };
+      // Output-side gate (output-filter.ts): prompts.ts ASKS the model not to
+      // leak its instructions; this ENFORCES it, and rewrites internal field
+      // names on the way out. It holds the tail back, so token events are
+      // re-chunked relative to upstream — content is identical, boundaries
+      // are not.
+      const gate = createOutputGate();
       try {
         for await (const token of upstreamTokens(upstream, finishOut)) {
-          tokenCount++;
-          controller.enqueue(sseLine({ type: 'token', content: token }));
+          const safe = gate.push(token);
+          if (gate.tripped) break;
+          if (safe) {
+            tokenCount++;
+            controller.enqueue(sseLine({ type: 'token', content: safe }));
+          }
         }
       } catch (err) {
         console.error('[assistant] gemma stream error:', err instanceof Error ? err.message : err);
+      }
+      if (gate.tripped) {
+        // Greppable token: a model that reached this branch is one talked out
+        // of its own security rules, which is worth knowing about even though
+        // the user-facing failure is handled.
+        console.warn('ASSISTANT_OUTPUT_LEAK_BLOCKED [assistant] system-prompt canary in model output — stream cut, intent:', intent);
+        controller.enqueue(sseLine({ type: 'token', content: LEAK_NOTICE }));
+        controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent, finish_reason: 'blocked' }));
+        controller.close();
+        return;
+      }
+      const tail = gate.flush();
+      if (tail) {
+        tokenCount++;
+        controller.enqueue(sseLine({ type: 'token', content: tail }));
       }
       if (tokenCount === 0) {
         // Never silent — a request that "succeeds" (no exception, HTTP 200)

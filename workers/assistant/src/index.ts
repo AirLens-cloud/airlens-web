@@ -13,7 +13,7 @@ import { issueSessionToken, resolveIdentifier, verifySessionToken, verifyTurnsti
 import { checkDailyQuota, checkGlobalBudget, checkRateLimit } from './quota';
 import { buildDegradedStream, buildRagStream } from './chat-stream';
 import { reindexChunks } from './rag';
-import { checkGuardrails } from './guardrails';
+import { checkConversationGuardrails } from './guardrails';
 
 export default {
   async fetch(req: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -168,7 +168,7 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   // caller's rate/daily budget, matching that precedent rather than giving
   // an unlimited-retry probe surface. A block is a plain JSON response, not
   // an SSE stream — no RAG/generation ever starts for it.
-  const guardrail = checkGuardrails(lastUserMessage);
+  const guardrail = checkConversationGuardrails(lastUserMessage, history);
   if (!guardrail.passed) {
     console.warn('[assistant] guardrail blocked:', guardrail.reason);
     return errorJson(guardrail.fallback_message ?? 'Request blocked', 400, 'blocked', corsHeaders);

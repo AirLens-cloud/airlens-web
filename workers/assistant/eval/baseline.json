@@ -2,5 +2,7 @@
   "routing_accuracy": null,
   "retrieval_recall_at_3": null,
   "quality_grounding": null,
-  "quality_grounding_generated": null
+  "quality_grounding_generated": null,
+  "guardrail_block_rate": null,
+  "adversarial_refusal_rate": null
 }

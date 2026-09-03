@@ -1,4 +1,4 @@
-import type { ChatIntent, GuardrailResult } from './types';
+import type { ChatIntent, ChatMessageWire, GuardrailResult } from './types';
 
 /**
  * Best-effort domain gating (injection-pattern / system-probe / out-of-scope
@@ -8,13 +8,14 @@ import type { ChatIntent, GuardrailResult } from './types';
  * reworded for this repo's no-account, no-live-API product framing (dropped
  * "sign in" / "실시간" language the retired worker's copy still had).
  *
- * NOT a complete prompt-injection defense: `checkGuardrails` inspects only
- * the current/last turn, never the full conversation history, so a
- * multi-turn injection that builds up context across earlier messages is
- * not caught here (PR #47 review — documented backlog item, out of scope
- * for this module). Do not describe this module as "prompt-injection
- * defense" anywhere (comments, docs, PR bodies) until that gap is closed —
- * "domain gating (best-effort)" only.
+ * NOT a complete prompt-injection defense. `checkGuardrails` inspects ONE
+ * message; `checkConversationGuardrails` (below, 2026-09-03) walks the whole
+ * client-supplied conversation, which closes the measured single-message
+ * history bypass — but a multi-turn injection assembled from individually
+ * innocuous fragments still passes, because no regex list can see intent
+ * spread across turns. Do not describe this module as "prompt-injection
+ * defense" anywhere (comments, docs, PR bodies) — "domain gating
+ * (best-effort)" only.
  */
 const INJECTION_PATTERNS: RegExp[] = [
   // English — direct instruction override
@@ -116,6 +117,54 @@ export function checkGuardrails(message: string): GuardrailResult {
   }
   if (detectOutOfScope(message)) {
     return { passed: false, reason: 'out_of_scope', fallback_message: ko ? FALLBACK_OUT_OF_SCOPE.ko : FALLBACK_OUT_OF_SCOPE.en };
+  }
+  return { passed: true, reason: null, fallback_message: null };
+}
+
+/**
+ * Runs the input gate over the WHOLE conversation, not just the current turn.
+ *
+ * The single-turn version had a measured bypass: a phrase blocked as the
+ * current turn streamed a full 176-token answer when the client moved it into
+ * `history`, because `messages` is entirely client-supplied and prompts.ts
+ * buildMessages folds history straight into the model's message array. The
+ * request's length cap already walked history for that exact reason; the
+ * content check did not, and that asymmetry was the hole. (This is the gap
+ * the module header above described as an open backlog item — it is closed
+ * for single-message injections; a multi-turn injection assembled from
+ * individually-innocuous fragments is still not caught by regex, and calling
+ * this module "prompt-injection defense" is still overclaiming.)
+ *
+ * Role determines WHICH patterns apply, deliberately:
+ *  - user turns (current + historical) get the full gate — the same kind of
+ *    input the patterns were written for;
+ *  - assistant turns get injection patterns ONLY. A role label is not
+ *    provenance (this worker never wrote those entries — the client did), so
+ *    a forged "assistant" turn carrying "from now on you are…" must still be
+ *    caught. But system-probe and out-of-scope patterns match words the
+ *    assistant's own legitimate answers contain ("cloudflare", "개인정보"),
+ *    so applying them to real transcript would make a conversation
+ *    un-continuable the moment the assistant answered a question about how
+ *    the data is published. Injection patterns have no such overlap: no
+ *    honest answer of ours says "ignore all previous instructions".
+ */
+export function checkConversationGuardrails(
+  lastUserMessage: string,
+  history: readonly ChatMessageWire[],
+): GuardrailResult {
+  const current = checkGuardrails(lastUserMessage);
+  if (!current.passed) return current;
+
+  for (const message of history) {
+    if (message.role === 'user') {
+      const result = checkGuardrails(message.content);
+      if (!result.passed) return result;
+    } else if (detectInjection(message.content)) {
+      // detectInjection already matched and injection has top precedence in
+      // checkGuardrails, so this returns the injection verdict with its
+      // language-matched fallback copy, never a system_probe/out_of_scope one.
+      return checkGuardrails(message.content);
+    }
   }
   return { passed: true, reason: null, fallback_message: null };
 }
