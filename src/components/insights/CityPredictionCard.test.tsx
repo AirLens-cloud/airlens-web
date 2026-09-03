@@ -93,4 +93,15 @@ describe('CityPredictionCard', () => {
     // Assert
     await waitFor(() => expect(screen.getByText(/Above 75/i)).toBeTruthy())
   })
+
+  it('labels the confidence badge "Prediction confidence", never "DQSS" — confidence_grade is a different quantity from sensor DQSS', async () => {
+    // Arrange
+    mockFetch({ predictions: [PREDICTION], generated_at: null })
+    // Act
+    render(<CityPredictionCard lat={48.2} lon={16.4} />)
+    // Assert
+    await waitFor(() => expect(screen.getByText('14.6')).toBeTruthy())
+    expect(screen.getByText('Prediction confidence')).toBeTruthy()
+    expect(screen.queryByText('DQSS')).toBeNull()
+  })
 })

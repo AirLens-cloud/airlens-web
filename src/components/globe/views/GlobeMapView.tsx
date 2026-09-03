@@ -52,6 +52,10 @@ export default function GlobeMapView() {
   }, [countries])
 
   const select = (stationUid: string, cell: GlobalGridCell) => {
+    // BACKLOG (#46 review, 2026-09-03): cell.dqss carries no provenance field
+    // — dormant today (cell.dqss is currently always absent), but the day a
+    // grid cell does carry a score, this must also set dqss_provenance or the
+    // Globe.tsx:290 gate will (correctly, but silently) withhold it.
     setSelectedStation({
       lat: cell.lat,
       lon: cell.lon,

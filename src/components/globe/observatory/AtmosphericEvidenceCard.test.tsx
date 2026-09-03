@@ -118,6 +118,38 @@ describe('AtmosphericEvidenceCard — Layer 1 (always visible)', () => {
     // Assert
     expect(screen.getByText('Not applicable')).toBeTruthy()
   })
+
+  it('shows the numeric DQSS score only when the score is provenance-tagged "measured"', () => {
+    // Arrange
+    const props = baseProps()
+    props.focus = { ...props.focus!, dqss: 82, dqssProvenance: 'measured' }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('82/100')).toBeTruthy()
+    expect(screen.queryByText('DQSS —')).toBeNull()
+  })
+
+  it('withholds both the numeric DQSS score and the letter grade when a score exists but is not provenance-tagged "measured"', () => {
+    // Arrange — e.g. a 'seed' demo score, or no provenance declared at all
+    // (undefined). `dqssGrade` is passed as null here too, mirroring
+    // Globe.tsx:290's call site — it gates `dqssScoreToGrade()` on the same
+    // provenance check, so a letter grade can never survive alongside a
+    // withheld number ("DQSS B … DQSS —" self-contradiction, code review
+    // 2026-09-03). The card itself only renders whatever qualityTag it's
+    // given — this test pins the caller contract, not just the card in
+    // isolation.
+    const props = baseProps({ dqssGrade: null })
+    props.focus = { ...props.focus!, dqss: 82, dqssProvenance: undefined, qualityGrade: null }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('DQSS —')).toBeTruthy()
+    expect(screen.queryByText('82/100')).toBeNull()
+    const qualityLine = document.querySelector('.atmos-quality-line')
+    expect(qualityLine?.querySelector('b')).toBeNull()
+    expect(screen.queryByText('A')).toBeNull()
+  })
 })
 
 describe('AtmosphericEvidenceCard — Layer 2 (conditional caveat)', () => {

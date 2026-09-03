@@ -65,7 +65,7 @@ export default function CityPredictionCard({
           this may be absence rather than an outage; either way nothing is shown
           in its place.
         </p>
-        <DqssBadge dqss="unknown" variant="default" />
+        <DqssBadge dqss="unknown" variant="default" label="Prediction confidence" />
       </article>
     )
   }
@@ -78,7 +78,7 @@ export default function CityPredictionCard({
           No model prediction covers this location — the published grid has no
           point nearby. Nothing is substituted.
         </p>
-        <DqssBadge dqss="unknown" variant="default" />
+        <DqssBadge dqss="unknown" variant="default" label="Prediction confidence" />
       </article>
     )
   }
@@ -107,6 +107,7 @@ export default function CityPredictionCard({
         p90={prediction.predicted_p90}
         variant="verbose"
         unit={unit}
+        label="Prediction confidence"
       />
       {dqss === 'unknown' ? (
         <p className="ins-card-note">The model produced no confidence grade for this point.</p>

@@ -77,6 +77,10 @@ export default function GlobeTableView() {
           {rows.map(({ stationUid, cell }) => {
             const active = selectedStation?.station_uid === stationUid
             const place = nearestPlaceFor(cell.lat, cell.lon, countries)
+            // BACKLOG (#46 review, 2026-09-03): same ungated-provenance pattern as
+            // Globe.tsx:290 — cell.dqss is currently always absent so this is
+            // dormant, but grade should gate on a provenance field the day a grid
+            // cell carries one.
             const grade = dqssScoreToGrade(cell.dqss)
             return (
               <tr
