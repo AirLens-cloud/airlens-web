@@ -84,22 +84,45 @@ DAILY_MESSAGE_LIMIT = "30"
 #   (completion_tokens=1061 → 44.72 neurons; completion_tokens=1424 → 54.68
 #   neurons) — linear fit through those two points extrapolates to ~71.8
 #   neurons at completion_tokens=2048, matching the pricing-table
-#   calculation within 1%. Rounded up to 80 for headroom (~10% margin, same
-#   convention as the round-1 44.7→50 rounding).
+#   calculation within 1%. This ~72.6-neuron figure is the WORST-CASE
+#   ceiling (a turn whose completion runs all the way to MAX_TOKENS) — real
+#   answers stop naturally well before that (finish_reason:"stop" in every
+#   probe this round). Team-lead's explicit call (same date, round 2): base
+#   REQUEST_COST_ESTIMATE on the MEASURED AVERAGE instead, as long as it
+#   stays under the worst-case ceiling. Averaging all 4 non-truncated
+#   real-retrieval probes this round (both incident questions, at both
+#   max_tokens=1536 and 2048 — none truncated, so all 4 are valid
+#   "what a real answer naturally costs" samples): (44.72 + 54.68 + 43.22 +
+#   51.0) / 4 ≈ 48.4 neurons. Rounded up to 60 (~24% margin over the
+#   average, still well under the 72.6 worst case).
+#
+#   TRADE-OFF this creates (stated plainly, not just the chosen number):
+#   checkGlobalBudget (quota.ts) decrements a FIXED REQUEST_COST_ESTIMATE
+#   per allowed turn — it never reads the API's own usage.neurons — so an
+#   average-based estimate under-counts any turn that runs closer to the
+#   72.6-neuron ceiling than to the average. At 60/turn the gate allows
+#   floor(10000/60)=166 turns/day; if every one of those 166 turns happened
+#   to hit the true worst case, actual spend would be 166*72.6≈12,053
+#   neurons — ~20% over the 10,000 free-tier cap. A worst-case-based
+#   estimate (~80, same convention as round 1's 1024-budget 44.7→50
+#   rounding) would have mathematically guaranteed daily spend stayed under
+#   the cap even in that scenario; this average-based estimate trades that
+#   hard guarantee for close to 33% more daily turns at EXPECTED (not
+#   worst-case) traffic, on the reasoning that a real user population's
+#   answer lengths cluster near the average, not the ceiling.
 #
 #   DAILY_REQUEST_BUDGET — set to Workers AI's daily free-tier neuron
 #   allocation (10,000/day, a platform constant — not tunable here) so
 #   checkGlobalBudget (quota.ts) degrades to the RAG-only response
 #   (chat-stream.ts buildDegradedStream — zero generation cost) once the
 #   account's free neurons for the day are spent, rather than silently
-#   running past them into billed usage. At 80 neurons/turn this is
-#   10000/80 = 125 chat turns/day before degrading (down from round 1's ~200
-#   estimate — MAX_TOKENS doubling from 1024 to 2048 raised the worst-case
-#   output-neuron cost proportionally). 125 turns/day x worst-case 72.6
-#   measured-ceiling neurons/turn ≈ 9075 neurons, still under the 10,000
-#   free-tier cap even if every turn maxes out its answer.
+#   running past them into billed usage. At 60 neurons/turn this is
+#   10000/60 = 166 chat turns/day before degrading. EXPECTED spend at 166
+#   turns/day x the 48.4-neuron measured average ≈ 8035 neurons (under the
+#   cap); the worst-case-if-every-turn-maxes-out figure (≈12,053, over the
+#   cap) is the trade-off documented above.
 DAILY_REQUEST_BUDGET = "10000"
-REQUEST_COST_ESTIMATE = "80"
+REQUEST_COST_ESTIMATE = "60"
 MAX_MESSAGE_LENGTH = "2000"
 MAX_HISTORY_TURNS = "10"
 ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"

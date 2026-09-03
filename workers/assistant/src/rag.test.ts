@@ -11,7 +11,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     RATE_LIMIT_PER_MINUTE: '5',
     DAILY_MESSAGE_LIMIT: '30',
     DAILY_REQUEST_BUDGET: '10000',
-    REQUEST_COST_ESTIMATE: '80',
+    REQUEST_COST_ESTIMATE: '60',
     MAX_MESSAGE_LENGTH: '2000',
     MAX_HISTORY_TURNS: '10',
     ALLOWED_ORIGINS: 'https://airlens.cloud',
