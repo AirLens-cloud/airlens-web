@@ -16,7 +16,7 @@ import { CASES } from './cases';
 const TOML = `
 [vars]
 CHAT_MODEL = "@cf/google/gemma-4-26b-a4b-it"
-MAX_TOKENS = "512"
+MAX_TOKENS = "1024"
 TEMPERATURE = "0.3"
 MAX_HISTORY_TURNS = "10"
 REASONING_EFFORT = "low"
@@ -29,7 +29,7 @@ describe('parseWranglerVars', () => {
     // Assert
     expect(vars).toEqual({
       chatModel: '@cf/google/gemma-4-26b-a4b-it',
-      maxTokens: 512,
+      maxTokens: 1024,
       temperature: 0.3,
       maxHistoryTurns: 10,
       reasoningEffort: 'low',

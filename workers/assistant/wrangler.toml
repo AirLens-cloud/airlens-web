@@ -56,23 +56,40 @@ DAILY_MESSAGE_LIMIT = "30"
 # had no LLM call yet (REQUEST_COST_ESTIMATE=1, a placeholder), C2 wires a
 # real gemma+bge-m3 call behind this guard, so both are recalibrated together:
 #
-#   REQUEST_COST_ESTIMATE — per-chat-turn neuron estimate, from Cloudflare's
-#   published Workers AI neuron pricing (developers.cloudflare.com/workers-ai/
-#   platform/pricing/, checked 2026-09-02): gemma-4-26b-a4b-it ≈ 9091
-#   neurons/M input tokens + 27273 neurons/M output tokens; bge-m3 ≈ 1075
-#   neurons/M input tokens. A typical turn: ~30-token query embed (~0 neurons,
-#   negligible) + ~1400 input tokens (system prompt + retrieved-context block
-#   + trimmed history) ≈ 12.7 neurons + ~300 output tokens ≈ 8.2 neurons —
-#   about 21 neurons, rounded up to 25 for headroom on longer conversations.
+#   REQUEST_COST_ESTIMATE — per-chat-turn neuron estimate. Recalibrated
+#   2026-09-03 (A-5 follow-up) from MEASURED values, not the original's
+#   ~1400-token assumption — direct env.AI.run() probes with the real
+#   SYSTEM_PROMPT + a realistic 5-citation grounded-context block measured
+#   prompt_tokens=1843-1844 (44% higher than assumed), and MAX_TOKENS is now
+#   1024 (was 512, see above). Using the same published Workers AI neuron
+#   pricing (developers.cloudflare.com/workers-ai/platform/pricing/):
+#   gemma-4-26b-a4b-it ≈ 9091 neurons/M input tokens + 27273 neurons/M output
+#   tokens; bge-m3 ≈ 1075 neurons/M input tokens (query embed, ~30 tokens,
+#   negligible). Worst case — a turn that fills the whole MAX_TOKENS budget
+#   (finish_reason:"length", the exact A-5 failure shape) — at prompt_tokens
+#   1843 + completion_tokens 1024: 9091*1843/1e6 ≈ 16.8 neurons (input) +
+#   27273*1024/1e6 ≈ 27.9 neurons (output) ≈ 44.7 neurons. Cross-checked
+#   against the API's own reported `usage.neurons` on two real-prompt probes
+#   (max_tokens=1024 → 36.85 neurons at completion_tokens=737;
+#   max_tokens=2048 → 42.65 neurons at completion_tokens=949) — linear fit
+#   through those two points extrapolates to ~44.7 neurons at
+#   completion_tokens=1024, matching the pricing-table calculation exactly.
+#   Rounded up to 50 for headroom (same ~10-15% margin the original 21→25
+#   rounding used).
 #
 #   DAILY_REQUEST_BUDGET — set to Workers AI's daily free-tier neuron
-#   allocation (10,000/day) so checkGlobalBudget (quota.ts) degrades to the
-#   RAG-only response (chat-stream.ts buildDegradedStream — zero generation
-#   cost) once the account's free neurons for the day are spent, rather than
-#   silently running past them into billed usage. At 25 neurons/turn this is
-#   ~400 chat turns/day before degrading.
+#   allocation (10,000/day, a platform constant — not tunable here) so
+#   checkGlobalBudget (quota.ts) degrades to the RAG-only response
+#   (chat-stream.ts buildDegradedStream — zero generation cost) once the
+#   account's free neurons for the day are spent, rather than silently
+#   running past them into billed usage. At 50 neurons/turn this is ~200
+#   chat turns/day before degrading (down from the previous ~400 estimate —
+#   that number was based on an undercounted prompt size and was never a
+#   real safety margin at this system prompt's actual length). 200 turns/day
+#   x worst-case 44.7 measured neurons/turn ≈ 8940 neurons, still under the
+#   10,000 free-tier cap even if every turn maxes out its answer.
 DAILY_REQUEST_BUDGET = "10000"
-REQUEST_COST_ESTIMATE = "25"
+REQUEST_COST_ESTIMATE = "50"
 MAX_MESSAGE_LENGTH = "2000"
 MAX_HISTORY_TURNS = "10"
 ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"
@@ -81,7 +98,24 @@ ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localh
 # account's catalog via `npx wrangler ai models list` (2026-09-02).
 CHAT_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 EMBEDDING_MODEL = "@cf/baai/bge-m3"
-MAX_TOKENS = "512"
+# A-5 follow-up (2026-09-03): REASONING_EFFORT="low" alone (below) did not
+# fix the zero-token incident — it was necessary but not sufficient. Direct
+# env.AI.run() probes against Workers AI (bypassing this worker entirely,
+# via a throwaway wrangler-dev route, never committed) with the REAL
+# SYSTEM_PROMPT (prompts.ts, ~4.3K chars: security_rules + platform_context +
+# response_format) plus a realistic 5-citation grounded-context block
+# (rag.ts buildGroundedContext, up to 5x300-char excerpts) measured
+# prompt_tokens=1843-1844 — far above the ~42-token toy prompt that had
+# earlier looked fine. At that real prompt size, even reasoning_effort:'low'
+# spent the ENTIRE previous MAX_TOKENS=512 budget on reasoning before any
+# content token: finish_reason:"length", completion_tokens:512 (exactly the
+# cap), contentFrames:0 — reproducing the production incident exactly.
+# Re-run at max_tokens=1024 with the same real prompt: finish_reason:"stop",
+# full answer content, completion_tokens=737/1024 (headroom, not truncated).
+# 1024 is the minimum of {1024, 2048} tested that doesn't truncate — adopted
+# per "budget is cost" (2048 also succeeded, at higher neuron cost, with no
+# added correctness benefit measured).
+MAX_TOKENS = "1024"
 TEMPERATURE = "0.3"
 # CHAT_MODEL is a reasoning-capable model — its thinking tokens draw from the
 # SAME MAX_TOKENS budget as the visible answer. Left unset, some questions
@@ -90,7 +124,10 @@ TEMPERATURE = "0.3"
 # more of the fixed budget for the actual answer; confirmed via the Workers
 # AI catalog schema (developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it)
 # that `reasoning_effort` is a distinct low/medium/high param, not a
-# max_tokens substitute.
+# max_tokens substitute. Re-confirmed 2026-09-03: the catalog schema's enum
+# is exactly {low, medium, high} — "low" is already the floor, there is no
+# lower "none"/"minimal" tier to fall back to, so MAX_TOKENS (above) is the
+# only remaining lever for this failure mode.
 REASONING_EFFORT = "low"
 # Vectorize topK per query — ported RAG_TOP_K=5 from the retired chatbot
 # worker's rag.ts.

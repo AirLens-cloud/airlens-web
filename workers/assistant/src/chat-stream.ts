@@ -133,7 +133,11 @@ export async function buildRagStream(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const upstream = (await env.AI.run(env.CHAT_MODEL as any, {
     messages,
-    max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 512,
+    // Fallback (env.MAX_TOKENS unparseable/absent) mirrors wrangler.toml's
+    // MAX_TOKENS default, not the pre-A-5 512 — 512 is exactly the value
+    // measured to truncate the real system prompt before any answer content
+    // (finish_reason:"length", A-5 follow-up incident notes in wrangler.toml).
+    max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 1024,
     temperature: Number.isFinite(temperature) ? temperature : 0.3,
     // CHAT_MODEL is a reasoning-capable model — without this, its thinking
     // tokens can consume the entire max_tokens budget above and stream zero

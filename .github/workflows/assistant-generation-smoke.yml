@@ -1,0 +1,66 @@
+name: Assistant generation smoke
+
+# One live Workers AI call per run, asserting generation isn't silently
+# empty — the exact gap that let the A-5 incident (2026-09-03) ship
+# unnoticed. No eval in this repo had ever called CHAT_MODEL with both the
+# real SYSTEM_PROMPT AND a populated <retrieved_context> block at once (see
+# eval/generation-smoke.eval.test.ts's own comment) until this one, and
+# nothing exercising that combination ran automatically on a PR — the only
+# existing eval close to it (eval/retrieval.eval.test.ts) lives inside
+# assistant-model-ab.yml, which is workflow_dispatch-only (manual, paid,
+# never runs on push/PR). Mirroring that placement here would have
+# reproduced the exact same blind spot, so this is a separate, dedicated,
+# PR-gating workflow instead — deliberately NOT folded into
+# assistant-model-ab.yml.
+#
+# Cost: 1 generation call (no judge) per run, only when workers/assistant
+# changed. Uses the same CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_WORKERS_AI_TOKEN
+# secrets assistant-model-ab.yml already has provisioned. Private repo — no
+# fork-PR secret-exposure concern — but the smoke test itself SKIPS loudly
+# (never fakes a pass) if either secret is absent, so a misconfigured secret
+# fails safe either way.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/assistant/**'
+      - '.github/workflows/assistant-generation-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'workers/assistant/**'
+      - '.github/workflows/assistant-generation-smoke.yml'
+
+concurrency:
+  group: assistant-generation-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: generation is not silently empty
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/assistant
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/assistant/package-lock.json
+
+      - run: npm ci
+
+      - name: Generation smoke (A-5 regression — real prompt shape, live Workers AI)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/generation-smoke.eval.test.ts
