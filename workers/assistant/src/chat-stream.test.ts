@@ -20,6 +20,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     EMBEDDING_MODEL: '@cf/baai/bge-m3',
     MAX_TOKENS: '512',
     TEMPERATURE: '0.3',
+    REASONING_EFFORT: 'low',
     RAG_TOP_K: '5',
     ...overrides,
   } as Env;
@@ -153,6 +154,50 @@ describe('buildRagStream', () => {
     const chatCall = run.mock.calls.find((call) => (call[1] as { messages?: unknown }).messages !== undefined);
     const systemMsg = (chatCall![1] as { messages: Array<{ role: string; content: string }> }).messages[0];
     expect(systemMsg.content).not.toContain('<causal_reasoning>');
+  });
+
+  it('passes reasoning_effort to env.AI.run, defaulting to "low" for an invalid/missing var — CHAT_MODEL is a reasoning model whose thinking tokens draw from the same max_tokens budget as the answer (A-5 incident)', async () => {
+    // Arrange
+    const run = makeAiRun(['ok']);
+    const env = makeEnv({ AI: { run } as unknown as Ai, REASONING_EFFORT: 'not-a-real-value' });
+    // Act
+    await buildRagStream(env, 'hi', [], 'ok');
+    // Assert
+    const chatCall = run.mock.calls.find((call) => (call[1] as { messages?: unknown }).messages !== undefined);
+    expect((chatCall![1] as { reasoning_effort?: string }).reasoning_effort).toBe('low');
+  });
+
+  it('never silently drops an answer — citations-only with zero token events emits a visible failure notice instead of a blank bubble (A-5 incident: prod returned HTTP 200, no exception, zero token events, empty answer bubble next to real citations)', async () => {
+    // Arrange — reasoning consumed the entire token budget: the upstream
+    // request succeeds (no thrown error) but yields no content frames at
+    // all, exactly like nativeSseStream([]) below (immediate [DONE], no
+    // response frames) — indistinguishable to this code from what actually
+    // happened in production.
+    const run = makeAiRun([]);
+    const query = vi.fn().mockResolvedValue({
+      count: 1,
+      matches: [{ id: 'faq:dqss', score: 0.7, metadata: SAMPLE_METADATA }],
+    });
+    const env = makeEnv({ AI: { run } as unknown as Ai, VECTORIZE: { query } as unknown as VectorizeIndex });
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Act
+    const stream = await buildRagStream(env, 'DQSS 점수가 뭔가요?', [], 'ok');
+    const events = (await collectEvents(stream)) as Array<{ type: string; content?: string; citations?: unknown[] }>;
+    // Assert — citations still render (retrieval genuinely found something)...
+    expect(events[0].type).toBe('citations');
+    // ...but the user is shown an honest notice instead of silence, and it
+    // is NOT the blank string a naive fix (e.g. a raw empty token event)
+    // would produce.
+    const tokenEvents = events.filter((e) => e.type === 'token');
+    expect(tokenEvents).toHaveLength(1);
+    expect(tokenEvents[0].content).toContain('could not produce an answer');
+    expect(tokenEvents[0].content).toContain('답변을 생성하지 못했습니다');
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general' });
+    // ...and it's logged, not silently swallowed (this is what a naive fix
+    // that only added the user-facing notice, without also fixing the
+    // silent-failure observability gap, would still get wrong).
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it('folds a fetched live-data block into <structured_context> in the system prompt for a data_lookup intent', async () => {

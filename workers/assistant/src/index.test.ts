@@ -45,6 +45,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     EMBEDDING_MODEL: '@cf/baai/bge-m3',
     MAX_TOKENS: '512',
     TEMPERATURE: '0.3',
+    REASONING_EFFORT: 'low',
     RAG_TOP_K: '5',
     AI: { run: mockAiRun() } as unknown as Ai,
     ...overrides,
