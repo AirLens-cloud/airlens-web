@@ -32,12 +32,43 @@ describe('Legal — Model Card', () => {
     }
     expect(screen.queryByText(/camera ai/i)).toBeNull()
     expect(screen.queryByText(/moodcast/i)).toBeNull()
-    expect(screen.queryByText(/rag chat/i)).toBeNull()
+  })
+
+  it('lists the Field Assistant now that the chat worker is live on this site', () => {
+    // Regression the other way: this card used to assert the chat was ABSENT,
+    // which stayed green after SiteChrome started mounting ChatWidget on every
+    // page — a passing test pinning a claim that had become false.
+    render(<Legal doc="model-card" />)
+    expect(screen.getByText(/Field Assistant/i)).not.toBeNull()
   })
 
   it('marks unfinalized fields as TBD, never blank or a made-up number', () => {
     render(<Legal doc="model-card" />)
     expect(screen.getAllByText(/TBD — next update/i).length).toBeGreaterThan(0)
+  })
+})
+
+describe('Legal — Privacy states what the chat actually does', () => {
+  // The chat sends what a visitor types off their device; the policy has to
+  // say so on the page, not only in a design doc. These pin the three claims
+  // that would otherwise drift back out of sync with the worker.
+  it('discloses that chat messages are sent to Cloudflare Workers AI', () => {
+    render(<Legal doc="privacy" />)
+    expect(screen.getByText(/Cloudflare Workers AI/i)).not.toBeNull()
+  })
+
+  it('states plainly that no chat transcript is kept today', () => {
+    render(<Legal doc="privacy" />)
+    expect(screen.getByText(/does not currently keep those chat messages/i)).not.toBeNull()
+  })
+
+  it('discloses the daily-rotating IP-derived abuse counter', () => {
+    // Shipped with the per-caller quota key (workers/assistant session.ts
+    // resolveIdentifier) — undisclosed, it would contradict the "no account
+    // identifier" sentence two paragraphs above it.
+    render(<Legal doc="privacy" />)
+    expect(screen.getByText(/derived from your IP address/i)).not.toBeNull()
+    expect(screen.getByText(/rotates daily/i)).not.toBeNull()
   })
 })
 

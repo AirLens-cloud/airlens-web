@@ -5,6 +5,20 @@ import { buildMessages } from './prompts';
 
 const GROUNDED = '<retrieved_context>no matches</retrieved_context>';
 
+describe('system prompt — personal-information handling', () => {
+  it('tells the model never to ask for personal information and never to echo it back', () => {
+    // Arrange / Act — visitors do type personal details into free-text chat.
+    // The worker cannot stop that; what it can do is instruct the model not
+    // to solicit it and not to repeat it into the answer (which is also what
+    // would land in any future transcript store).
+    const system = buildMessages('q', [], 10, GROUNDED)[0].content;
+    // Assert
+    expect(system).toMatch(/personal information/i);
+    expect(system).toMatch(/never ask/i);
+    expect(system).toMatch(/do not repeat/i);
+  });
+});
+
 describe('buildMessages', () => {
   it('wraps the user message in <user_query> tags', () => {
     // Act

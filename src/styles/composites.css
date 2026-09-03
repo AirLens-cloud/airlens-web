@@ -283,6 +283,11 @@
   color: var(--ink-2);
 }
 .chat-caveat { margin: 0; padding: 0 16px 16px; }
+/* Sits directly above .chat-input-row — the point of collection. Same caveat
+   type as .chat-caveat, tighter padding so it reads as a label on the input
+   rather than a paragraph of its own. */
+.chat-privacy-note { margin: 0; padding: 0 16px 8px; }
+.chat-privacy-note a { color: inherit; }
 .chat-input-row {
   display: flex; gap: 8px; align-items: center;
   border-top: 1px solid var(--ink-0);

@@ -166,6 +166,17 @@ export default function ChatPanel({ onClose, apiBaseOverride }: ChatPanelProps) 
             <div ref={listEndRef} />
           </div>
 
+          {/* Notice at the point of collection, not only in /legal/privacy:
+              what is typed here leaves the device (worker → Cloudflare
+              Workers AI). Before this line the panel said nothing at all
+              about that. Kept to one sentence so it informs rather than
+              becoming the wall of text people learn to skip. */}
+          <p className="t-caveat chat-privacy-note">
+            Messages are sent to Cloudflare Workers AI to generate a reply and are not stored by
+            AirLens — avoid personal details.{' '}
+            <a href="/legal/privacy">Privacy</a>
+          </p>
+
           <form className="chat-input-row" onSubmit={handleSubmit}>
             <input
               type="text"

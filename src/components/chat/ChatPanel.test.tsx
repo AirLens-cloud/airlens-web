@@ -51,6 +51,17 @@ describe('ChatPanel — active (ASSISTANT_API_BASE configured, the A-4 default)'
     expect(screen.queryByPlaceholderText(/coming back soon/i)).toBeNull()
   })
 
+  it('shows a privacy notice at the point of collection, linking to /legal/privacy', () => {
+    // Arrange / Act — what a visitor types here leaves their device (worker →
+    // Cloudflare Workers AI). The panel used to say nothing about that; the
+    // disclosure has to live next to the input, not only in the legal page.
+    render(<ChatPanel onClose={() => {}} />)
+    // Assert
+    expect(screen.getByText(/sent to Cloudflare Workers AI/i)).not.toBeNull()
+    const link = screen.getByRole('link', { name: /privacy/i }) as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/legal/privacy')
+  })
+
   it('mounts the Turnstile widget once, with the configured sitekey', () => {
     // Arrange / Act
     render(<ChatPanel onClose={() => {}} />)

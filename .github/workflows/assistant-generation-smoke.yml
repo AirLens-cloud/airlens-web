@@ -104,3 +104,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
         run: npx vitest run eval/retrieval.eval.test.ts
+
+      # Layer 1 of this eval (the deterministic guardrail block rate) also
+      # runs in the unit suite with no credentials; it is here for layer 2,
+      # which asks the real model what it does with probes the regex gate
+      # cannot catch (a politely-worded request to summarize its own
+      # instructions). Without the secrets above, layer 2 skips — which is
+      # exactly the silent-no-op shape the "Secrets present" step exists to
+      # prevent, so it must stay in this workflow, not in ci.yml.
+      # Cost: 3 additional generation calls per run.
+      - name: Adversarial eval (refusal rate — injection, secret probe, PII)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_WORKERS_AI_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_AI_TOKEN }}
+        run: npx vitest run eval/adversarial.eval.test.ts

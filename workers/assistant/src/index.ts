@@ -13,7 +13,7 @@ import { issueSessionToken, resolveIdentifier, verifySessionToken, verifyTurnsti
 import { checkDailyQuota, checkGlobalBudget, checkRateLimit } from './quota';
 import { buildDegradedStream, buildRagStream } from './chat-stream';
 import { reindexChunks } from './rag';
-import { checkGuardrails } from './guardrails';
+import { checkConversationGuardrails } from './guardrails';
 
 export default {
   async fetch(req: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -65,6 +65,20 @@ async function handleSession(req: Request, env: Env, corsHeaders: Record<string,
   }
 
   const ip = getClientIp(req);
+
+  // Session issuance is anonymous and free, and every session carries its own
+  // DAILY_MESSAGE_LIMIT allowance — so an unmetered mint endpoint multiplies
+  // the daily cap by however many sessions a script cares to request. The
+  // per-caller identifier (session.ts resolveIdentifier) closes the budget
+  // side of that; this closes the minting side. Native binding, not the KV
+  // counter in quota.ts: this one is atomic, so it cannot be raced, and it
+  // runs BEFORE verifyTurnstile so a flood cannot drive siteverify calls
+  // either. Fails open when unbound (dev/test) — same convention as CHAT_QUOTA.
+  const sessionRateLimitBlocked = await isRateLimited(env, `session:${ip || 'unknown'}`);
+  if (sessionRateLimitBlocked) {
+    return errorJson('Too many session requests. Please wait a moment.', 429, 'rate_limited', corsHeaders, 60);
+  }
+
   const turnstile = await verifyTurnstile(env, body.turnstileToken, ip);
   if (!turnstile.ok) {
     return errorJson('Turnstile verification failed', 401, 'turnstile_failed', corsHeaders);
@@ -106,6 +120,21 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   }
   const { lastUserMessage, history } = split;
 
+  // Per-message length is capped below, but without a cap on HOW MANY
+  // messages a request may carry, a client can send hundreds of short ones
+  // and still blow past what REQUEST_COST_ESTIMATE assumes a turn costs —
+  // the budget ledger (quota.ts checkGlobalBudget) would then under-count
+  // real spend. prompts.ts buildMessages already trims history to the last
+  // MAX_HISTORY_TURNS*2 entries, so anything beyond that ceiling is payload
+  // the model never sees: reject it explicitly rather than truncate
+  // silently. The frontend trims to the same ceiling before sending
+  // (src/api/assistant.ts), so a real conversation never reaches this.
+  const maxTurns = parseInt(env.MAX_HISTORY_TURNS, 10);
+  const maxMessages = (Number.isFinite(maxTurns) && maxTurns > 0 ? maxTurns : 10) * 2;
+  if (history.length + 1 > maxMessages) {
+    return errorJson(`Too many messages (max ${maxMessages} per request)`, 400, 'invalid_body', corsHeaders);
+  }
+
   // Length cap applies to every message, not just the current turn — history
   // entries feed straight into the gemma prompt (prompts.ts buildMessages)
   // just as much as lastUserMessage does, so a client that stuffed one giant
@@ -120,7 +149,7 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   }
 
   const ip = getClientIp(req);
-  const identifier = await resolveIdentifier(payload.sid, ip);
+  const identifier = await resolveIdentifier(env, payload.sid, ip);
 
   const rateLimit = await checkRateLimit(env, identifier);
   if (!rateLimit.allowed) {
@@ -139,7 +168,7 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   // caller's rate/daily budget, matching that precedent rather than giving
   // an unlimited-retry probe surface. A block is a plain JSON response, not
   // an SSE stream — no RAG/generation ever starts for it.
-  const guardrail = checkGuardrails(lastUserMessage);
+  const guardrail = checkConversationGuardrails(lastUserMessage, history);
   if (!guardrail.passed) {
     console.warn('[assistant] guardrail blocked:', guardrail.reason);
     return errorJson(guardrail.fallback_message ?? 'Request blocked', 400, 'blocked', corsHeaders);
@@ -281,6 +310,16 @@ async function handleReindex(req: Request, env: Env, corsHeaders: Record<string,
   // unset secret is folded into the same 401 as a wrong one (rather than a
   // distinguishable 503) so an unauthenticated caller can't probe whether
   // this endpoint has been provisioned yet.
+  // Throttled BEFORE the comparison below: ADMIN_REINDEX_SECRET is the
+  // corpus-poisoning key (an attacker's text becomes the model's "retrieved
+  // evidence"), and an unthrottled endpoint is an unlimited guessing oracle —
+  // timing-safe comparison only removes the timing side channel, not the
+  // guessing rate. A real operator reindex is a handful of calls, so a
+  // per-minute cap costs legitimate use nothing.
+  if (await isRateLimited(env, `reindex:${getClientIp(req) || 'unknown'}`)) {
+    return errorJson('Too many requests. Please wait a moment.', 429, 'rate_limited', corsHeaders, 60);
+  }
+
   const provided = req.headers.get('x-admin-secret');
   const configured = env.ADMIN_REINDEX_SECRET;
   if (!configured || !provided || !timingSafeEqual(provided, configured)) {
@@ -315,6 +354,26 @@ async function handleReindex(req: Request, env: Env, corsHeaders: Record<string,
   } catch (err) {
     console.error('[assistant] reindex failed:', err instanceof Error ? err.message : err);
     return errorJson('Reindex failed', 500, undefined, corsHeaders);
+  }
+}
+
+/**
+ * Native Rate Limiting binding check (wrangler.toml [[ratelimits]]). Returns
+ * true when the caller is over the limit. Fails OPEN on an absent binding
+ * (dev/test) and on a thrown call — an availability blip in the limiter must
+ * not take chat down, same policy as quota.ts's KV guards. The raw IP is fine
+ * in `key`: this counter is in-memory and edge-local (never persisted, never
+ * enumerable), unlike the KV quota keys, which is why those are hashed.
+ */
+async function isRateLimited(env: Env, key: string): Promise<boolean> {
+  const limiter = env.SESSION_RATE_LIMIT;
+  if (!limiter) return false;
+  try {
+    const { success } = await limiter.limit({ key });
+    return !success;
+  } catch (err) {
+    console.warn('[assistant] rate limiter unavailable, failing open:', err instanceof Error ? err.message : err);
+    return false;
   }
 }
 

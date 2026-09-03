@@ -90,6 +90,10 @@ describe('verifyTurnstile', () => {
     // Assert
     expect(result).toEqual({ ok: true, devBypass: true });
     expect(warnSpy).toHaveBeenCalledOnce();
+    // A prose-only warning is not searchable in Workers Logs — the fail-open
+    // must emit a stable, greppable token so "is the bot gate actually off in
+    // production right now?" is answerable from the log query alone.
+    expect(warnSpy.mock.calls.flat().map(String).join(' ')).toContain('ASSISTANT_TURNSTILE_FAIL_OPEN');
     warnSpy.mockRestore();
   });
 
@@ -146,26 +150,66 @@ describe('verifyTurnstile', () => {
 });
 
 describe('resolveIdentifier', () => {
-  it('hashes the session id rather than using it verbatim', async () => {
+  it('keys on the client IP, not the session — a fresh session from the same IP reuses one daily counter', async () => {
+    // Arrange — sessions are issued anonymously and unlimited, so a
+    // session-keyed daily cap is a cap on nothing (call /api/session again,
+    // get a fresh 30-message budget). Identity has to follow the caller.
+    const env = makeEnv();
+    // Act
+    const a = await resolveIdentifier(env, 'sid-one', '203.0.113.1');
+    const b = await resolveIdentifier(env, 'sid-two', '203.0.113.1');
+    // Assert
+    expect(a).toBe(b);
+    expect(a.startsWith('ip:')).toBe(true);
+  });
+
+  it('never carries the raw IP into the KV key', async () => {
     // Arrange / Act
-    const id = await resolveIdentifier('some-session-uuid', '203.0.113.1');
+    const id = await resolveIdentifier(makeEnv(), 'sid-one', '203.0.113.1');
+    // Assert — a leaked key listing must not be a visitor-IP log.
+    expect(id).not.toContain('203.0.113.1');
+  });
+
+  it('separates different IPs', async () => {
+    // Arrange
+    const env = makeEnv();
+    // Act
+    const a = await resolveIdentifier(env, null, '203.0.113.1');
+    const b = await resolveIdentifier(env, null, '198.51.100.7');
+    // Assert
+    expect(a).not.toBe(b);
+  });
+
+  it('rotates the hash every UTC day, so the key is not a persistent device identifier', async () => {
+    // Arrange
+    const env = makeEnv();
+    vi.useFakeTimers();
+    // Act
+    vi.setSystemTime(new Date('2026-09-03T23:59:00Z'));
+    const today = await resolveIdentifier(env, null, '203.0.113.1');
+    vi.setSystemTime(new Date('2026-09-04T00:01:00Z'));
+    const tomorrow = await resolveIdentifier(env, null, '203.0.113.1');
+    vi.useRealTimers();
+    // Assert
+    expect(today).not.toBe(tomorrow);
+  });
+
+  it('peppers the hash with SESSION_HMAC_SECRET (a bare sha256 of an IPv4 is brute-forceable)', async () => {
+    // Arrange / Act — the whole IPv4 space is ~4.3e9 hashes; without a
+    // secret pepper, a leaked key listing is a reversible IP oracle.
+    const a = await resolveIdentifier(makeEnv({ SESSION_HMAC_SECRET: 'secret-a' }), null, '203.0.113.1');
+    const b = await resolveIdentifier(makeEnv({ SESSION_HMAC_SECRET: 'secret-b' }), null, '203.0.113.1');
+    // Assert
+    expect(a).not.toBe(b);
+  });
+
+  it('falls back to the hashed session id when the request carries no client IP', async () => {
+    // Arrange / Act — non-browser callers (health probes, curl) have no
+    // CF-Connecting-IP; the session hash is still better than one shared
+    // "unknown" bucket for everyone.
+    const id = await resolveIdentifier(makeEnv(), 'some-session-uuid', '');
     // Assert
     expect(id.startsWith('s:')).toBe(true);
     expect(id).not.toContain('some-session-uuid');
-  });
-
-  it('falls back to an ip-prefixed key when there is no session', async () => {
-    // Arrange / Act
-    const id = await resolveIdentifier(null, '203.0.113.1');
-    // Assert
-    expect(id).toBe('ip:203.0.113.1');
-  });
-
-  it('is deterministic for the same session id (KV key stability)', async () => {
-    // Arrange / Act
-    const a = await resolveIdentifier('same-sid', '203.0.113.1');
-    const b = await resolveIdentifier('same-sid', '198.51.100.7');
-    // Assert — identity follows the session, not the IP, once a session exists
-    expect(a).toBe(b);
   });
 });

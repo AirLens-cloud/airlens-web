@@ -99,9 +99,13 @@ export async function verifyTurnstile(
   remoteIp: string,
 ): Promise<TurnstileResult> {
   if (!env.TURNSTILE_SECRET) {
+    // ASSISTANT_TURNSTILE_FAIL_OPEN is a stable, greppable token, not prose:
+    // this branch is the bot gate being OFF, and "is it off in production
+    // right now?" has to be answerable from a Workers Logs query alone
+    // (wrangler.toml [observability] keeps those logs around to query).
     console.warn(
-      '[assistant] TURNSTILE_SECRET not set — issuing dev-bypass session (Turnstile verification skipped). ' +
-        'Do NOT deploy this worker to a real origin without TURNSTILE_SECRET.',
+      'ASSISTANT_TURNSTILE_FAIL_OPEN [assistant] TURNSTILE_SECRET not set — issuing dev-bypass session ' +
+        '(Turnstile verification skipped). Do NOT deploy this worker to a real origin without TURNSTILE_SECRET.',
     );
     return { ok: true, devBypass: true };
   }
@@ -135,12 +139,31 @@ async function sha256Base64Url(value: string): Promise<string> {
 }
 
 /**
- * Quota key resolution — design §1 D-2: session hash (primary) with an IP
- * fallback (secondary) for requests that have no valid session. Hashed
- * rather than using the raw `sid` so a leaked KV key namespace does not
- * double as a session-token oracle.
+ * Quota key resolution — daily-salted IP hash (primary) with a session hash
+ * fallback (secondary) for callers that carry no client IP.
+ *
+ * Originally the other way round (session hash primary, design §1 D-2). That
+ * made DAILY_MESSAGE_LIMIT a per-session cap, and POST /api/session is
+ * anonymous and unmetered — so "30 messages/day" was really "30 messages per
+ * session, mint as many as you like", i.e. a cap on nothing and a
+ * denial-of-wallet path into the shared DAILY_REQUEST_BUDGET. Keying on the
+ * caller restores a real daily cap; the native rate-limit binding on
+ * /api/session (index.ts handleSession) is the other half, bounding how fast
+ * sessions can be minted at all.
+ *
+ * Three properties the key deliberately has:
+ *  - hashed, never the raw IP — a leaked KV key listing must not be a
+ *    visitor-IP log;
+ *  - salted with the UTC date — the key rotates daily, so it is not a
+ *    persistent device identifier (this is what /legal/privacy must state);
+ *  - peppered with SESSION_HMAC_SECRET — the IPv4 space is ~4.3e9 values, so
+ *    a bare sha256(ip + date) is brute-forceable back to the IP in minutes.
  */
-export async function resolveIdentifier(sid: string | null, ip: string): Promise<string> {
+export async function resolveIdentifier(env: Env, sid: string | null, ip: string): Promise<string> {
+  if (ip) {
+    const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+    return `ip:${await sha256Base64Url(`${ip}|${day}|${env.SESSION_HMAC_SECRET ?? ''}`)}`;
+  }
   if (sid) return `s:${await sha256Base64Url(sid)}`;
-  return `ip:${ip || 'unknown'}`;
+  return 'ip:unknown';
 }

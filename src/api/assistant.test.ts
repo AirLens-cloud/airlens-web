@@ -164,6 +164,33 @@ describe('streamAssistantReply — SSE parsing', () => {
     })
   })
 
+  it('trims a long conversation to the last 20 messages (the worker 400s anything longer)', async () => {
+    // Arrange — ChatPanel accumulates the whole conversation, so past ~10
+    // turns an untrimmed payload would be rejected outright by the worker's
+    // array-length cap (MAX_HISTORY_TURNS*2). The worker's prompt builder
+    // trims to the same number, so nothing the model would have seen is lost.
+    const sse = sseResponse(['data: {"type":"done","budget":"ok","intent":"general"}\n\n'])
+    const fetchSpy = vi.fn(async (url: string, _init?: RequestInit) =>
+      url.endsWith('/api/session') ? jsonResponse({ session: 'tok-1', expiresAt: Date.now() + 3_600_000 }) : sse,
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+    const long: ChatMessage[] = Array.from({ length: 31 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `m${i}`,
+      timestamp: 1_756_000_000_000 + i,
+    }))
+
+    // Act
+    await collect(streamAssistantReply(long, 'en', '/today'))
+
+    // Assert — the 20 most recent, oldest-first, current turn last.
+    const chatCall = fetchSpy.mock.calls.find(([url]) => url.endsWith('/api/chat'))
+    const body = JSON.parse(chatCall![1]!.body as string) as { messages: ChatMessage[] }
+    expect(body.messages).toHaveLength(20)
+    expect(body.messages[0].content).toBe('m11')
+    expect(body.messages[19].content).toBe('m30')
+  })
+
   it('degrades to a single exhausted `done` when the chat request itself is not ok', async () => {
     const fetchSpy = vi.fn(async (url: string) =>
       url.endsWith('/api/session')

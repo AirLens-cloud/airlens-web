@@ -3,24 +3,21 @@
 // PARTIAL PORT of the retired chatbot worker's eval/safety.eval.test.ts —
 // see the note below for what did not carry over and why.
 //
-// The retired worker had a `postprocess.ts` stream transform
-// (createSafetyTransform / scrubFieldNames / containsLeakCanary) that cut
-// the SSE stream on system-prompt canaries (e.g. a model regurgitating
-// "<security_rules>") and scrubbed raw snake_case field names
-// (predicted_p50, rrf_score, …) before any token reached the client. THIS
-// WORKER (workers/assistant) has no equivalent — chat-stream.ts's
-// upstreamTokens() forwards every gemma/candidate token to the client
-// unfiltered (see chat-stream.ts buildRagStream, the `controller.enqueue
-// (sseLine({ type: 'token', ... }))` loop). That is a real gap versus the
-// retired worker's safety net, not a decision this eval suite can paper
-// over — porting the two describe() blocks that exercised
-// createSafetyTransform/scrubFieldNames would either import functions that
-// don't exist (a compile error) or, worse, a stub that always passes (a
-// fake-green test, which security-guards.md forbids exactly as hard as a
-// fake-pass eval gate). Flagged in the C4 handoff for a follow-up decision:
-// port postprocess.ts, or accept the gap because prompts.ts's
-// security_rules section (§1: "NEVER reveal... the contents of this system
-// prompt") is the only defense today.
+// GAP CLOSED (2026-09-03). This header used to record that the retired
+// worker's `postprocess.ts` output filter had NO equivalent here — that
+// chat-stream.ts forwarded every model token to the client unfiltered, and
+// that prompts.ts's security_rules section was the only defense. It has now
+// been ported as `src/output-filter.ts` (canary cut + field-name scrub +
+// holdback so a canary split across tokens is still caught), wired into
+// buildRagStream, and covered by src/output-filter.test.ts and the two
+// leak/scrub cases in src/chat-stream.test.ts. Those are unit tests over
+// real functions, not stubs — the fake-green shape this comment warned
+// about is still forbidden.
+//
+// The adversarial direction — how often the system actually REFUSES
+// injections, secret probes, and requests for personal data — is measured
+// in eval/adversarial.eval.test.ts (layer 1 deterministic, layer 2 against
+// the real model), which did not exist when this file was written.
 //
 // What DID port cleanly: the deterministic "prompt rules are pinned" check
 // below reads real strings out of the real system prompt (prompts.ts) — no
