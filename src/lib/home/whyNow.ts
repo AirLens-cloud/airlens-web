@@ -65,10 +65,13 @@ export function formatUtcTime(iso: string): string {
 /**
  * "Xm ago" / "Xh ago" / "Xd ago" — elapsed time since a `generated_at`
  * timestamp. Always reads as age, never a countdown — a stale reading must
- * never look like it is about to refresh.
+ * never look like it is about to refresh. A negative elapsed (client clock
+ * skew putting the timestamp in the future) returns null rather than
+ * fabricating "1m ago" — Glass-box: no honest reading, no label.
  */
-export function formatElapsed(elapsedMs: number): string {
-  const totalMin = Math.max(0, Math.floor(elapsedMs / 60000))
+export function formatElapsed(elapsedMs: number): string | null {
+  if (elapsedMs < 0) return null
+  const totalMin = Math.floor(elapsedMs / 60000)
   if (totalMin < 60) return `${Math.max(1, totalMin)}m ago`
   const totalHours = Math.floor(totalMin / 60)
   if (totalHours < 48) return `${totalHours}h ago`

@@ -27,6 +27,7 @@ import { dqssScoreToGrade } from '../lib/config/globeOntology'
 import { pm25ToGrade } from '../lib/globe/gradeColor'
 import { ATMOSPHERIC_MODES } from '../lib/config/atmosphericModes'
 import { fetchTimelineManifest } from '../api/timeline'
+import { formatElapsed } from '../lib/home/whyNow'
 import type { AtmosphericMode } from '../types/globe'
 import GlobeFallback from '../components/globe/GlobeFallback'
 import GlobeObsHud, { type GlobeObsHudStatus } from '../components/globe/observatory/GlobeObsHud'
@@ -81,6 +82,23 @@ function toChromeStatus(status: AtmosphericEvidenceStatus): GlobeObsHudStatus {
 function utcLabel(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return `${new Date(value).toISOString().replace('T', ' ').slice(0, 16)} UTC`
+}
+
+/**
+ * "12m ago" / "3h ago" from a reference/valid time vs now — QUALITY section's
+ * Freshness line (`evidence-rail-compare-tray.md` §4.1). `null` when there is
+ * no time to measure against, which the card renders as "—", never "just now".
+ */
+/**
+ * Thin wrapper over the shared `formatElapsed` (whyNow.ts) — this file's
+ * own "since a timestamp" framing over that util's "already-elapsed ms"
+ * one. Delegating avoids a 3rd reimplementation of the same age-label
+ * logic (whyNow's `formatElapsed` / AqiCapsule's now-removed
+ * `formatDataAge` were the other two).
+ */
+function freshnessLabel(sinceMs: number | null): string | null {
+  if (sinceMs == null || !Number.isFinite(sinceMs)) return null
+  return formatElapsed(Date.now() - sinceMs)
 }
 
 export default function Globe() {
@@ -271,7 +289,18 @@ export default function Globe() {
           source={view.source}
           validTime={view.validTime}
           mode={view.mode}
+          cursor={selectedStation ? { lat: selectedStation.lat, lon: selectedStation.lon, label: selectedStation.name } : null}
         />
+      </div>
+
+      {/* T3: mode selection moved out of the left instrument rail into a HUD
+          tab strip — same AtmosphericModeRail component (`orientation`
+          controls the reflow), same store wiring, same 1-5 keyboard path
+          (handleStageKeyDown below is unchanged). This is a pure position
+          change: LAYERS/TIMELINE stay in `.globe-stage-left` since they're
+          overlay controls, not the mode cursor. */}
+      <div className="globe-mode-row">
+        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
       </div>
 
       {/* Evidence row (T1): Layer 1 of the evidence card runs as one horizontal
@@ -294,6 +323,7 @@ export default function Globe() {
           source={view.source}
           referenceTimeLabel={utcLabel(view.referenceTime)}
           validTimeLabel={utcLabel(view.validTime)}
+          freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
           provenance={[...view.provenance]}
           coverage={view.coverage}
         />
@@ -301,8 +331,7 @@ export default function Globe() {
       </div>
 
       <section className="globe-stage">
-        <aside className="globe-stage-left" aria-label="Atmospheric lens and layers">
-          <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
+        <aside className="globe-stage-left" aria-label="Atmospheric layers and timeline">
           {/* T2: LAYERS defaults open, TIMELINE defaults collapsed — the
               timeline is a forecast-only aid, so collapsing it by default is
               the honest state for the common (non-forecast) session. */}

@@ -76,10 +76,21 @@ export interface AtmosphericEvidenceCardProps {
   source?: string | null
   referenceTimeLabel?: string
   validTimeLabel?: string
+  /** Age of the reading (e.g. "12m ago"), computed by the caller from
+   *  reference/valid time vs now. `null`/omitted renders "—", never a
+   *  fabricated "just now". */
+  freshnessLabel?: string | null
   provenance?: string[]
   coverage?: string | null
+  /** EvidenceEnvelope.lineage (dataset version + content hash) — B1-gated
+   *  (`evidence-rail-compare-tray.md` §11 gap table): the producer doesn't
+   *  publish this yet, so the honest default renders the absence rather
+   *  than inventing a version string. Pass an explicit label once B1 ships it. */
+  lineageLabel?: string | null
   ariaLabel?: string
 }
+
+const LINEAGE_PENDING = 'Dataset version & content hash not yet published — Evidence Contract producer (B1) pending.'
 
 export default function AtmosphericEvidenceCard({
   status,
@@ -97,8 +108,10 @@ export default function AtmosphericEvidenceCard({
   source,
   referenceTimeLabel = '—',
   validTimeLabel = '—',
+  freshnessLabel,
   provenance = [],
   coverage,
+  lineageLabel,
   ariaLabel = 'Data evidence and uncertainty',
 }: AtmosphericEvidenceCardProps) {
   const isEvents = mode === 'events' && !!eventCoverage
@@ -233,6 +246,10 @@ export default function AtmosphericEvidenceCard({
               <dt>Valid time</dt>
               <dd>{validTimeLabel}</dd>
             </div>
+            <div>
+              <dt>Freshness</dt>
+              <dd>{freshnessLabel ?? '—'}</dd>
+            </div>
           </dl>
           {provenance.length > 0 && (
             <div className="atmos-provenance-tags" aria-label="Data epistemic provenance">
@@ -246,6 +263,14 @@ export default function AtmosphericEvidenceCard({
               Coverage · {coverage}
             </p>
           )}
+          {/* LINEAGE (`evidence-rail-compare-tray.md` §4.1) — dataset version +
+              content hash, distinct from the SOURCE line above (which names
+              the provider, not the artifact build). Honest-empty by default:
+              the producer doesn't publish this yet (§11 gap table), so this
+              renders that absence rather than a fabricated version string. */}
+          <p className="atmos-lineage">
+            <span className="atmos-lineage-label">Lineage</span> · {lineageLabel?.trim() || LINEAGE_PENDING}
+          </p>
         </div>
       </details>
     </section>

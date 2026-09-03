@@ -76,4 +76,8 @@ describe('formatElapsed', () => {
   it('never reports 0m — floors to 1m for sub-minute elapsed', () => {
     expect(formatElapsed(10_000)).toBe('1m ago')
   })
+
+  it('returns null for a negative elapsed instead of fabricating an age', () => {
+    expect(formatElapsed(-60_000)).toBeNull()
+  })
 })

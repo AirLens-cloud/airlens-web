@@ -507,13 +507,26 @@ canvas.cursor-trail { z-index: 2; }
 .obs-surface .atmos-source-line::-webkit-details-marker { display: none; }
 .obs-surface .atmos-source-line::before { content: '▸ '; color: var(--obs-hud-dim); }
 .obs-surface .atmos-evidence-details[open] .atmos-source-line::before { content: '▾ '; }
-.obs-surface .atmos-provenance { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 0; padding: 1px 0 0; background: rgba(232, 236, 244, .08); }
+/* 3 columns (Reference/Valid time + Freshness) — the QUALITY freshness field
+   joined this dl instead of a 4th disclosure block, since it's the same
+   "when" family as the two time rows next to it. */
+.obs-surface .atmos-provenance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; padding: 1px 0 0; background: rgba(232, 236, 244, .08); }
 .obs-surface .atmos-provenance > div { min-width: 0; padding: 10px 14px; background: rgba(5, 9, 16, .82); }
 .obs-surface .atmos-provenance dt { color: var(--obs-hud-dim); font: 400 7px/1 var(--obs-mono); letter-spacing: .12em; }
 .obs-surface .atmos-provenance dd { overflow: hidden; margin: 5px 0 0; color: var(--obs-ink); font: 400 9px/1.35 var(--obs-mono); text-overflow: ellipsis; }
 .obs-surface .atmos-provenance-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 10px 14px 6px; }
 .obs-surface .atmos-provenance-tags span { padding: 4px 6px; color: var(--obs-hud); border: 1px solid rgba(232, 236, 244, .12); font: 400 7px/1 var(--obs-mono); letter-spacing: .08em; }
 .obs-surface .atmos-coverage { padding-top: 4px; color: var(--obs-hud-dim); }
+/* LINEAGE (`evidence-rail-compare-tray.md` §4.1) — same visual family as
+   .atmos-coverage/.atmos-caveat (a quiet trailing note in the disclosed
+   body), distinct from .atmos-source-line (provider name, always visible). */
+.obs-surface .atmos-lineage {
+  margin: 0;
+  padding: 4px 14px 10px; /* design-lint-ok: spacing — matches the 14px horizontal rhythm of the sibling .atmos-caveat/.atmos-coverage/.atmos-provenance-tags rules in this disclosed body, same convention as .atmos-source-line above */
+  color: var(--obs-hud-dim);
+  font: 500 10px/1.45 var(--obs-display);
+}
+.obs-surface .atmos-lineage-label { color: var(--obs-hud); font: 700 7px/1 var(--obs-mono); letter-spacing: .12em; text-transform: uppercase; }
 
 /* ── DawnReport ── */
 .obs-surface .dawn-report { color: var(--obs-paper-ink); padding: 32px; background: var(--obs-paper); }
