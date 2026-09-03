@@ -107,7 +107,14 @@ DAILY_MESSAGE_LIMIT = "30"
 #   2. only then set this to "true" and redeploy.
 # The reverse order is collection without notice. Shipping the binding while
 # this stays "false" is what makes that order possible to verify.
-CHATLOG_ENABLED = "false"
+#
+# Step 1 completed 2026-09-03: PR #55 → main `346bbd1` → Pages run
+# 33724312567 success; the deployed bundle (/assets/index-BGo1hGRw.js) carries
+# all four sentences ("keeps a copy of those exchanges", "Masking happens in
+# the same request", "destroyed after 90 days", "cannot honour a request to
+# delete a specific one"), and /legal/privacy renders them (14 paragraphs, no
+# empty section). Step 2 is this line.
+CHATLOG_ENABLED = "true"
 # Self-imposed ceiling on stored turns per UTC hour — a backstop for the day
 # the abuse guards are outrun (the native rate limiter counts per Cloudflare
 # location, so a distributed caller gets more through than 10/min suggests).
