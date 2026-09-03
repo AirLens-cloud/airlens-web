@@ -1,5 +1,4 @@
 import type { ChatMessage } from '../../types/chat'
-import DqssBadge from '../wireframe/DqssBadge'
 import CitationCard from './CitationCard'
 import { LiveIcon } from '../icons'
 
@@ -12,9 +11,14 @@ import { LiveIcon } from '../icons'
  *     this port has no live backend producing that markdown, so plain text
  *     avoids adding a sanitizer dependency for a code path nothing exercises
  *     yet. Reintroduce alongside the real backend wiring.
- *   - DQSS pill uses the ported `DqssBadge` component (`unknown` grade —
- *     retrieval relevance is not a data-quality score) instead of the
- *     source's inline em-dash pill.
+ *   - No DQSS pill at all. The source badged every answer, and this port
+ *     briefly kept that as `DqssBadge dqss="unknown"` — which rendered a "—"
+ *     and announced "DQSS — — Unknown" to screen readers on every turn. A
+ *     document-grounded answer has no data-quality grade to withhold: there
+ *     is no sensor reading behind it to score, so the honest render is no
+ *     badge rather than a permanently unknown one. Answers that quote a
+ *     measured value carry that value's own uncertainty inline, from the
+ *     source text (page-specs/ask-assistant.md §11-6).
  */
 interface ChatMessageBubbleProps {
   message: ChatMessage
@@ -42,7 +46,6 @@ export default function ChatMessageBubble({ message, streaming }: ChatMessageBub
           <LiveIcon size={16} />
         </span>
         <span className="msg-eyebrow">Field Assistant</span>
-        <DqssBadge dqss="unknown" variant="compact" className="msg-dqss" />
       </header>
 
       <div className="msg-body t-body">
