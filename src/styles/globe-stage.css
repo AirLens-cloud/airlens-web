@@ -438,7 +438,7 @@
    the vertical instrument-rail card its base rule (composites.css) draws. */
 .obs-surface .globe-mode-row {
   display: flex;
-  padding: 0 18px;
+  padding: 0 var(--sp-4);
   background: var(--obs-void);
   border-bottom: 1px solid rgba(232, 236, 244, .14);
 }
@@ -448,7 +448,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 6px 0;
+  padding: var(--sp-2) 0;
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -468,7 +468,7 @@
   grid-template-columns: 16px 14px auto 8px;
   min-height: 0;
   width: auto;
-  padding: 5px 8px;
+  padding: var(--sp-1) var(--sp-2);
 }
 
 /* Redundant with the `title` tooltip AtmosphericModeRail now sets on every
