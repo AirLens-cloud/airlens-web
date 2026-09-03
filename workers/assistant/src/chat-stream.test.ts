@@ -12,13 +12,13 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     RATE_LIMIT_PER_MINUTE: '5',
     DAILY_MESSAGE_LIMIT: '30',
     DAILY_REQUEST_BUDGET: '10000',
-    REQUEST_COST_ESTIMATE: '50',
+    REQUEST_COST_ESTIMATE: '60',
     MAX_MESSAGE_LENGTH: '2000',
     MAX_HISTORY_TURNS: '10',
     ALLOWED_ORIGINS: 'https://airlens.cloud',
     CHAT_MODEL: '@cf/google/gemma-4-26b-a4b-it',
     EMBEDDING_MODEL: '@cf/baai/bge-m3',
-    MAX_TOKENS: '1024',
+    MAX_TOKENS: '2048',
     TEMPERATURE: '0.3',
     REASONING_EFFORT: 'low',
     RAG_TOP_K: '5',
@@ -41,6 +41,26 @@ function nativeSseStream(words: string[]): ReadableStream<Uint8Array> {
   });
 }
 
+/** OpenAI-compatible SSE stream (`data: {"choices":[{"delta":{"content":"..."}}]}`
+ *  frames, final frame carrying `finish_reason`) — the shape actually served
+ *  in production (confirmed via real-retrieval probes, A-5 follow-up round
+ *  2); `nativeSseStream` above is the OTHER documented shape and never
+ *  carries `finish_reason`, which is why those tests assert `finish_reason:
+ *  null` in their `done` event. */
+function openAiSseStream(words: string[], finishReason: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const w of words) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: w } }] })}\n\n`));
+      }
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: finishReason }] })}\n\n`));
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+}
+
 /** `run` mock that answers bge-m3 embedding calls (input.text present) and
  *  gemma chat calls (input.messages present, stream:true) differently. */
 function makeAiRun(replyWords: string[]) {
@@ -50,6 +70,18 @@ function makeAiRun(replyWords: string[]) {
       return { data: texts.map(() => [0.1, 0.2, 0.3]) };
     }
     return nativeSseStream(replyWords);
+  });
+}
+
+/** Same as makeAiRun, but the chat call answers with the OpenAI-compatible
+ *  shape (openAiSseStream) so `finish_reason` is present. */
+function makeAiRunOpenAiShape(replyWords: string[], finishReason: string) {
+  return vi.fn(async (_model: string, input: { text?: string | string[]; messages?: unknown }) => {
+    if (input.text !== undefined) {
+      const texts = Array.isArray(input.text) ? input.text : [input.text];
+      return { data: texts.map(() => [0.1, 0.2, 0.3]) };
+    }
+    return openAiSseStream(replyWords, finishReason);
   });
 }
 
@@ -87,7 +119,8 @@ describe('buildRagStream', () => {
       ' ',
       'there',
     ]);
-    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general' });
+    // nativeSseStream never carries finish_reason (see openAiSseStream doc comment).
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general', finish_reason: null });
   });
 
   it('emits a citations event before any token event when Vectorize returns matches', async () => {
@@ -117,7 +150,29 @@ describe('buildRagStream', () => {
     const stream = await buildRagStream(env, 'hi', [], 'exhausted');
     const events = await collectEvents(stream);
     // Assert
-    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general' });
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general', finish_reason: null });
+  });
+
+  it('surfaces finish_reason:"length" in the done event when MAX_TOKENS was exhausted mid-answer — the A-5 truncation shape, now observable without wrangler tail (A-5 follow-up round 2)', async () => {
+    // Arrange
+    const run = makeAiRunOpenAiShape(['DQSS(Data Quality'], 'length');
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    const stream = await buildRagStream(env, 'DQSS 점수가 뭔가요?', [], 'ok');
+    const events = await collectEvents(stream);
+    // Assert
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general', finish_reason: 'length' });
+  });
+
+  it('surfaces finish_reason:"stop" in the done event for a complete answer', async () => {
+    // Arrange
+    const run = makeAiRunOpenAiShape(['Hello there'], 'stop');
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    const stream = await buildRagStream(env, 'hi', [], 'ok');
+    const events = await collectEvents(stream);
+    // Assert
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general', finish_reason: 'stop' });
   });
 
   it('reports the classified intent in the done event instead of a hardcoded "general" (C3)', async () => {
@@ -192,7 +247,7 @@ describe('buildRagStream', () => {
     expect(tokenEvents).toHaveLength(1);
     expect(tokenEvents[0].content).toContain('could not produce an answer');
     expect(tokenEvents[0].content).toContain('답변을 생성하지 못했습니다');
-    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general' });
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general', finish_reason: null });
     // ...and it's logged, not silently swallowed (this is what a naive fix
     // that only added the user-facing notice, without also fixing the
     // silent-failure observability gap, would still get wrong).
@@ -255,7 +310,8 @@ describe('buildDegradedStream', () => {
     expect(events[0].type).toBe('citations');
     const tokenEvent = events.find((e) => e.type === 'token');
     expect(tokenEvent?.content).toContain('AQI scale');
-    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general' });
+    // buildDegradedStream never calls env.AI.run for generation — finish_reason is always null.
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general', finish_reason: null });
   });
 
   it('says plainly that nothing was found when retrieval has no matches (never fabricates a source)', async () => {

@@ -119,6 +119,11 @@ export interface GenerateResult {
   text: string;
   /** Cloudflare's stop reason when it reports one ('length' = truncated). */
   finishReason: string | null;
+  /** Cloudflare's own reported per-call neuron cost (result.usage.neurons),
+   *  null when the envelope carried no usage block — added 2026-09-03 (A-5
+   *  follow-up round 2, non-reasoning model A/B) so model-ab.eval.test.ts can
+   *  report real neurons/turn per candidate, not just answer quality. */
+  neurons: number | null;
 }
 
 /**
@@ -154,6 +159,7 @@ interface WorkersAiEnvelope {
     response?: unknown;
     finish_reason?: unknown;
     choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }>;
+    usage?: { neurons?: unknown };
   };
 }
 
@@ -166,7 +172,7 @@ interface WorkersAiEnvelope {
  * while a response we cannot parse is a broken measurement that must not be
  * scored as if the model had said nothing.
  */
-export function extractAnswer(json: unknown): { text: string; finishReason: string | null } {
+export function extractAnswer(json: unknown): { text: string; finishReason: string | null; neurons: number | null } {
   const env = json as WorkersAiEnvelope;
   if (env?.success === false) {
     const msg = (env.errors ?? []).map((e) => e?.message).filter(Boolean).join('; ');
@@ -179,6 +185,8 @@ export function extractAnswer(json: unknown): { text: string; finishReason: stri
   const choice = result.choices?.[0];
   const raw = typeof result.response === 'string' ? result.response : choice?.message?.content;
   const finish = result.finish_reason ?? choice?.finish_reason;
+  const neuronsRaw = result.usage?.neurons;
+  const neurons = typeof neuronsRaw === 'number' ? neuronsRaw : null;
   if (typeof raw !== 'string') {
     // A-5 (2026-09-03): this exact throw fired against the real SYSTEM_PROMPT
     // + a populated <retrieved_context> block on MAX_TOKENS=512 — the
@@ -196,7 +204,7 @@ export function extractAnswer(json: unknown): { text: string; finishReason: stri
       `Workers AI response shape mismatch: neither result.response nor result.choices[0].message.content is a string${hint}`,
     );
   }
-  return { text: raw.trim(), finishReason: typeof finish === 'string' ? finish : null };
+  return { text: raw.trim(), finishReason: typeof finish === 'string' ? finish : null, neurons };
 }
 
 // Transient on Cloudflare's side, not a statement about the model. Retry
@@ -255,11 +263,12 @@ export async function generateAnswer(
       `Workers AI HTTP ${res.status} for ${req.model}${retried}: ${body.slice(0, 300)}`,
     );
   }
-  const { text, finishReason } = extractAnswer(await res.json());
+  const { text, finishReason, neurons } = extractAnswer(await res.json());
   return {
     model: req.model,
     evidence: messages[0].content,
     text,
     finishReason,
+    neurons,
   };
 }

@@ -115,7 +115,7 @@ export interface GuardrailResult {
 export type ChatStreamEvent =
   | { type: 'token'; content: string }
   | { type: 'citations'; citations: ChatCitationWire[] }
-  | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent };
+  | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent; finish_reason: string | null };
 
 export interface ChatCitationWire {
   source_title: string;

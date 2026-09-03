@@ -119,6 +119,7 @@ describe('extractAnswer', () => {
     expect(extractAnswer({ result: { response: '  hi  ' } })).toEqual({
       text: 'hi',
       finishReason: null,
+      neurons: null,
     });
   });
 
@@ -126,7 +127,7 @@ describe('extractAnswer', () => {
     // Arrange
     const json = { result: { choices: [{ message: { content: 'hi' }, finish_reason: 'length' }] } };
     // Act / Assert
-    expect(extractAnswer(json)).toEqual({ text: 'hi', finishReason: 'length' });
+    expect(extractAnswer(json)).toEqual({ text: 'hi', finishReason: 'length', neurons: null });
   });
 
   it('returns empty text for an empty answer — a real, measurable failure', () => {
@@ -135,7 +136,7 @@ describe('extractAnswer', () => {
     // parseWranglerVars's doc comment).
     const json = { result: { response: '', finish_reason: 'length' } };
     // Act / Assert
-    expect(extractAnswer(json)).toEqual({ text: '', finishReason: 'length' });
+    expect(extractAnswer(json)).toEqual({ text: '', finishReason: 'length', neurons: null });
   });
 
   it('throws on an unknown shape instead of scoring it as silence', () => {
@@ -168,6 +169,11 @@ describe('extractAnswer', () => {
     expect(() => extractAnswer({ success: false, errors: [{ message: 'no such model' }] })).toThrow(
       /no such model/,
     );
+  });
+
+  it('reads result.usage.neurons when present — non-reasoning model A/B (2026-09-03) reports real neurons/turn', () => {
+    const json = { result: { response: 'hi', usage: { neurons: 12.34 } } };
+    expect(extractAnswer(json)).toEqual({ text: 'hi', finishReason: null, neurons: 12.34 });
   });
 });
 
