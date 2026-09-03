@@ -53,7 +53,12 @@ export type ChatBudgetStatus = 'ok' | 'exhausted'
 export type ChatStreamEvent =
   | { type: 'token'; content: string }
   | { type: 'citations'; citations: ChatCitation[] }
-  | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent }
+  // finish_reason mirrors the Workers AI upstream signal ('stop' = complete
+  // answer, 'length' = MAX_TOKENS exhausted mid-answer — the A-5 truncation
+  // shape). Optional: the client-synthesized `done` events for the
+  // exhausted-budget/error paths in api/assistant.ts never call the model,
+  // so they omit it rather than fabricate a value.
+  | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent; finish_reason?: string | null }
 
 export type ChatErrorCode = 'turnstile_failed' | 'rate_limited' | 'quota_exceeded' | 'origin_denied' | 'invalid_body'
 

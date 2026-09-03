@@ -19,8 +19,11 @@ name: Assistant PR gates (live)
 # assistant-model-ab.yml (which stays for the paid, human-invoked model A/B
 # + judge-scored quality eval).
 #
-# Cost: 1 generation call + 6 embed/query pairs per run, only when
-# workers/assistant changed. Uses the same CLOUDFLARE_ACCOUNT_ID /
+# Cost: 2 generation calls + 2 embed/query pairs (generation smoke, round 2:
+# real retrieval per incident question — see eval/generation-smoke.eval.test.ts's
+# own header for why a synthetic fixture wasn't trustworthy here) + 6
+# embed/query pairs (retrieval recall@3) per run, only when workers/assistant
+# changed. Uses the same CLOUDFLARE_ACCOUNT_ID /
 # CLOUDFLARE_WORKERS_AI_TOKEN secrets assistant-model-ab.yml already has
 # provisioned (the token needs both the "Workers AI" and "Vectorize" (Read)
 # permission groups — retrieval.eval.test.ts's own header documents why).

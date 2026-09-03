@@ -57,39 +57,49 @@ DAILY_MESSAGE_LIMIT = "30"
 # real gemma+bge-m3 call behind this guard, so both are recalibrated together:
 #
 #   REQUEST_COST_ESTIMATE — per-chat-turn neuron estimate. Recalibrated
-#   2026-09-03 (A-5 follow-up) from MEASURED values, not the original's
-#   ~1400-token assumption — direct env.AI.run() probes with the real
-#   SYSTEM_PROMPT + a realistic 5-citation grounded-context block measured
-#   prompt_tokens=1843-1844 (44% higher than assumed), and MAX_TOKENS is now
-#   1024 (was 512, see above). Using the same published Workers AI neuron
-#   pricing (developers.cloudflare.com/workers-ai/platform/pricing/):
+#   2026-09-03 (A-5 follow-up, round 2) after live production re-testing
+#   showed MAX_TOKENS=1024 (round 1's value, validated only against a
+#   synthetic FAKE_MATCHES fixture) still truncated real answers to 7-37
+#   chars. Round 2 probed with REAL Vectorize retrieval (embedQuery +
+#   queryCorpus against the live corpus, not synthetic citations) for both
+#   production incident questions — real citation text draws measurably more
+#   reasoning-token budget than the synthetic fixture did, which is why the
+#   round-1 gate passed while production failed. 1024 and 1536 both
+#   truncated or ran with an uncomfortably thin margin against observed
+#   run-to-run variance (temperature=0.3 produced a ~135-completion-token
+#   swing across repeated runs of the same question); MAX_TOKENS=2048 is the
+#   first value with a comfortable safety margin (worst observed run used
+#   1424/2048 = 70%, leaving 624 tokens of headroom) and is now adopted (see
+#   MAX_TOKENS below). Using the same published Workers AI neuron pricing
+#   (developers.cloudflare.com/workers-ai/platform/pricing/):
 #   gemma-4-26b-a4b-it ≈ 9091 neurons/M input tokens + 27273 neurons/M output
 #   tokens; bge-m3 ≈ 1075 neurons/M input tokens (query embed, ~30 tokens,
 #   negligible). Worst case — a turn that fills the whole MAX_TOKENS budget
-#   (finish_reason:"length", the exact A-5 failure shape) — at prompt_tokens
-#   1843 + completion_tokens 1024: 9091*1843/1e6 ≈ 16.8 neurons (input) +
-#   27273*1024/1e6 ≈ 27.9 neurons (output) ≈ 44.7 neurons. Cross-checked
-#   against the API's own reported `usage.neurons` on two real-prompt probes
-#   (max_tokens=1024 → 36.85 neurons at completion_tokens=737;
-#   max_tokens=2048 → 42.65 neurons at completion_tokens=949) — linear fit
-#   through those two points extrapolates to ~44.7 neurons at
-#   completion_tokens=1024, matching the pricing-table calculation exactly.
-#   Rounded up to 50 for headroom (same ~10-15% margin the original 21→25
-#   rounding used).
+#   (finish_reason:"length") — at prompt_tokens 1843 (round-1's measured
+#   ceiling; round 2's real-retrieval prompts measured 1736-1743, so 1843
+#   remains a conservative input-token estimate) + completion_tokens 2048:
+#   9091*1843/1e6 ≈ 16.8 neurons (input) + 27273*2048/1e6 ≈ 55.9 neurons
+#   (output) ≈ 72.6 neurons. Cross-checked against the API's own reported
+#   `usage.neurons` on two REAL-retrieval probes at max_tokens=2048
+#   (completion_tokens=1061 → 44.72 neurons; completion_tokens=1424 → 54.68
+#   neurons) — linear fit through those two points extrapolates to ~71.8
+#   neurons at completion_tokens=2048, matching the pricing-table
+#   calculation within 1%. Rounded up to 80 for headroom (~10% margin, same
+#   convention as the round-1 44.7→50 rounding).
 #
 #   DAILY_REQUEST_BUDGET — set to Workers AI's daily free-tier neuron
 #   allocation (10,000/day, a platform constant — not tunable here) so
 #   checkGlobalBudget (quota.ts) degrades to the RAG-only response
 #   (chat-stream.ts buildDegradedStream — zero generation cost) once the
 #   account's free neurons for the day are spent, rather than silently
-#   running past them into billed usage. At 50 neurons/turn this is ~200
-#   chat turns/day before degrading (down from the previous ~400 estimate —
-#   that number was based on an undercounted prompt size and was never a
-#   real safety margin at this system prompt's actual length). 200 turns/day
-#   x worst-case 44.7 measured neurons/turn ≈ 8940 neurons, still under the
-#   10,000 free-tier cap even if every turn maxes out its answer.
+#   running past them into billed usage. At 80 neurons/turn this is
+#   10000/80 = 125 chat turns/day before degrading (down from round 1's ~200
+#   estimate — MAX_TOKENS doubling from 1024 to 2048 raised the worst-case
+#   output-neuron cost proportionally). 125 turns/day x worst-case 72.6
+#   measured-ceiling neurons/turn ≈ 9075 neurons, still under the 10,000
+#   free-tier cap even if every turn maxes out its answer.
 DAILY_REQUEST_BUDGET = "10000"
-REQUEST_COST_ESTIMATE = "50"
+REQUEST_COST_ESTIMATE = "80"
 MAX_MESSAGE_LENGTH = "2000"
 MAX_HISTORY_TURNS = "10"
 ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"
@@ -112,10 +122,31 @@ EMBEDDING_MODEL = "@cf/baai/bge-m3"
 # cap), contentFrames:0 — reproducing the production incident exactly.
 # Re-run at max_tokens=1024 with the same real prompt: finish_reason:"stop",
 # full answer content, completion_tokens=737/1024 (headroom, not truncated).
-# 1024 is the minimum of {1024, 2048} tested that doesn't truncate — adopted
-# per "budget is cost" (2048 also succeeded, at higher neuron cost, with no
-# added correctness benefit measured).
-MAX_TOKENS = "1024"
+# Round 1 adopted 1024 as "the minimum tested that doesn't truncate" — but
+# that test used a synthetic FAKE_MATCHES fixture, not real retrieval. Live
+# production re-gate (2026-09-03) at 1024 still truncated both incident
+# questions to 7-37 chars, disproving round 1's fixture-based conclusion.
+#
+# Round 2 re-measured with REAL Vectorize retrieval (embedQuery + queryCorpus
+# against the live corpus, same real SYSTEM_PROMPT) for both exact incident
+# questions ("DQSS 점수가 뭔가요?", "AQI 등급은 어떻게 계산하나요?"):
+#   max_tokens=2048 → both finish_reason:"stop", full answers (527 and 631
+#     chars respectively), completion_tokens 1061/2048 and 1424/2048.
+#   max_tokens=1536 → both also finish_reason:"stop" in this run
+#     (completion_tokens 1006/1536, 1289/1536) — but re-running the same
+#     questions is NOT deterministic (temperature=0.3): completion_tokens for
+#     the AQI question varied 1289→1424 (a 135-token swing) across separate
+#     runs at different caps, meaning 1536's ~250-token margin in one run
+#     could have been a truncation in another. 2048's worst observed margin
+#     (624 tokens, 30% of budget) comfortably absorbs that variance; 1536
+#     does not.
+#   No documented model-level output-token ceiling was found (Workers AI
+#   catalog schema for this model lists max_tokens/max_completion_tokens as
+#   unbounded integers; the only published limit, 256K tokens, is the INPUT
+#   context window).
+# 2048 adopted — not the single lowest value that happened to pass once, but
+# the lowest value with margin over measured run-to-run variance.
+MAX_TOKENS = "2048"
 TEMPERATURE = "0.3"
 # CHAT_MODEL is a reasoning-capable model — its thinking tokens draw from the
 # SAME MAX_TOKENS budget as the visible answer. Left unset, some questions

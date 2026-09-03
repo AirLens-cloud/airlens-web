@@ -37,32 +37,45 @@ function sseLine(event: ChatStreamEvent): Uint8Array {
  * `{"choices":[{"delta":{"content":"..."}}]}` frame — so both are read here
  * (same duality the retired chatbot worker's postprocess.ts had to handle).
  * A `reasoning_content` delta (thinking-model chain of thought) is dropped,
- * never forwarded — it is not an answer.
+ * never forwarded — it is not an answer. `finish_reason` (present on the
+ * OpenAI-compatible shape's final frame — 'stop' for a complete answer,
+ * 'length' when MAX_TOKENS was exhausted mid-answer, the A-5 failure shape)
+ * is surfaced so the caller can report it in the `done` event — added
+ * 2026-09-03 (A-5 follow-up round 2) so truncation is visible to the client
+ * without a `wrangler tail` session every time.
  */
-function parseUpstreamFrame(frame: string): { token: string | null; done: boolean } {
+function parseUpstreamFrame(frame: string): { token: string | null; done: boolean; finishReason: string | null } {
   const trimmed = frame.trim();
-  if (!trimmed.startsWith('data:')) return { token: null, done: false };
+  if (!trimmed.startsWith('data:')) return { token: null, done: false, finishReason: null };
   const payload = trimmed.slice('data:'.length).trim();
-  if (payload === '[DONE]' || payload === '') return { token: null, done: payload === '[DONE]' };
+  if (payload === '[DONE]' || payload === '') return { token: null, done: payload === '[DONE]', finishReason: null };
   try {
     const parsed = JSON.parse(payload) as {
       response?: unknown;
-      choices?: Array<{ delta?: { content?: unknown; reasoning_content?: unknown } }>;
+      choices?: Array<{ delta?: { content?: unknown; reasoning_content?: unknown }; finish_reason?: unknown }>;
     };
-    if (typeof parsed.response === 'string') return { token: parsed.response, done: false };
+    const finishReasonRaw = parsed.choices?.[0]?.finish_reason;
+    const finishReason = typeof finishReasonRaw === 'string' ? finishReasonRaw : null;
+    if (typeof parsed.response === 'string') return { token: parsed.response, done: false, finishReason };
     const delta = parsed.choices?.[0]?.delta;
-    if (typeof delta?.content === 'string') return { token: delta.content, done: false };
-    return { token: null, done: false };
+    if (typeof delta?.content === 'string') return { token: delta.content, done: false, finishReason };
+    return { token: null, done: false, finishReason };
   } catch {
-    return { token: null, done: false };
+    return { token: null, done: false, finishReason: null };
   }
 }
 
 /**
  * Re-shapes the raw Workers AI SSE byte stream into this worker's own
- * `token` events, buffering partial frames across chunk boundaries.
+ * `token` events, buffering partial frames across chunk boundaries. The
+ * async-generator shape can only yield tokens, so `finish_reason` (last one
+ * seen across all frames) is written into the caller-supplied `finishOut`
+ * ref instead of being yielded — read it after the `for await` loop ends.
  */
-async function* upstreamTokens(upstream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+async function* upstreamTokens(
+  upstream: ReadableStream<Uint8Array>,
+  finishOut: { value: string | null },
+): AsyncGenerator<string> {
   const reader = upstream.getReader();
   let buffer = '';
   try {
@@ -75,13 +88,15 @@ async function* upstreamTokens(upstream: ReadableStream<Uint8Array>): AsyncGener
       while (separatorIndex !== -1) {
         const frame = buffer.slice(0, separatorIndex);
         buffer = buffer.slice(separatorIndex + 2);
-        const { token, done: upstreamDone } = parseUpstreamFrame(frame);
+        const { token, done: upstreamDone, finishReason } = parseUpstreamFrame(frame);
+        if (finishReason) finishOut.value = finishReason;
         if (upstreamDone) return;
         if (token) yield token;
         separatorIndex = buffer.indexOf('\n\n');
       }
     }
-    const { token } = parseUpstreamFrame(buffer);
+    const { token, finishReason } = parseUpstreamFrame(buffer);
+    if (finishReason) finishOut.value = finishReason;
     if (token) yield token;
   } finally {
     reader.releaseLock();
@@ -152,8 +167,9 @@ export async function buildRagStream(
         controller.enqueue(sseLine({ type: 'citations', citations }));
       }
       let tokenCount = 0;
+      const finishOut: { value: string | null } = { value: null };
       try {
-        for await (const token of upstreamTokens(upstream)) {
+        for await (const token of upstreamTokens(upstream, finishOut)) {
           tokenCount++;
           controller.enqueue(sseLine({ type: 'token', content: token }));
         }
@@ -170,7 +186,12 @@ export async function buildRagStream(
         );
         controller.enqueue(sseLine({ type: 'token', content: `${GENERATION_EMPTY_NOTICE_EN}\n${GENERATION_EMPTY_NOTICE_KO}` }));
       }
-      controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent }));
+      // finish_reason:'length' means MAX_TOKENS was exhausted mid-answer —
+      // the exact A-5 failure shape. Surfaced here (2026-09-03, A-5 follow-up
+      // round 2) so the client — and `wrangler tail`-less debugging — can
+      // tell a truncated answer from a complete one without re-running the
+      // whole diagnostic every time.
+      controller.enqueue(sseLine({ type: 'done', budget: budgetStatus, intent, finish_reason: finishOut.value }));
       controller.close();
     },
   });
@@ -227,7 +248,9 @@ export async function buildDegradedStream(env: Env, userMessage: string, page?: 
     start(controller) {
       if (citations.length > 0) controller.enqueue(sseLine({ type: 'citations', citations }));
       controller.enqueue(sseLine({ type: 'token', content: body }));
-      controller.enqueue(sseLine({ type: 'done', budget: 'exhausted', intent }));
+      // No env.AI.run() call happens on this degraded path — finish_reason
+      // is not applicable (never generated, never truncated).
+      controller.enqueue(sseLine({ type: 'done', budget: 'exhausted', intent, finish_reason: null }));
       controller.close();
     },
   });
