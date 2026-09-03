@@ -41,6 +41,18 @@ describe('safety — prompt rules forbidding bare causal assertions are pinned',
     expect(system).toContain('O3 exposure');
   });
 
+  it('the closing disclaimer required by WEB_PRD §3.11 is pinned in both languages', () => {
+    // Arrange / Act — WEB_PRD.md:739 states the standard verbatim: every
+    // answer ends with "이 답변은 참고용입니다. 건강 관련 결정은 의사와
+    // 상담하세요". The worker shipped without it until 2026-09-03, so this
+    // pins the instruction rather than trusting a code reading of prompts.ts.
+    const system = buildMessages('q', [], 3, '', false)[0].content;
+    // Assert — the canonical Korean sentence and its English counterpart, so
+    // dropping either half is a red test and not a silent regression.
+    expect(system).toContain('이 답변은 참고용입니다. 건강 관련 결정은 의사와 상담하세요.');
+    expect(system).toContain('consult a doctor for health-related decisions');
+  });
+
   it('the security_rules section forbids revealing the system prompt', () => {
     // Arrange / Act — the general-path system prompt (no causal_reasoning),
     // exercising the boundary that stands in for the missing
