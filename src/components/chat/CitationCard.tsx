@@ -22,8 +22,43 @@ function citationHost(url: string): string {
   }
 }
 
+/** Resolving against an origin that can never be a real destination and
+ *  comparing origins (rather than pattern-matching the prefix) is the only
+ *  test that matches what the browser will actually do with the string —
+ *  a naive `startsWith('/') && !startsWith('//')` check still lets
+ *  `/\evil.com/pwn` through (browsers fold `\` into `/` before resolving),
+ *  which resolves off-origin while looking like a same-site path. Ported
+ *  from the retired chatbot worker's grounding.ts citationUrl(). */
+const SAFE_HREF_RESOLVE_BASE = 'https://citation-href-resolve.invalid'
+
+/** Workers/assistant's `chat-stream.ts` streams `source_url` straight from
+ *  whatever `POST /api/admin/reindex` accepted into Vectorize metadata — an
+ *  unvalidated `javascript:`/`data:` value reaching `href` here would be
+ *  stored XSS. The worker validates on the way in (index.ts isValidSourceUrl)
+ *  but this component must not assume that invariant holds for every value
+ *  it is ever handed (DesignGallery demo data, a future second producer). */
+function isSafeCitationHref(url: string): boolean {
+  const trimmed = url.trim()
+  if (trimmed === '') return false
+  if (trimmed.startsWith('/')) {
+    try {
+      const resolved = new URL(trimmed, SAFE_HREF_RESOLVE_BASE)
+      return resolved.origin === SAFE_HREF_RESOLVE_BASE
+    } catch {
+      return false
+    }
+  }
+  try {
+    const parsed = new URL(trimmed)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export default function CitationCard({ citation, index = 0 }: CitationCardProps) {
-  const url = citation.source_url
+  const rawUrl = citation.source_url
+  const url = rawUrl && isSafeCitationHref(rawUrl) ? rawUrl : null
   const relevance = citation.relevance
 
   // Retrieval relevance, not confidence. Omitted entirely when the worker had
@@ -47,12 +82,6 @@ export default function CitationCard({ citation, index = 0 }: CitationCardProps)
   return (
     <li>
       {url ? (
-        // TODO(backend wiring): `url` is only ever DesignGallery demo data
-        // right now (dead path — no live citation source exists yet). Once a
-        // real chat backend can populate `source_url`, validate the protocol
-        // here (allow http/https only) before using it as `href` — an
-        // unvalidated `javascript:`/`data:` URL from a model response would
-        // be an XSS vector.
         <a
           href={url}
           target="_blank"

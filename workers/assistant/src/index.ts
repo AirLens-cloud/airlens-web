@@ -105,9 +105,17 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   }
   const { lastUserMessage, history } = split;
 
+  // Length cap applies to every message, not just the current turn — history
+  // entries feed straight into the gemma prompt (prompts.ts buildMessages)
+  // just as much as lastUserMessage does, so a client that stuffed one giant
+  // message into history while keeping the current turn short would bypass
+  // a check that only looked at lastUserMessage (denial-of-wallet vector).
   const maxLen = parseInt(env.MAX_MESSAGE_LENGTH, 10);
-  if (Number.isFinite(maxLen) && maxLen > 0 && lastUserMessage.length > maxLen) {
-    return errorJson(`Message too long (max ${maxLen} characters)`, 400, 'invalid_body', corsHeaders);
+  if (Number.isFinite(maxLen) && maxLen > 0) {
+    const tooLong = lastUserMessage.length > maxLen || history.some((m) => m.content.length > maxLen);
+    if (tooLong) {
+      return errorJson(`Message too long (max ${maxLen} characters)`, 400, 'invalid_body', corsHeaders);
+    }
   }
 
   const ip = getClientIp(req);
@@ -123,15 +131,27 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
     return errorJson('Daily chat limit reached. Try again tomorrow.', 429, 'quota_exceeded', corsHeaders, dailyQuota.retryAfterSeconds);
   }
 
-  // Global budget exhaustion degrades the response (reported via the `done`
-  // event's `budget` field) rather than rejecting the request outright — the
-  // retired chatbot worker's same policy. Degraded now means "RAG lookup
-  // only, no gemma call" (buildDegradedStream) instead of C1's plain echo,
-  // since a real generation is the actual cost this guard protects.
-  const budget = await checkGlobalBudget(env);
-  const stream = budget.allowed
-    ? await buildRagStream(env, lastUserMessage, history, 'ok')
-    : await buildDegradedStream(env, lastUserMessage);
+  let stream: ReadableStream<Uint8Array>;
+  try {
+    // Global budget exhaustion degrades the response (reported via the
+    // `done` event's `budget` field) rather than rejecting the request
+    // outright — the retired chatbot worker's same policy. Degraded now
+    // means "RAG lookup only, no gemma call" (buildDegradedStream) instead
+    // of C1's plain echo, since a real generation is the actual cost this
+    // guard protects.
+    const budget = await checkGlobalBudget(env);
+    stream = budget.allowed
+      ? await buildRagStream(env, lastUserMessage, history, 'ok')
+      : await buildDegradedStream(env, lastUserMessage);
+  } catch (err) {
+    // buildRagStream awaits env.AI.run(CHAT_MODEL, ...) before it ever
+    // returns a stream — a Workers AI outage/error (quota, model down)
+    // throws here, before any bytes reach the client, so a clean 500 is
+    // still possible (unlike a mid-stream failure, which chat-stream.ts's
+    // own try/catch already degrades gracefully into a `done` event).
+    console.error('[assistant] chat stream setup failed:', err instanceof Error ? err.message : err);
+    return errorJson('Chat service unavailable', 500, undefined, corsHeaders);
+  }
 
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
@@ -142,35 +162,115 @@ async function handleChat(req: Request, env: Env, corsHeaders: Record<string, st
   return new Response(stream, { status: 200, headers });
 }
 
+const VALID_MESSAGE_ROLES = new Set(['user', 'assistant']);
+
 /**
- * Splits the wire array into the last user-role message (the turn to answer)
- * and everything else in order (the conversation history passed to
- * prompts.ts buildMessages). Returns null when no user turn is present. The
- * client is expected to send `history + [current user message]` — pulling
- * the message back out here (rather than trusting a separate field) keeps
- * the wire contract to the one `messages` array design §2 defines.
+ * Splits the wire array into the last user-role message (the turn to
+ * answer) and everything else in order (the conversation history passed to
+ * prompts.ts buildMessages). Returns null when no user turn is present OR
+ * when any entry fails validation — every entry's `role` must be in
+ * VALID_MESSAGE_ROLES and `content` must be a string. Without this, a
+ * client could forge `{role: "system", content: "..."}` (or any other
+ * string) into `messages`; it would flow straight through into the
+ * `history` array `buildMessages` folds into the chat call, and Workers
+ * AI's chat schema accepts an arbitrary `role` string per message — so an
+ * unvalidated entry is a second, attacker-controlled system prompt.
+ *
+ * The client is expected to send `history + [current user message]` —
+ * pulling the message back out here (rather than trusting a separate field)
+ * keeps the wire contract to the one `messages` array design §2 defines.
  */
 function splitLastUserMessage(messages: unknown): { lastUserMessage: string; history: ChatMessageWire[] } | null {
   if (!Array.isArray(messages)) return null;
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const m = messages[i] as Partial<ChatMessageWire> | undefined;
-    if (m && m.role === 'user' && typeof m.content === 'string' && m.content.length > 0) {
-      const history = (messages as ChatMessageWire[]).filter((_, idx) => idx !== i);
-      return { lastUserMessage: m.content, history };
+  for (const entry of messages) {
+    const m = entry as Partial<ChatMessageWire> | undefined;
+    if (!m || typeof m.role !== 'string' || !VALID_MESSAGE_ROLES.has(m.role) || typeof m.content !== 'string') {
+      return null;
+    }
+  }
+  const typed = messages as ChatMessageWire[];
+  for (let i = typed.length - 1; i >= 0; i -= 1) {
+    if (typed[i].role === 'user' && typed[i].content.length > 0) {
+      const history = typed.filter((_, idx) => idx !== i);
+      return { lastUserMessage: typed[i].content, history };
     }
   }
   return null;
 }
 
+/** Hard ceilings on one reindex request — an operator-triggered corpus of
+ *  ~60 real chunks (scripts/build-corpus.mjs) sits nowhere near either
+ *  limit; both exist to bound the blast radius of a compromised or
+ *  misconfigured caller (embedding-cost abuse, oversized Vectorize
+ *  metadata). MAX_CHUNK_TEXT_CHARS is well under bge-m3's own input-token
+ *  ceiling so `text` is never silently truncated by the model. */
+const MAX_CHUNKS_PER_REQUEST = 500;
+const MAX_CHUNK_TEXT_CHARS = 4000;
+const VALID_CHUNK_CATEGORIES = new Set(['methodology', 'faq', 'glossary', 'about', 'legal', 'static']);
+
+/** Same resolve-and-compare-origin technique as the retired chatbot
+ *  worker's grounding.ts citationUrl() (and this repo's CitationCard.tsx
+ *  isSafeCitationHref, which trusts this function to have already run) —
+ *  a prefix test like `startsWith('/') && !startsWith('//')` still lets
+ *  `/\evil.com/pwn` through, since browsers fold `\` into `/` before
+ *  resolving. Only http/https absolute or same-origin relative paths pass;
+ *  everything else (`javascript:`, `data:`, protocol-relative `//...`) is
+ *  rejected outright — a chunk's source_url becomes an `<a href>` in
+ *  CitationCard, so this is the reindex-time half of that XSS boundary. */
+const SOURCE_URL_RESOLVE_BASE = 'https://reindex-source-url-resolve.invalid';
+
+function isValidSourceUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed === '') return false;
+  if (trimmed.startsWith('/')) {
+    try {
+      const resolved = new URL(trimmed, SOURCE_URL_RESOLVE_BASE);
+      return resolved.origin === SOURCE_URL_RESOLVE_BASE;
+    } catch {
+      return false;
+    }
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/** Full per-chunk schema + content validation. A chunk failing any of these
+ *  would otherwise reach reindexChunks (rag.ts) and either error opaquely
+ *  (bge-m3 rejecting a malformed `text`) or, worse, succeed with a value
+ *  that later reaches an LLM prompt or an `<a href>` unchecked. */
+function isValidChunk(chunk: unknown): chunk is { id: string; text: string; source_title: string; source_url: string; category: string } {
+  if (!chunk || typeof chunk !== 'object') return false;
+  const c = chunk as Record<string, unknown>;
+  return (
+    typeof c.id === 'string' &&
+    c.id.length > 0 &&
+    typeof c.text === 'string' &&
+    c.text.length > 0 &&
+    c.text.length <= MAX_CHUNK_TEXT_CHARS &&
+    typeof c.source_title === 'string' &&
+    c.source_title.length > 0 &&
+    typeof c.source_url === 'string' &&
+    isValidSourceUrl(c.source_url) &&
+    typeof c.category === 'string' &&
+    VALID_CHUNK_CATEGORIES.has(c.category)
+  );
+}
+
 async function handleReindex(req: Request, env: Env, corsHeaders: Record<string, string>): Promise<Response> {
   // Fails CLOSED, unlike the user-facing guards above — an unauthenticated
   // reindex is a corpus-poisoning vector (an attacker's text becomes the
-  // model's "retrieved evidence"), not merely an availability tradeoff.
-  if (!env.ADMIN_REINDEX_SECRET) {
-    return errorJson('Reindex endpoint is not configured', 503, undefined, corsHeaders);
-  }
+  // model's "retrieved evidence"), not merely an availability tradeoff. An
+  // unset secret is folded into the same 401 as a wrong one (rather than a
+  // distinguishable 503) so an unauthenticated caller can't probe whether
+  // this endpoint has been provisioned yet.
   const provided = req.headers.get('x-admin-secret');
-  if (!provided || !timingSafeEqual(provided, env.ADMIN_REINDEX_SECRET)) {
+  const configured = env.ADMIN_REINDEX_SECRET;
+  if (!configured || !provided || !timingSafeEqual(provided, configured)) {
+    console.warn('[assistant] reindex auth failed:', configured ? 'bad or missing x-admin-secret' : 'ADMIN_REINDEX_SECRET not configured');
     return errorJson('Unauthorized', 401, undefined, corsHeaders);
   }
 
@@ -182,6 +282,17 @@ async function handleReindex(req: Request, env: Env, corsHeaders: Record<string,
   }
   if (!Array.isArray(body.chunks) || body.chunks.length === 0) {
     return errorJson('chunks must be a non-empty array', 400, 'invalid_body', corsHeaders);
+  }
+  if (body.chunks.length > MAX_CHUNKS_PER_REQUEST) {
+    return errorJson(`chunks exceeds the ${MAX_CHUNKS_PER_REQUEST}-per-request limit`, 400, 'invalid_body', corsHeaders);
+  }
+  if (!body.chunks.every(isValidChunk)) {
+    return errorJson(
+      `every chunk needs a non-empty id/text/source_title, source_url must be http(s) or a same-origin path, text must be ≤${MAX_CHUNK_TEXT_CHARS} chars, and category must be one of ${[...VALID_CHUNK_CATEGORIES].join('/')}`,
+      400,
+      'invalid_body',
+      corsHeaders,
+    );
   }
 
   try {

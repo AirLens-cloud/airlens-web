@@ -88,9 +88,12 @@ export interface BudgetResult extends QuotaResult {
 
 /**
  * Global (account-wide) daily request budget guard — generalized from the
- * retired chatbot worker's checkNeuronBudget. C1 has no LLM cost yet (SSE
- * echo only), so REQUEST_COST_ESTIMATE is "1" for now; C2/C3 raise it once
- * real Workers AI calls are wired, without touching this function.
+ * retired chatbot worker's checkNeuronBudget. C1 had no LLM cost (SSE echo
+ * only), so REQUEST_COST_ESTIMATE was a placeholder "1"; C2 wired a real
+ * bge-m3 + gemma call behind this guard and recalibrated both
+ * REQUEST_COST_ESTIMATE and DAILY_REQUEST_BUDGET to actual Workers AI
+ * neuron pricing (wrangler.toml has the math) — this function itself is
+ * unchanged, only its two env inputs moved.
  */
 export async function checkGlobalBudget(env: Env): Promise<BudgetResult> {
   const budget = parseInt(env.DAILY_REQUEST_BUDGET, 10);

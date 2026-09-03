@@ -94,6 +94,25 @@ For ANY other topic (finance, politics, personal advice, coding, etc.), respond:
 air quality data, how AirLens's methodology works, or finding the right page for what you need."
 </response_format>`;
 
+/** Matches rag.ts's neutralizeContextDelimiters for the same reason, applied
+ *  to the one boundary tag this module owns: a message containing the
+ *  literal string `</user_query>` (or `<user_query>`) would otherwise close
+ *  — or spoof opening — the untrusted-input boundary early, letting
+ *  anything after it in the same string read as a system instruction rather
+ *  than user data. Unlike the corpus (admin-authored), this input is the
+ *  live end-user message — the highest-value target for this exact escape. */
+function neutralizeUserQueryDelimiters(text: string): string {
+  return text.replace(/<\/?user_query>/gi, (tag) => (tag.startsWith('</') ? '[/user_query]' : '[user_query]'));
+}
+
+/** Fallback used when `maxTurns` fails to parse to a positive finite number
+ *  (env.MAX_HISTORY_TURNS misconfigured/absent) — mirrors MAX_HISTORY_TURNS's
+ *  own wrangler.toml default. Without this guard, `history.slice(-NaN)`
+ *  is equivalent to `history.slice(0)`: JS treats a NaN slice bound as 0,
+ *  so a NaN maxTurns silently defeats history trimming entirely rather than
+ *  erroring, letting an arbitrarily long history reach every gemma call. */
+const DEFAULT_MAX_HISTORY_TURNS = 10;
+
 /**
  * Wraps the retrieval-grounded context block (rag.ts buildGroundedContext)
  * plus the system prompt and trimmed history into the message array
@@ -107,7 +126,8 @@ export function buildMessages(
   maxTurns: number,
   groundedContext: string,
 ): Array<{ role: string; content: string }> {
-  const trimmedHistory = history.slice(-maxTurns * 2);
+  const safeMaxTurns = Number.isFinite(maxTurns) && maxTurns > 0 ? maxTurns : DEFAULT_MAX_HISTORY_TURNS;
+  const trimmedHistory = history.slice(-safeMaxTurns * 2);
 
   const systemContent = `${SYSTEM_PROMPT}\n\n${groundedContext}`;
 
@@ -119,7 +139,7 @@ export function buildMessages(
 
   // Wrap user message as data, not instruction — same pattern as
   // <retrieved_context>: untrusted input stays inside a labeled boundary.
-  messages.push({ role: 'user', content: `<user_query>${userMessage}</user_query>` });
+  messages.push({ role: 'user', content: `<user_query>${neutralizeUserQueryDelimiters(userMessage)}</user_query>` });
 
   return messages;
 }

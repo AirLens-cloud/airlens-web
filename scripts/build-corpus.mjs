@@ -150,6 +150,17 @@ async function main() {
   const workerUrl = (process.argv[2] ?? 'http://localhost:8787').replace(/\/$/, '')
 
   const chunks = buildChunks()
+  if (chunks.length === 0) {
+    // Every content/*.ts import resolved to an empty array — most likely
+    // symptom of a broken import path or an upstream content-file rewrite
+    // that dropped its exports. Reporting "Done — 0 chunks indexed" here
+    // would look like a clean run while silently wiping the live corpus
+    // (an empty reindex batch is never sent, so this is the one place that
+    // failure is visible at all).
+    console.error('Built 0 chunks — content/*.ts sources look empty. Refusing to run (nothing to index).')
+    process.exitCode = 1
+    return
+  }
   const byCategory = chunks.reduce((acc, c) => ({ ...acc, [c.category]: (acc[c.category] ?? 0) + 1 }), {})
   console.log(`Built ${chunks.length} chunks:`, byCategory)
 

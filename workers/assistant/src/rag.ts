@@ -86,6 +86,19 @@ have grounded evidence from AirLens's own content for this question.
 </retrieved_context>`;
 
 /**
+ * Defuses the `<retrieved_context>` boundary tag inside interpolated chunk
+ * text. This corpus is admin-authored today (reindexChunks only runs from
+ * an authenticated POST /api/admin/reindex), but the tag-neutralization
+ * itself is cheap and belongs at the interpolation site regardless of who
+ * currently controls the content — the same defense the retired chatbot
+ * worker's grounding.ts applied to RSS-sourced text (neutralizeDelimiters),
+ * ported here rather than trusted-by-assumption.
+ */
+function neutralizeContextDelimiters(text: string): string {
+  return text.replace(/<\/?retrieved_context>/gi, (tag) => (tag.startsWith('</') ? '[/retrieved_context]' : '[retrieved_context]'));
+}
+
+/**
  * Structures retrieved chunks into a labeled evidence block for the system
  * prompt — ported pattern from the retired chatbot worker's grounding.ts
  * (numbered [1]/[2] entries + explicit "relevance is not a confidence score"
@@ -95,7 +108,12 @@ export function buildGroundedContext(matches: RetrievedMatch[]): string {
   if (matches.length === 0) return NO_EVIDENCE_BLOCK;
 
   const entries = matches
-    .map((m, i) => `[${i + 1}] source: ${m.metadata.source_title} (${m.metadata.source_url}) | retrieval relevance: ${m.score.toFixed(2)}\n${m.metadata.excerpt}`)
+    .map((m, i) => {
+      const title = neutralizeContextDelimiters(m.metadata.source_title);
+      const url = neutralizeContextDelimiters(m.metadata.source_url);
+      const excerpt = neutralizeContextDelimiters(m.metadata.excerpt);
+      return `[${i + 1}] source: ${title} (${url}) | retrieval relevance: ${m.score.toFixed(2)}\n${excerpt}`;
+    })
     .join('\n\n');
 
   return `<retrieved_context>
