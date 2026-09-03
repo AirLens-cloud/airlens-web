@@ -29,6 +29,25 @@ name = "SESSION_RATE_LIMIT"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
+# ── Chat-turn log buffer ─────────────────────────────────────────────────────
+#
+# Sanitized turns are dropped here as one JSON object each; a timer on
+# airlens-e2 pulls them into SQLite and deletes them (pull-only — that box
+# accepts no inbound connections, and neither does this worker's origin).
+# Create + retention, once, out of band:
+#   npx wrangler r2 bucket create airlens-chatlog
+#   (7-day lifecycle rule — so a pull job that dies for days self-cleans)
+#
+# R2 and not KV on purpose: KV's free limits are ACCOUNT-wide, quota.ts
+# already spends ~60% of the daily write allowance on its three counters per
+# turn, and quota.ts fails OPEN — so a write ceiling breached by logging
+# would silently disable the budget guard rather than just lose a log line.
+# R2's free tier (1M class-A ops/month) sits three orders of magnitude above
+# expected volume and shares nothing with the quota counters.
+[[r2_buckets]]
+binding = "CHATLOG"
+bucket_name = "airlens-chatlog"
+
 # ── Observability ────────────────────────────────────────────────────────────
 #
 # Workers Logs retention, so the fail-open token the Turnstile bypass emits
@@ -78,6 +97,23 @@ RATE_LIMIT_PER_MINUTE = "5"
 # Per-identifier daily cap. Identifier = session hash (primary) or client IP
 # (fallback when a request has no valid session — see session.ts resolveIdentifier).
 DAILY_MESSAGE_LIMIT = "30"
+# Chat-turn logging master switch (persist.ts). Anything but the exact string
+# "true" is OFF.
+#
+# ⚠️ Turning this on is a two-step change, in this order:
+#   1. the /legal/privacy wording describing what is stored, for how long, and
+#      that per-conversation deletion cannot be offered, is LIVE on
+#      airlens.cloud (verify the deployed bundle, not just the merge);
+#   2. only then set this to "true" and redeploy.
+# The reverse order is collection without notice. Shipping the binding while
+# this stays "false" is what makes that order possible to verify.
+CHATLOG_ENABLED = "false"
+# Self-imposed ceiling on stored turns per UTC hour — a backstop for the day
+# the abuse guards are outrun (the native rate limiter counts per Cloudflare
+# location, so a distributed caller gets more through than 10/min suggests).
+# 120/hour → at most 2,880/day, ~9% of R2's monthly free class-A allowance.
+# Not exact, and not meant to be — see persist.ts hourIsFull.
+CHATLOG_HOURLY_MAX = "120"
 # Account-wide daily request budget (generalized from the retired chatbot
 # worker's "neuron budget"). Now tracks actual Workers AI neuron cost — C1
 # had no LLM call yet (REQUEST_COST_ESTIMATE=1, a placeholder), C2 wires a

@@ -133,7 +133,9 @@ export async function verifyTurnstile(
   }
 }
 
-async function sha256Base64Url(value: string): Promise<string> {
+/** Exported for persist.ts, which needs the same one-way treatment for the
+ *  session id it turns into a `conversation_id`. */
+export async function sha256Base64Url(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
   return base64UrlEncode(new Uint8Array(digest));
 }

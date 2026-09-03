@@ -26,6 +26,15 @@ export interface Env {
    *  the check is skipped, same fail-open convention as CHAT_QUOTA. */
   SESSION_RATE_LIMIT?: RateLimit;
 
+  /** Buffer bucket for chat-turn records (persist.ts). Optional and OFF by
+   *  default: an absent binding, or CHATLOG_ENABLED !== 'true', means nothing
+   *  is written at all. R2 rather than KV deliberately — KV's free limits are
+   *  ACCOUNT-wide, quota.ts already spends ~60% of the daily write allowance
+   *  on its three counters per turn, and quota.ts fails OPEN, so a KV write
+   *  ceiling breached by logging would silently disable the budget guard
+   *  instead of just losing a log line. */
+  CHATLOG?: R2Bucket;
+
   /** Workers AI binding — bge-m3 embeddings (RAG query + reindex) and the
    *  gemma chat model (design §1 D-4). Always remote, even in `wrangler dev`. */
   AI: Ai;
@@ -74,6 +83,16 @@ export interface Env {
   REASONING_EFFORT: string;
   /** Vectorize topK per query (design §1 D-3, ported RAG_TOP_K=5 default). */
   RAG_TOP_K: string;
+
+  /** Chat-turn logging master switch. Anything other than the exact string
+   *  'true' means OFF. Kept as a var (not merely "is CHATLOG bound?") so the
+   *  binding can be deployed and verified BEFORE any conversation is stored —
+   *  /legal/privacy has to describe the storage before the storage happens. */
+  CHATLOG_ENABLED?: string;
+  /** Self-imposed ceiling on stored turns per UTC hour (persist.ts). A
+   *  backstop for the case where the abuse guards are outrun, not an exact
+   *  limit — see persist.ts for why it cannot be exact. */
+  CHATLOG_HOURLY_MAX?: string;
 
   /** Base URL for the public HF live-data dataset this repo reads as its data
    *  primary (`src/lib/config/dataSources.ts` HF_LIVE_BASE — same repo, same
@@ -128,6 +147,74 @@ export type ChatStreamEvent =
   | { type: 'token'; content: string }
   | { type: 'citations'; citations: ChatCitationWire[] }
   | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent; finish_reason: string | null };
+
+/**
+ * How a turn ended. Kept as a stored field rather than inferred from
+ * `answer IS NULL`, because dropping incomplete turns from the corpus creates
+ * survivorship bias in exactly the direction that hides bugs: the A-5 incident
+ * was an HTTP 200 with zero content, and a dataset that quietly excluded it
+ * would have reported perfect health. 'blocked' covers guardrail rejections,
+ * which never open a stream at all.
+ */
+export type TurnCompletionStatus = 'complete' | 'empty' | 'stream_error' | 'client_abort' | 'blocked';
+
+/** What the stream learned while running — resolved exactly once, on every
+ *  exit path including client cancellation (chat-stream.ts). */
+export interface TurnOutcome {
+  /** Answer text as the USER received it (post output-gate), or null when
+   *  nothing was delivered. */
+  answer: string | null;
+  intent: ChatIntent;
+  finishReason: string | null;
+  status: TurnCompletionStatus;
+  citations: ChatCitationWire[];
+  /** Best Vectorize score for this query — the retrieval-miss signal. */
+  topScore: number | null;
+  /** True on the budget-exhausted path (no generation happened). */
+  degraded: boolean;
+}
+
+/** Request-side facts handleChat knows before generation starts. */
+export interface TurnContext {
+  sid: string;
+  turnIndex: number;
+  question: string;
+  locale?: string;
+  page?: string;
+  startedAtMs: number;
+  guardrailReason: GuardrailResult['reason'];
+}
+
+/** One stored turn — mirrors the SQLite `chat_turn` table the pull job on
+ *  airlens-e2 inserts into (plan zazzy-herding-nautilus §2-4). Deliberately
+ *  absent: IP, User-Agent, Turnstile token, the raw session id, and precise
+ *  coordinates. */
+export interface ChatTurnRecord {
+  id: string;
+  conversation_id: string;
+  turn_index: number;
+  ts: string;
+  locale: string | null;
+  page: string | null;
+  question: string | null;
+  answer: string | null;
+  intent: ChatIntent | null;
+  guardrail_reason: string | null;
+  citations_json: string | null;
+  retrieval_top_score: number | null;
+  finish_reason: string | null;
+  answer_chars: number | null;
+  degraded: 0 | 1;
+  model: string | null;
+  latency_ms: number | null;
+  redacted_count: number;
+  /** Coordinate pairs coarsened rather than masked — counted separately so it
+   *  does not dilute redacted_count, which is the "is the sanitizer still
+   *  alive?" canary. */
+  coords_truncated: number;
+  sanitizer_version: string;
+  completion_status: TurnCompletionStatus;
+}
 
 export interface ChatCitationWire {
   source_title: string;
