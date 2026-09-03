@@ -163,6 +163,38 @@ describe('AtmosphericEvidenceCard — Layer 3 (collapsed details)', () => {
     expect(details.textContent).toContain('Seoul metro area')
     expect(screen.getByText('QUALITY-CONTROLLED')).toBeTruthy()
   })
+
+  it('shows freshness as "—" (never a fabricated timestamp) when the caller supplies none', () => {
+    // Arrange / Act
+    render(<AtmosphericEvidenceCard {...baseProps()} />)
+    // Assert
+    const details = document.querySelector('.atmos-evidence-details') as HTMLDetailsElement
+    const freshnessRow = Array.from(details.querySelectorAll('dt')).find((dt) => dt.textContent === 'Freshness')
+    expect(freshnessRow?.nextElementSibling?.textContent).toBe('—')
+  })
+
+  it('renders the freshness label the caller computed from reference/valid time', () => {
+    // Arrange / Act
+    render(<AtmosphericEvidenceCard {...baseProps({ freshnessLabel: '12m ago' })} />)
+    // Assert
+    const details = document.querySelector('.atmos-evidence-details') as HTMLDetailsElement
+    expect(details.textContent).toContain('12m ago')
+  })
+
+  it('renders the honest lineage-pending default — dataset version/hash is a B1 gap, not a fabricated value', () => {
+    // Arrange / Act
+    render(<AtmosphericEvidenceCard {...baseProps()} />)
+    // Assert
+    expect(screen.getByText(/not yet published — Evidence Contract producer \(B1\) pending/)).toBeTruthy()
+  })
+
+  it('renders a caller-supplied lineage label once the producer publishes dataset version/hash', () => {
+    // Arrange / Act
+    render(<AtmosphericEvidenceCard {...baseProps({ lineageLabel: 'v2026.09.03 · sha256 a1b2c3d4…' })} />)
+    // Assert
+    expect(screen.getByText(/v2026\.09\.03 · sha256 a1b2c3d4…/)).toBeTruthy()
+    expect(screen.queryByText(/not yet published/)).toBeNull()
+  })
 })
 
 describe('AtmosphericEvidenceCard — events mode', () => {

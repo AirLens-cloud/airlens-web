@@ -150,6 +150,45 @@ describe('Globe — G0 stage layout', () => {
     expect(row?.querySelector('.view-mode-switch')).toBeTruthy()
     expect(container.querySelector('.globe-stage-rail')).toBeNull()
   })
+
+  it('renders the mode selector as a horizontal HUD strip, not inside the left instrument column', async () => {
+    // Arrange / Act — T3: AtmosphericModeRail moved out of .globe-stage-left
+    // (which now holds only Layers/Timeline) into its own row above the
+    // evidence strip, reflowed via orientation="horizontal".
+    const { container } = render(<Globe />)
+    await waitFor(() => expect(modeButton('LIVE')).toBeTruthy())
+    // Assert
+    const modeRow = container.querySelector('.globe-mode-row')
+    expect(modeRow?.querySelector('.atmos-mode-rail--horizontal')).toBeTruthy()
+    expect(modeRow?.querySelector('[aria-label="Atmospheric data mode"]')).toBeTruthy()
+    expect(container.querySelector('.globe-stage-left .atmos-mode-rail')).toBeNull()
+  })
+})
+
+describe('Globe — shared cursor', () => {
+  it('surfaces the selected station in the HUD once a mark is picked, so all three views read the same cursor', () => {
+    // Arrange — same SelectedStation shape Table/Map/3D all write via
+    // setSelectedStation (globeStore.ts) — the HUD readout is a pure
+    // function of that one field, not view-specific state.
+    useGlobeStore.setState({
+      selectedStation: { lat: 37.5, lon: 127.0, pm25: 18.4, name: 'Seoul', station_uid: 'grid-1' },
+    })
+    // Act
+    const { container } = render(<Globe />)
+    // Assert
+    const cursor = container.querySelector('.gobs-cursor')
+    expect(cursor?.textContent).toContain('CURSOR')
+    expect(cursor?.textContent).toContain('37.5°N')
+    expect(cursor?.textContent).toContain('127.0°E')
+    expect(cursor?.textContent).toContain('Seoul')
+  })
+
+  it('omits the cursor readout entirely when nothing is selected — not a permanent "no selection" line', () => {
+    // Arrange / Act
+    const { container } = render(<Globe />)
+    // Assert
+    expect(container.querySelector('.gobs-cursor')).toBeNull()
+  })
 })
 
 function viewButton(label: string): HTMLButtonElement {

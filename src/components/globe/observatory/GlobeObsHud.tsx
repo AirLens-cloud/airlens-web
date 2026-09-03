@@ -16,6 +16,13 @@ export type GlobeObsHudStatus = 'ready' | 'stale' | 'unavailable' | 'loading'
  */
 export type GlobeObsHudMode = AtmosphericMode
 
+export interface GlobeObsHudCursor {
+  lat: number
+  lon: number
+  /** Nearest place name, if the caller resolved one — coords alone otherwise. */
+  label?: string | null
+}
+
 export interface GlobeObsHudProps {
   status: GlobeObsHudStatus
   label: string
@@ -29,6 +36,12 @@ export interface GlobeObsHudProps {
   /** Epoch ms. */
   validTime?: number | null
   mode: GlobeObsHudMode
+  /** The shared selection cursor (`globeStore.selectedStation`) — same coords
+   *  the 3D scene, Map and Table all read, so this readout is the one place
+   *  a user confirms the three views agree on what's selected. Omitted (not
+   *  a "no selection" placeholder) when nothing is picked — an idle cursor
+   *  isn't a finding worth a permanent HUD line. */
+  cursor?: GlobeObsHudCursor | null
   deckLabel?: string
   ariaLabel?: string
   forecastCaveat?: string
@@ -37,6 +50,10 @@ export interface GlobeObsHudProps {
 function utcStamp(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return `${new Date(value).toISOString().replace('T', ' ').slice(0, 16)} UTC`
+}
+
+function coordLabel(lat: number, lon: number): string {
+  return `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? 'E' : 'W'}`
 }
 
 export default function GlobeObsHud({
@@ -50,6 +67,7 @@ export default function GlobeObsHud({
   source,
   validTime,
   mode,
+  cursor,
   deckLabel = 'ATMOSPHERIC OBSERVATORY',
   ariaLabel = 'Observation deck status',
   forecastCaveat = 'GEFS single-member forecast — no uncertainty band',
@@ -73,6 +91,12 @@ export default function GlobeObsHud({
       <span className="gobs-source">SRC <strong>{source ?? '—'}</strong></span>
       {validTime != null && (
         <span>VALID <span className="strong">{utcStamp(validTime)}</span></span>
+      )}
+      {cursor && (
+        <span className="gobs-cursor">
+          CURSOR <span className="strong">{coordLabel(cursor.lat, cursor.lon)}</span>
+          {cursor.label ? ` · ${cursor.label}` : ''}
+        </span>
       )}
       {mode === 'forecast' && <span className="dim">{forecastCaveat}</span>}
     </section>

@@ -53,13 +53,6 @@
   background: var(--obs-void-2);
 }
 
-/* Rendered in-flow now (not floated over the canvas) — the component's own
-   base rule (composites.css) sets a fixed 220px width for its old overlay
-   use; here it should fill the column instead. */
-.obs-surface .globe-stage-left .atmos-mode-rail {
-  width: 100%;
-}
-
 .obs-surface .globe-stage-left-controls {
   display: grid;
   gap: 8px;
@@ -436,6 +429,52 @@
 }
 
 .obs-surface .vms-hint { color: var(--obs-hud-dim); }
+
+/* ── GlobeModeRow (T3) ───────────────────────────────────────────────────────
+   The 5-mode lens selector used to live in `.globe-stage-left` (T2 left it
+   holding only LAYERS/TIMELINE). Same `AtmosphericModeRail` component, same
+   store wiring, same 1-5 keyboard path — `orientation="horizontal"` just
+   asks it to reflow as a HUD tab strip via this modifier class instead of
+   the vertical instrument-rail card its base rule (composites.css) draws. */
+.obs-surface .globe-mode-row {
+  display: flex;
+  padding: 0 18px;
+  background: var(--obs-void);
+  border-bottom: 1px solid rgba(232, 236, 244, .14);
+}
+
+.obs-surface .atmos-mode-rail--horizontal {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.obs-surface .atmos-mode-rail--horizontal .atmos-mode-kicker { padding: 0; }
+
+.obs-surface .atmos-mode-rail--horizontal .atmos-mode-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.obs-surface .atmos-mode-rail--horizontal .atmos-mode {
+  grid-template-columns: 16px 14px auto 8px;
+  min-height: 0;
+  width: auto;
+  padding: 5px 8px;
+}
+
+/* Redundant with the `title` tooltip AtmosphericModeRail now sets on every
+   button — no horizontal room for the reason line the vertical rail showed
+   inline via <small>. */
+.obs-surface .atmos-mode-rail--horizontal .atmos-mode-copy small { display: none; }
 
 /* ── GlobeEvidenceRow (T1) ───────────────────────────────────────────────────
    Replaces the old right-hand `.globe-stage-rail`: AtmosphericEvidenceCard's

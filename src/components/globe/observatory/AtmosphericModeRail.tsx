@@ -25,6 +25,13 @@ export interface AtmosphericModeRailProps {
   onSelect: (id: string) => void
   ariaLabel?: string
   kicker?: string
+  /** 'vertical' (default) is the instrument-rail layout this component was
+   *  ported for. 'horizontal' lays the same buttons out as a HUD tab strip —
+   *  CSS-only reflow via the `.atmos-mode-rail--horizontal` modifier class
+   *  (globe-stage.css), no markup branch — and relies on `title` (added
+   *  below) instead of the visible `<small>` reason line, which horizontal
+   *  space doesn't have room for. */
+  orientation?: 'vertical' | 'horizontal'
 }
 
 export default function AtmosphericModeRail({
@@ -32,9 +39,13 @@ export default function AtmosphericModeRail({
   onSelect,
   ariaLabel = 'Atmospheric data mode',
   kicker = 'LENS / 05',
+  orientation = 'vertical',
 }: AtmosphericModeRailProps) {
   return (
-    <nav className="atmos-mode-rail" aria-label={ariaLabel}>
+    <nav
+      className={`atmos-mode-rail${orientation === 'horizontal' ? ' atmos-mode-rail--horizontal' : ''}`}
+      aria-label={ariaLabel}
+    >
       <span className="atmos-mode-kicker" aria-hidden="true">{kicker}</span>
       <div className="atmos-mode-list">
         {items.map(({ id, number, glyph, label, detail, active, disabled, ariaLabel: itemAriaLabel }) => (
@@ -46,6 +57,7 @@ export default function AtmosphericModeRail({
             disabled={disabled}
             aria-pressed={active}
             aria-label={itemAriaLabel ?? detail}
+            title={itemAriaLabel ?? detail}
           >
             <span className="atmos-mode-number">{number}</span>
             <span aria-hidden="true">{glyph}</span>

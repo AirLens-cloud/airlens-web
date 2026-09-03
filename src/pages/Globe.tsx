@@ -83,6 +83,21 @@ function utcLabel(value: number | null): string {
   return `${new Date(value).toISOString().replace('T', ' ').slice(0, 16)} UTC`
 }
 
+/**
+ * "12m ago" / "3h ago" from a reference/valid time vs now — QUALITY section's
+ * Freshness line (`evidence-rail-compare-tray.md` §4.1). `null` when there is
+ * no time to measure against, which the card renders as "—", never "just now".
+ */
+function freshnessLabel(sinceMs: number | null): string | null {
+  if (sinceMs == null || !Number.isFinite(sinceMs)) return null
+  const deltaMin = Math.round((Date.now() - sinceMs) / 60_000)
+  if (deltaMin < 0) return null
+  if (deltaMin < 60) return `${deltaMin}m ago`
+  const deltaHr = Math.round(deltaMin / 60)
+  if (deltaHr < 48) return `${deltaHr}h ago`
+  return `${Math.round(deltaHr / 24)}d ago`
+}
+
 export default function Globe() {
   const platform = usePlatform()
   const webgl = useMemo(() => isWebGLSupported(), [])
@@ -271,7 +286,18 @@ export default function Globe() {
           source={view.source}
           validTime={view.validTime}
           mode={view.mode}
+          cursor={selectedStation ? { lat: selectedStation.lat, lon: selectedStation.lon, label: selectedStation.name } : null}
         />
+      </div>
+
+      {/* T3: mode selection moved out of the left instrument rail into a HUD
+          tab strip — same AtmosphericModeRail component (`orientation`
+          controls the reflow), same store wiring, same 1-5 keyboard path
+          (handleStageKeyDown below is unchanged). This is a pure position
+          change: LAYERS/TIMELINE stay in `.globe-stage-left` since they're
+          overlay controls, not the mode cursor. */}
+      <div className="globe-mode-row">
+        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
       </div>
 
       {/* Evidence row (T1): Layer 1 of the evidence card runs as one horizontal
@@ -294,6 +320,7 @@ export default function Globe() {
           source={view.source}
           referenceTimeLabel={utcLabel(view.referenceTime)}
           validTimeLabel={utcLabel(view.validTime)}
+          freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
           provenance={[...view.provenance]}
           coverage={view.coverage}
         />
@@ -301,8 +328,7 @@ export default function Globe() {
       </div>
 
       <section className="globe-stage">
-        <aside className="globe-stage-left" aria-label="Atmospheric lens and layers">
-          <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} />
+        <aside className="globe-stage-left" aria-label="Atmospheric layers and timeline">
           {/* T2: LAYERS defaults open, TIMELINE defaults collapsed — the
               timeline is a forecast-only aid, so collapsing it by default is
               the honest state for the common (non-forecast) session. */}
