@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "lint:design": "node scripts/design-lint.mjs",
+    "build-corpus": "node --experimental-strip-types scripts/build-corpus.mjs",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "test": "vitest",

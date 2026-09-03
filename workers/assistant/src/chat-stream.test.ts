@@ -1,0 +1,165 @@
+// chat-stream.test.ts — buildRagStream/buildDegradedStream SSE shape. AAA
+// pattern; env.AI and env.VECTORIZE are hand-rolled mocks so no live model
+// or index call happens.
+import { describe, it, expect, vi } from 'vitest';
+import { buildDegradedStream, buildRagStream } from './chat-stream';
+import type { CorpusVectorMetadata, Env } from './types';
+
+function makeEnv(overrides: Partial<Env> = {}): Env {
+  return {
+    SESSION_TTL_SECONDS: '3600',
+    RATE_LIMIT_PER_MINUTE: '5',
+    DAILY_MESSAGE_LIMIT: '30',
+    DAILY_REQUEST_BUDGET: '10000',
+    REQUEST_COST_ESTIMATE: '25',
+    MAX_MESSAGE_LENGTH: '2000',
+    MAX_HISTORY_TURNS: '10',
+    ALLOWED_ORIGINS: 'https://airlens.cloud',
+    CHAT_MODEL: '@cf/google/gemma-4-26b-a4b-it',
+    EMBEDDING_MODEL: '@cf/baai/bge-m3',
+    MAX_TOKENS: '512',
+    TEMPERATURE: '0.3',
+    RAG_TOP_K: '5',
+    ...overrides,
+  } as Env;
+}
+
+/** Native-shape SSE stream (`data: {"response": "..."}` frames), same shape
+ *  Workers AI serves gemma through — see chat-stream.ts parseUpstreamFrame. */
+function nativeSseStream(words: string[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const w of words) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ response: w })}\n\n`));
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+}
+
+/** `run` mock that answers bge-m3 embedding calls (input.text present) and
+ *  gemma chat calls (input.messages present, stream:true) differently. */
+function makeAiRun(replyWords: string[]) {
+  return vi.fn(async (_model: string, input: { text?: string | string[]; messages?: unknown }) => {
+    if (input.text !== undefined) {
+      const texts = Array.isArray(input.text) ? input.text : [input.text];
+      return { data: texts.map(() => [0.1, 0.2, 0.3]) };
+    }
+    return nativeSseStream(replyWords);
+  });
+}
+
+async function collectEvents(stream: ReadableStream<Uint8Array>): Promise<unknown[]> {
+  const text = await new Response(stream).text();
+  return text
+    .split('\n\n')
+    .filter((frame) => frame.startsWith('data:'))
+    .map((frame) => JSON.parse(frame.slice('data:'.length).trim()));
+}
+
+const SAMPLE_METADATA: CorpusVectorMetadata = {
+  source_title: 'AQI scale',
+  source_url: '/faq#aqi-scale',
+  category: 'faq',
+  excerpt: 'AirLens uses EPA breakpoint-based AQI tiers.',
+};
+
+describe('buildRagStream', () => {
+  it('streams gemma output as token events ending in done, with no citations event when nothing was retrieved', async () => {
+    // Arrange
+    const run = makeAiRun(['Hello', ' ', 'there']);
+    const env = makeEnv({ AI: { run } as unknown as Ai }); // no VECTORIZE — queryCorpus returns []
+    // Act
+    const stream = await buildRagStream(env, 'hi', [], 'ok');
+    const events = await collectEvents(stream);
+    // Assert
+    expect(events.filter((e) => (e as { type: string }).type === 'citations')).toHaveLength(0);
+    expect(events.filter((e) => (e as { type: string }).type === 'token').map((e) => (e as { content: string }).content)).toEqual([
+      'Hello',
+      ' ',
+      'there',
+    ]);
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'ok', intent: 'general' });
+  });
+
+  it('emits a citations event before any token event when Vectorize returns matches', async () => {
+    // Arrange
+    const run = makeAiRun(['Answer']);
+    const query = vi.fn().mockResolvedValue({
+      count: 1,
+      matches: [{ id: 'faq:aqi-scale', score: 0.88, metadata: SAMPLE_METADATA }],
+    });
+    const env = makeEnv({ AI: { run } as unknown as Ai, VECTORIZE: { query } as unknown as VectorizeIndex });
+    // Act
+    const stream = await buildRagStream(env, 'what aqi scale', [], 'ok');
+    const events = await collectEvents(stream) as Array<{ type: string; citations?: unknown[] }>;
+    // Assert
+    expect(events[0].type).toBe('citations');
+    expect(events[0].citations).toEqual([
+      { source_title: 'AQI scale', source_url: '/faq#aqi-scale', relevance: 0.88, excerpt: SAMPLE_METADATA.excerpt },
+    ]);
+    expect(events[1].type).toBe('token');
+  });
+
+  it('reports budget: exhausted in the done event without changing the token content', async () => {
+    // Arrange
+    const run = makeAiRun(['ok']);
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    const stream = await buildRagStream(env, 'hi', [], 'exhausted');
+    const events = await collectEvents(stream);
+    // Assert
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general' });
+  });
+});
+
+describe('buildDegradedStream', () => {
+  it('never calls the chat model — only the (cheap) query embedding', async () => {
+    // Arrange
+    const run = makeAiRun(['should not be reached']);
+    const env = makeEnv({ AI: { run } as unknown as Ai });
+    // Act
+    const stream = await buildDegradedStream(env, 'why is pm2.5 high');
+    await collectEvents(stream);
+    // Assert — every call must have been an embedding call (input.text set),
+    // never a chat call (input.messages set).
+    for (const call of run.mock.calls) {
+      const input = call[1] as { text?: unknown; messages?: unknown };
+      expect(input.text).toBeDefined();
+      expect(input.messages).toBeUndefined();
+    }
+  });
+
+  it('lists retrieved sources verbatim in a single token frame, budget: exhausted, with a citations event', async () => {
+    // Arrange
+    const run = makeAiRun([]);
+    const query = vi.fn().mockResolvedValue({
+      count: 1,
+      matches: [{ id: 'faq:aqi-scale', score: 0.8, metadata: SAMPLE_METADATA }],
+    });
+    const env = makeEnv({ AI: { run } as unknown as Ai, VECTORIZE: { query } as unknown as VectorizeIndex });
+    // Act
+    const stream = await buildDegradedStream(env, 'aqi scale?');
+    const events = await collectEvents(stream) as Array<{ type: string; content?: string; citations?: unknown[] }>;
+    // Assert
+    expect(events[0].type).toBe('citations');
+    const tokenEvent = events.find((e) => e.type === 'token');
+    expect(tokenEvent?.content).toContain('AQI scale');
+    expect(events.at(-1)).toEqual({ type: 'done', budget: 'exhausted', intent: 'general' });
+  });
+
+  it('says plainly that nothing was found when retrieval has no matches (never fabricates a source)', async () => {
+    // Arrange
+    const run = makeAiRun([]);
+    const env = makeEnv({ AI: { run } as unknown as Ai }); // no VECTORIZE
+    // Act
+    const stream = await buildDegradedStream(env, 'obscure question');
+    const events = await collectEvents(stream) as Array<{ type: string; content?: string }>;
+    // Assert
+    expect(events.some((e) => e.type === 'citations')).toBe(false);
+    const tokenEvent = events.find((e) => e.type === 'token');
+    expect(tokenEvent?.content).toContain('No matching documentation was found');
+  });
+});

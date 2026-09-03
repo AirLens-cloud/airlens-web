@@ -5,17 +5,32 @@ compatibility_flags = ["nodejs_compat"]
 
 # ── Quota / session counter store ───────────────────────────────────────────
 #
-# UNBOUND UNTIL AN OPERATOR CREATES THE NAMESPACE. Deploying as-is is safe:
 # `CHAT_QUOTA` is optional in `Env` and quota.ts fails **open** (no cap) when
-# it is absent — same convention as workers/public-api's RL_KV. It is not a
-# silent hole, just one layer short until step 1 below is done.
+# it is absent — same convention as workers/public-api's RL_KV. Namespace
+# created out-of-band (`npx wrangler kv namespace create CHAT_QUOTA`).
+[[kv_namespaces]]
+binding = "CHAT_QUOTA"
+id = "74c95e440afe4bc191128f0b1c774b24"
+
+# ── Workers AI ───────────────────────────────────────────────────────────────
 #
-#   1. npx wrangler kv namespace create CHAT_QUOTA
-#   2. paste the printed id below and uncomment the block
+# Always remote, even under `wrangler dev` — see wrangler's own docs. Model
+# ids are vars (below), not hardcoded in src/, so a post-eval model swap (C4
+# model-ab) is a config change.
+[ai]
+binding = "AI"
+
+# ── Corpus vector store (design §1 D-3) ─────────────────────────────────────
 #
-# [[kv_namespaces]]
-# binding = "CHAT_QUOTA"
-# id = "<paste the id from step 1>"
+# `airlens-assistant-corpus` created via:
+#   npx wrangler vectorize create airlens-assistant-corpus --dimensions=1024 --metric=cosine
+# 1024 dims = bge-m3's native embedding size. Populate/refresh with
+# `node --experimental-strip-types scripts/build-corpus.mjs` (repo root) — see
+# that script's header. VECTORIZE is optional in `Env`: unbound, queryCorpus
+# (src/rag.ts) returns [] and chat still answers, just without citations.
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "airlens-assistant-corpus"
 
 # ── Route ────────────────────────────────────────────────────────────────
 #
@@ -37,14 +52,40 @@ RATE_LIMIT_PER_MINUTE = "5"
 # (fallback when a request has no valid session — see session.ts resolveIdentifier).
 DAILY_MESSAGE_LIMIT = "30"
 # Account-wide daily request budget (generalized from the retired chatbot
-# worker's "neuron budget" — C1 has no LLM cost yet, but the KV-backed
-# fail-open budget guard is wired now so C2/C3 only need to raise
-# REQUEST_COST_ESTIMATE once real Workers AI calls land).
-DAILY_REQUEST_BUDGET = "2000"
-REQUEST_COST_ESTIMATE = "1"
+# worker's "neuron budget"). Now tracks actual Workers AI neuron cost — C1
+# had no LLM call yet (REQUEST_COST_ESTIMATE=1, a placeholder), C2 wires a
+# real gemma+bge-m3 call behind this guard, so both are recalibrated together:
+#
+#   REQUEST_COST_ESTIMATE — per-chat-turn neuron estimate, from Cloudflare's
+#   published Workers AI neuron pricing (developers.cloudflare.com/workers-ai/
+#   platform/pricing/, checked 2026-09-02): gemma-4-26b-a4b-it ≈ 9091
+#   neurons/M input tokens + 27273 neurons/M output tokens; bge-m3 ≈ 1075
+#   neurons/M input tokens. A typical turn: ~30-token query embed (~0 neurons,
+#   negligible) + ~1400 input tokens (system prompt + retrieved-context block
+#   + trimmed history) ≈ 12.7 neurons + ~300 output tokens ≈ 8.2 neurons —
+#   about 21 neurons, rounded up to 25 for headroom on longer conversations.
+#
+#   DAILY_REQUEST_BUDGET — set to Workers AI's daily free-tier neuron
+#   allocation (10,000/day) so checkGlobalBudget (quota.ts) degrades to the
+#   RAG-only response (chat-stream.ts buildDegradedStream — zero generation
+#   cost) once the account's free neurons for the day are spent, rather than
+#   silently running past them into billed usage. At 25 neurons/turn this is
+#   ~400 chat turns/day before degrading.
+DAILY_REQUEST_BUDGET = "10000"
+REQUEST_COST_ESTIMATE = "25"
 MAX_MESSAGE_LENGTH = "2000"
 MAX_HISTORY_TURNS = "10"
 ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"
+
+# Workers AI catalog ids (design §1 D-3/D-4) — confirmed present in this
+# account's catalog via `npx wrangler ai models list` (2026-09-02).
+CHAT_MODEL = "@cf/google/gemma-4-26b-a4b-it"
+EMBEDDING_MODEL = "@cf/baai/bge-m3"
+MAX_TOKENS = "512"
+TEMPERATURE = "0.3"
+# Vectorize topK per query — ported RAG_TOP_K=5 from the retired chatbot
+# worker's rag.ts.
+RAG_TOP_K = "5"
 
 # Secrets (set via `npx wrangler secret put <NAME>`):
 #   SESSION_HMAC_SECRET  — signs/verifies the session token (HMAC-SHA256).
@@ -57,3 +98,9 @@ ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localh
 #                          issuance so it is never mistaken for a verified
 #                          production session). MUST be set before this worker
 #                          is deployed to a real origin.
+#   ADMIN_REINDEX_SECRET — shared secret for POST /api/admin/reindex. Unset
+#                          → the endpoint refuses every request (503) rather
+#                          than defaulting open (unlike the two secrets
+#                          above) — an unauthenticated reindex lets an
+#                          attacker plant "retrieved evidence" the model then
+#                          treats as trusted AirLens documentation.
