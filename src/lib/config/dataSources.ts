@@ -63,11 +63,34 @@ export const COMMUNITY_API_BASE: string =
   import.meta.env?.VITE_COMMUNITY_API_BASE ?? 'https://airlens.cloud';
 
 /**
- * Field Assistant Worker (`workers/assistant/`, C1 scaffold — session issuance
- * + SSE chat, echo-only until C2 wires RAG). Empty by default: the worker is
- * not deployed yet, and `ChatPanel` treats an empty base as "assistant
- * offline" — the disabled input stays disabled rather than rendering a
- * scripted/fake conversation (Glass-box). Set `VITE_ASSISTANT_API_BASE` once
- * the worker is deployed and its route is bound.
+ * Field Assistant Worker (`workers/assistant/`) — session issuance + SSE
+ * chat, RAG + intent classification + live-data tool calls (C1 scaffold →
+ * C2 RAG → C3 intent/liveData → C4 eval-verified, deployed A-4 as version
+ * `13d9962e`, health `{"status":"ok","mode":"rag"}` at the URL below).
+ *
+ * Baked default rather than an env var, same reasoning as COMMUNITY_API_BASE
+ * above: the worker was deployed and reachable for a full session before
+ * anyone set `VITE_ASSISTANT_API_BASE` anywhere, and an empty default here
+ * is what silently kept ChatPanel showing "assistant offline" during that
+ * gap — nobody sets an env var for a URL that already works ("env nobody
+ * sets" — COMMUNITY_API_BASE's note above, same failure mode). `ChatPanel`
+ * still treats an explicitly-emptied base (`VITE_ASSISTANT_API_BASE=`) as
+ * offline and renders the disabled state rather than a scripted/fake
+ * conversation (Glass-box) — that override path stays live, just unused by
+ * default now.
  */
-export const ASSISTANT_API_BASE: string = import.meta.env?.VITE_ASSISTANT_API_BASE ?? '';
+export const ASSISTANT_API_BASE: string =
+  import.meta.env?.VITE_ASSISTANT_API_BASE ?? 'https://airlens-assistant.joymin5655.workers.dev';
+
+/**
+ * Turnstile sitekey for the `airlens-assistant` widget (A-0, `wrangler
+ * turnstile widget create`) — mode `managed`, domains `127.0.0.1,
+ * airlens.cloud, airlens.pages.dev, localhost, www.airlens.cloud` (verified
+ * via `wrangler turnstile widget list`, A-4). A sitekey is a public value by
+ * design (it ships in every page load); the corresponding secret lives only
+ * in the worker's `TURNSTILE_SECRET` binding, never here. Same baked-default
+ * convention as ASSISTANT_API_BASE above — an env var nobody sets is not a
+ * config surface, it is a way to ship a broken widget silently.
+ */
+export const TURNSTILE_SITE_KEY: string =
+  import.meta.env?.VITE_TURNSTILE_SITE_KEY ?? '0x4AAAAAAElUpFb628-_BrfG';

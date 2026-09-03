@@ -267,6 +267,13 @@
 /* Active mode (C1) message list — replaces .chat-mast/.chat-sug once a
    session has at least one message. Scrolls with the rest of .chat-panel
    (which already has overflow-y: auto), so no separate scroll region here. */
+/* Managed Turnstile widget (ChatPanel.tsx, src/lib/turnstile.ts). Cloudflare
+   sizes its own iframe to 0 height in the common case
+   (appearance: 'interaction-only' — no UI unless a challenge is needed);
+   flex-shrink: 0 plus a small margin just keeps a real checkbox, on the
+   rare visitor who gets one, from touching the message log above it. */
+.chat-turnstile { flex-shrink: 0; margin: 8px 16px 0; }
+
 .chat-msgs { padding: 16px; display: flex; flex-direction: column; gap: 0; flex: 1; }
 .chat-sug { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 12px; }
 .chat-sug-chip {

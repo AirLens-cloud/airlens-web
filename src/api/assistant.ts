@@ -1,15 +1,20 @@
 /**
  * Field Assistant client — session issuance + SSE chat streaming against
- * `workers/assistant/` (C1 scaffold — echo only, no RAG). ASSISTANT_API_BASE
- * empty (worker not deployed) means every export here is a no-op that
- * yields nothing; `ChatPanel` never calls in unless the base is configured.
+ * `workers/assistant/` (deployed with C3+C4's RAG/intent code, A-4).
+ * ASSISTANT_API_BASE empty means every export here is a no-op that yields
+ * nothing; `ChatPanel` never calls in unless the base is configured.
+ *
+ * Session issuance requires a Turnstile token once the worker's
+ * `TURNSTILE_SECRET` is set (production) — see `../lib/turnstile.ts` for how
+ * that token is obtained.
  *
  * Uses `fetch` + a manual `ReadableStream` reader rather than `EventSource`
  * because the request is a POST with a JSON body — `EventSource` only does
  * GET.
  */
 import { ASSISTANT_API_BASE } from '../lib/config/dataSources'
-import type { ChatMessage, ChatRequest, ChatSessionResponse, ChatStreamEvent } from '../types/chat'
+import { getTurnstileToken, resetTurnstileToken } from '../lib/turnstile'
+import type { ChatMessage, ChatRequest, ChatSessionRequest, ChatSessionResponse, ChatStreamEvent } from '../types/chat'
 
 const SESSION_FETCH_TIMEOUT_MS = 8000
 // Refresh a little before the token's real expiry so a chat request never
@@ -23,11 +28,24 @@ async function ensureSession(): Promise<string | null> {
   if (cachedSession && cachedSession.expiresAt - SESSION_REFRESH_SLACK_MS > Date.now()) {
     return cachedSession.token
   }
+  // Declared outside the try so the finally block below can still see it —
+  // a token is spent (and must be reset) whether fetch() resolves, rejects,
+  // or throws outright (a network error, or AbortSignal firing on timeout).
+  // A prior version only reset on the resolved-response path, which left
+  // resetTurnstileToken() unreachable exactly when a caller most needs the
+  // widget to recover: a network hiccup (code review, PR #50).
+  let turnstileToken: string | null = null
   try {
+    // A null token (widget never mounted, script blocked) is not treated as
+    // a local error — the worker decides what a missing token means:
+    // turnstile_failed in production, a dev-bypass pass with
+    // TURNSTILE_SECRET unset. Either way the request still goes out.
+    turnstileToken = await getTurnstileToken()
+    const requestBody: ChatSessionRequest = turnstileToken ? { turnstileToken } : {}
     const res = await fetch(`${ASSISTANT_API_BASE}/api/session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(SESSION_FETCH_TIMEOUT_MS),
     })
     if (!res.ok) return null
@@ -37,6 +55,10 @@ async function ensureSession(): Promise<string | null> {
     return body.session
   } catch {
     return null
+  } finally {
+    // Tokens are single-use — spent whether the worker accepted it,
+    // rejected it, or the request never completed at all.
+    if (turnstileToken) resetTurnstileToken()
   }
 }
 

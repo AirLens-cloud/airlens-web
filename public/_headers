@@ -23,12 +23,24 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; connect-src 'self' https://airlens.cloud https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://challenges.cloudflare.com; connect-src 'self' https://airlens.cloud https://airlens-assistant.joymin5655.workers.dev https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
 
 # connect-src notes:
 #   airlens.cloud        — community API Worker proxy (src/lib/config/dataSources.ts
 #                          COMMUNITY_API_BASE). Zone-level Worker route, so it
 #                          survives a Pages project switch untouched.
+#   airlens-assistant.joymin5655.workers.dev — Field Assistant Worker
+#                          (ASSISTANT_API_BASE, A-4 live switch). workers.dev
+#                          subdomain, not a zone route like airlens.cloud —
+#                          if this worker ever moves to a custom domain,
+#                          update both this line and dataSources.ts's default.
+#   challenges.cloudflare.com (script-src + frame-src) — Turnstile widget
+#                          (src/lib/turnstile.ts), gates /api/session on the
+#                          assistant worker. connect-src does NOT need this
+#                          host: the widget's own XHR to Cloudflare's edge
+#                          runs inside its iframe's own document, not this
+#                          page's — only needed here if pre-clearance mode is
+#                          ever turned on for this widget (it is not).
 #   huggingface.co       — live data primary (HF_LIVE_BASE). The wildcard hosts
 #                          cover LFS/Xet redirect targets: today every feed this
 #                          app reads resolves same-origin on huggingface.co
