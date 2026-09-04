@@ -1,10 +1,15 @@
 #!/usr/bin/env -S node --experimental-strip-types
 /**
- * build-corpus.mjs — turns this repo's own live content (src/content/*.ts,
- * the same files Methodology/Glossary/Faq/About/Legal actually render) into
- * embeddable chunks and POSTs them to the assistant worker's
- * POST /api/admin/reindex, which embeds each with bge-m3 and upserts into
- * Vectorize (workers/assistant/src/rag.ts reindexChunks).
+ * build-corpus.mjs — turns src/content/*.ts into embeddable chunks and POSTs
+ * them to the assistant worker's POST /api/admin/reindex, which embeds each
+ * with bge-m3 and upserts into Vectorize (workers/assistant/src/rag.ts
+ * reindexChunks).
+ *
+ * Five of the six sources are this repo's own live content — the same files
+ * Methodology/Glossary/Faq/About/Legal actually render. The sixth
+ * (`literature.ts`) is external published work and renders nowhere yet; its
+ * chunks are labeled `category: 'literature'` so the prompt block can keep
+ * them distinct from AirLens's own documentation.
  *
  * Field Assistant v2 design §1 D-3: "코퍼스 소스 교체... 소스=렌더 소스와
  * 동일 파일 = 드리프트 구조적 해소". Run this again whenever content/*.ts
@@ -16,7 +21,9 @@
  * no transform needed: content/*.ts uses only interfaces/types/const arrays,
  * no enums or namespaces). Deliberately dependency-free (karpathy.md's
  * ladder: platform-native feature covers it) rather than adding tsx/esbuild
- * just to import these five files.
+ * just to import these six files. Note that type-only stripping does no module
+ * resolution — relative imports between content files must carry the `.ts`
+ * extension or this script cannot load them.
  *
  * Usage:
  *   ADMIN_REINDEX_SECRET=... node --experimental-strip-types scripts/build-corpus.mjs [worker-url]
@@ -32,6 +39,7 @@ import { FAQ_ITEMS } from '../src/content/faq.ts'
 import { GLOSSARY_TERMS } from '../src/content/glossaryTerms.ts'
 import { ROADMAP_STATE, THREE_PRODUCTS, TWO_INFRA, OPERATING_PRINCIPLES } from '../src/content/aboutState.ts'
 import { LEGAL_DOCS } from '../src/content/legal.ts'
+import { literatureChunks } from '../src/content/literature.ts'
 
 /** Vectorize upsert batches — matches EMBED_BATCH_LIMIT in workers/assistant/
  *  src/rag.ts (bge-m3's 100-item-per-call ceiling). The worker itself loops
@@ -130,8 +138,23 @@ function legalChunks() {
   }))
 }
 
+/**
+ * Sixth source — external published work behind AirLens's methods. Unlike the
+ * five above it is not this site's rendered content, and its emission has real
+ * invariants to keep (byte-capped ASCII ids, per-domain counts computed from
+ * the ledger rather than typed in, a scope note on every card), so it lives in
+ * `src/content/literature.ts` next to its data where `literature.test.ts` can
+ * reach it — not inline here, where nothing can test it.
+ */
 function buildChunks() {
-  return [...methodologyChunks(), ...faqChunks(), ...glossaryChunks(), ...aboutChunks(), ...legalChunks()]
+  return [
+    ...methodologyChunks(),
+    ...faqChunks(),
+    ...glossaryChunks(),
+    ...aboutChunks(),
+    ...legalChunks(),
+    ...literatureChunks(),
+  ]
 }
 
 function batches(items, size) {
