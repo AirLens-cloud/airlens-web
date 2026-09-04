@@ -39,6 +39,13 @@ function toCoord(value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Same reasoning as `toCoord`: an empty `cf` string means "not resolved",
+ * not "a place named ''". Normalizing here keeps a blank out of the
+ * client's sessionStorage cache and out of any label built from it. */
+function toName(value: string | undefined): string | null {
+  return value ? value : null
+}
+
 function jsonResponse(body: GeoResponse): Response {
   return new Response(JSON.stringify(body), {
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -54,8 +61,8 @@ export const onRequestGet = (ctx: Ctx): Response => {
     available: true,
     lat,
     lon,
-    city: cf?.city ?? null,
-    country: cf?.country ?? null,
+    city: toName(cf?.city),
+    country: toName(cf?.country),
     source: 'ip-approx',
   })
 }

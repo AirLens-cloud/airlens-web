@@ -80,6 +80,14 @@ describe('GET /api/geo', () => {
     })
   })
 
+  it('treats an empty city/country string as unresolved, not as a place named ""', () => {
+    const ctx = requestWithCf({ latitude: '51.5074', longitude: '-0.1278', city: '', country: '' })
+    const res = onRequestGet(ctx)
+    return res.json().then((body) => {
+      expect(body).toEqual({ available: true, lat: 51.5074, lon: -0.1278, city: null, country: null, source: 'ip-approx' })
+    })
+  })
+
   it('is never cached — Cache-Control: no-store on every response, available or not', () => {
     const available = onRequestGet(requestWithCf({ latitude: '1', longitude: '2' }))
     const unavailable = onRequestGet(requestWithCf(undefined))

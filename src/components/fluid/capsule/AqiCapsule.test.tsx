@@ -7,7 +7,31 @@ vi.mock('./useCapsuleData', () => ({
   useCapsuleData: vi.fn(),
 }))
 
+vi.mock('../../../hooks/useLocationPersonalization', () => ({
+  useLocationPersonalization: vi.fn(),
+}))
+
 import { useCapsuleData } from './useCapsuleData'
+import {
+  useLocationPersonalization,
+  type UseLocationPersonalizationResult,
+} from '../../../hooks/useLocationPersonalization'
+
+/** Default = no stored choice and no resolved approx: the state a first-time
+ * visitor is in before any opt-in, where the capsule falls back to the feed's
+ * thickest-air pick. */
+function mockPersonalization(overrides: Partial<UseLocationPersonalizationResult> = {}) {
+  vi.mocked(useLocationPersonalization).mockReturnValue({
+    choice: null,
+    approx: null,
+    requesting: false,
+    denied: false,
+    requestGeolocation: () => {},
+    selectCity: () => {},
+    clearChoice: () => {},
+    ...overrides,
+  })
+}
 
 const READY: CapsuleDataReady = {
   status: 'ready',
@@ -33,6 +57,7 @@ const READY: CapsuleDataReady = {
 
 beforeEach(() => {
   vi.mocked(useCapsuleData).mockReturnValue(READY)
+  mockPersonalization()
   // jump-mode reduced motion — same rationale as Materialize.test.tsx: jsdom
   // has no matchMedia, and forcing reduced=true makes useSpring jump instead
   // of animate, so assertions don't depend on rAF timing.
@@ -171,7 +196,7 @@ describe('AqiCapsule', () => {
   })
 
   it('shows the location label and a NOT YOUR LOCATION warning for the fallback pick', () => {
-    // Arrange — READY.isPersonalized is false (default fixture)
+    // Arrange — no choice, no approx (default mock): the feed's thickest-air pick
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert
@@ -179,8 +204,20 @@ describe('AqiCapsule', () => {
     expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
   })
 
-  it('omits the NOT YOUR LOCATION warning once the reading is personalized', () => {
+  it('badges an IP-approximate reading as APPROXIMATE rather than as the visitor’s own', () => {
+    // Arrange — no stored choice yet, but the edge resolved a rough point
+    mockPersonalization({ approx: { lat: 37.5665, lon: 126.978, city: 'Seoul' } })
+    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(within(container).getByText('APPROXIMATE')).toBeTruthy()
+    expect(within(container).queryByText('NOT YOUR LOCATION')).toBeNull()
+  })
+
+  it('drops the badge entirely once a real opt-in choice personalizes the reading', () => {
     // Arrange
+    mockPersonalization({ choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'geolocation' } })
     vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
     // Act
     const { container } = render(<AqiCapsule />)

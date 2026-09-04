@@ -130,13 +130,23 @@ function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAle
  * `approx` fallback when there is no stored choice yet; either way, this
  * hook just resolves the nearest city to whatever point it's handed.
  */
+/** A resolved state plus the point it was resolved for. The point travels
+ * with the result so a state left over from the previous point can be told
+ * apart from one that answers the current one — see the read below. */
+interface ResolvedFor {
+  state: CapsuleDataState
+  lat: number | null
+  lon: number | null
+}
+
 export function useCapsuleData(personalizedLocation?: { lat: number; lon: number } | null): CapsuleDataState {
-  const [state, setState] = useState<CapsuleDataState>({ status: 'loading' })
+  const [resolved, setResolved] = useState<ResolvedFor>({ state: { status: 'loading' }, lat: null, lon: null })
   const personalizedLat = personalizedLocation?.lat ?? null
   const personalizedLon = personalizedLocation?.lon ?? null
 
   useEffect(() => {
     let alive = true
+    const setState = (state: CapsuleDataState) => setResolved({ state, lat: personalizedLat, lon: personalizedLon })
     fetchForecast()
       .then((forecast) => {
         if (!alive) return
@@ -198,5 +208,12 @@ export function useCapsuleData(personalizedLocation?: { lat: number; lon: number
     }
   }, [personalizedLat, personalizedLon])
 
-  return state
+  // A result for a different point is not this point's answer — report
+  // loading until the fetch for the current one lands. Without this, the
+  // city resolved for the previous point (or the un-personalized
+  // "thickest air" pick) would sit under the caller's already-updated
+  // location label, reading "~ Riyadh · APPROXIMATE (IP-BASED)" — exactly
+  // the mislabel this chain exists to remove.
+  if (resolved.lat !== personalizedLat || resolved.lon !== personalizedLon) return { status: 'loading' }
+  return resolved.state
 }

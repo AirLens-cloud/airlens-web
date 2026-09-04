@@ -257,6 +257,29 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/~ Paris · APPROXIMATE \(IP-BASED\)/)
   })
 
+  it('tells a visitor who denied permission which fallback they are looking at', () => {
+    // Arrange — permission denied, nothing else resolved.
+    mockLocation({ denied: true })
+    mockData(readyFixture({ isPersonalized: false }))
+    // Act
+    const { getByText } = render(<Home />)
+    // Assert
+    expect(getByText('Location permission was not granted — showing the global fallback.')).not.toBeNull()
+  })
+
+  it('names the approximate location (not the global fallback) when permission was denied but approx resolved', () => {
+    // Arrange
+    mockLocation({ denied: true, approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' } })
+    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    // Act
+    const { getByText, queryByText } = render(<Home />)
+    // Assert
+    expect(
+      getByText('Location permission was not granted — showing an approximate (IP-based) location instead.'),
+    ).not.toBeNull()
+    expect(queryByText('Location permission was not granted — showing the global fallback.')).toBeNull()
+  })
+
   it('prefers a real choice over approx when both are present', () => {
     // Arrange
     mockLocation({
