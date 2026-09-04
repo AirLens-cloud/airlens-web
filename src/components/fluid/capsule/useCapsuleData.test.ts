@@ -232,4 +232,43 @@ describe('useCapsuleData', () => {
     expect(result.current.city).toBe('Riyadh')
     expect(result.current.isPersonalized).toBe(false)
   })
+
+  it('returns to loading when the point changes, so the old city never sits under a new location label', async () => {
+    // Arrange — the un-personalized pick resolves first (Riyadh), then an
+    // approximate point arrives. Without the reset, Riyadh would stay on
+    // screen while the caller already reads "APPROXIMATE".
+    const payload: ForecastPayload = {
+      generated_at: '2026-08-26T00:00:00Z',
+      model_version: 'test',
+      cities: [
+        {
+          name: 'Riyadh',
+          lat: 24.7,
+          lon: 46.7,
+          country_code: 'SA',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 247 }],
+        },
+        {
+          name: 'Seoul',
+          lat: 37.5,
+          lon: 127,
+          country_code: 'KR',
+          hourly: [{ time: '2026-08-26T00:00:00Z', pm25: 20 }],
+        },
+      ],
+    }
+    vi.mocked(fetchForecast).mockResolvedValue(payload)
+    const { result, rerender } = renderHook(
+      ({ point }: { point: { lat: number; lon: number } | null }) => useCapsuleData(point),
+      { initialProps: { point: null as { lat: number; lon: number } | null } },
+    )
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    // Act — the approximate point lands.
+    rerender({ point: { lat: 37.6, lon: 127.1 } })
+    // Assert — loading first (no stale Riyadh under the new label), then Seoul.
+    expect(result.current.status).toBe('loading')
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    if (result.current.status !== 'ready') throw new Error('expected ready')
+    expect(result.current.city).toBe('Seoul')
+  })
 })

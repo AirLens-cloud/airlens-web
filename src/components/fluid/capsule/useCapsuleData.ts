@@ -57,10 +57,13 @@ export interface CapsuleDataReady {
   series24h: CapsuleSeriesPoint[]
   updatedAt: string
   alert: CapsuleAlert
-  /** True when this reading was resolved from a viewer-chosen location
-   * (`useLocationPersonalization`) rather than the feed's "thickest air"
-   * fallback pick — callers use this to suppress the "not your location"
-   * warning and fallback CTAs once personalized. */
+  /** True whenever ANY coordinate personalized this reading — a real
+   * viewer choice (`useLocationPersonalization`'s `choice`) OR the edge's
+   * IP-approximate location (`approxLocation.ts`) a caller passed in its
+   * place — rather than the feed's "thickest air" fallback pick. Which of
+   * the two it was is not carried here: `Home.tsx` tracks that itself
+   * (`choice` vs. `approx`) since only it needs the finer distinction
+   * (`HomeHero`'s "MY LOCATION" vs. "~ approximate" wording). */
   isPersonalized: boolean
 }
 
@@ -118,19 +121,32 @@ function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAle
 }
 
 /**
- * @param personalizedLocation When set (`useLocationPersonalization`'s
- * `choice`), resolves to the nearest feed city to that point instead of the
- * feed-wide "thickest air" pick — same `pickNearestCity` lookup
- * `useTodayCams` already uses for Today's location-specific reading, so this
- * adds no new fetch or scoring logic of its own.
+ * @param personalizedLocation When set, resolves to the nearest feed city to
+ * that point instead of the feed-wide "thickest air" pick — same
+ * `pickNearestCity` lookup `useTodayCams` already uses for Today's
+ * location-specific reading, so this adds no new fetch or scoring logic of
+ * its own. The caller decides where the point comes from — a real
+ * `useLocationPersonalization` `choice`, or (Home.tsx) that `choice`'s
+ * `approx` fallback when there is no stored choice yet; either way, this
+ * hook just resolves the nearest city to whatever point it's handed.
  */
+/** A resolved state plus the point it was resolved for. The point travels
+ * with the result so a state left over from the previous point can be told
+ * apart from one that answers the current one — see the read below. */
+interface ResolvedFor {
+  state: CapsuleDataState
+  lat: number | null
+  lon: number | null
+}
+
 export function useCapsuleData(personalizedLocation?: { lat: number; lon: number } | null): CapsuleDataState {
-  const [state, setState] = useState<CapsuleDataState>({ status: 'loading' })
+  const [resolved, setResolved] = useState<ResolvedFor>({ state: { status: 'loading' }, lat: null, lon: null })
   const personalizedLat = personalizedLocation?.lat ?? null
   const personalizedLon = personalizedLocation?.lon ?? null
 
   useEffect(() => {
     let alive = true
+    const setState = (state: CapsuleDataState) => setResolved({ state, lat: personalizedLat, lon: personalizedLon })
     fetchForecast()
       .then((forecast) => {
         if (!alive) return
@@ -192,5 +208,12 @@ export function useCapsuleData(personalizedLocation?: { lat: number; lon: number
     }
   }, [personalizedLat, personalizedLon])
 
-  return state
+  // A result for a different point is not this point's answer — report
+  // loading until the fetch for the current one lands. Without this, the
+  // city resolved for the previous point (or the un-personalized
+  // "thickest air" pick) would sit under the caller's already-updated
+  // location label, reading "~ Riyadh · APPROXIMATE (IP-BASED)" — exactly
+  // the mislabel this chain exists to remove.
+  if (resolved.lat !== personalizedLat || resolved.lon !== personalizedLon) return { status: 'loading' }
+  return resolved.state
 }

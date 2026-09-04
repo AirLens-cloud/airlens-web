@@ -8,10 +8,18 @@
  * city-search pick) persists to localStorage so a returning visitor doesn't
  * have to re-choose every session; a private window or blocked storage just
  * means the Seoul default reappears.
+ *
+ * First visit only (no stored pick yet), this also tries the edge's
+ * IP-approximate location (`approxLocation.ts`) as a better-than-Seoul
+ * default — labeled honestly as approximate, never persisted to
+ * localStorage (a fetch result, not a chosen pick — see `source: 'approx'`
+ * below), and instantly superseded the moment a real request/pick lands.
+ * Seoul stays the final fallback if the approximate lookup also comes up empty.
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { getApproxLocation } from '../lib/geo/approxLocation'
 
-export type GeoSource = 'user' | 'default'
+export type GeoSource = 'user' | 'default' | 'approx'
 
 export interface GeoLocationState {
   lat: number
@@ -77,6 +85,30 @@ export function useGeolocation(): UseGeolocationResult {
   const [location, setLocationState] = useState<GeoLocationState>(() => readStoredLocation() ?? SEOUL_DEFAULT)
   const [requesting, setRequesting] = useState(false)
   const [denied, setDenied] = useState(false)
+
+  // Mount-only, and only when there's no stored user pick to respect —
+  // fires once, never re-fetches on a later request/pick (deps: []).
+  useEffect(() => {
+    if (readStoredLocation() !== null) return
+    let alive = true
+    getApproxLocation().then((approx) => {
+      if (!alive || approx === null) return
+      setLocationState((current) => {
+        // A real request/pick may have landed while the fetch was in
+        // flight — never clobber it with the slower approximate result.
+        if (current.source !== 'default') return current
+        return {
+          lat: approx.lat,
+          lon: approx.lon,
+          source: 'approx',
+          label: approx.city ? `${approx.city} (approximate, IP-based)` : 'Approximate area',
+        }
+      })
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const setLocation = useCallback((next: { lat: number; lon: number; label: string }): void => {
     const loc: GeoLocationState = { lat: next.lat, lon: next.lon, source: 'user', label: next.label }

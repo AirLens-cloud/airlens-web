@@ -23,6 +23,14 @@ export interface HomeHeroProps {
   nowMs: number
   requestingLocation: boolean
   locationDenied: boolean
+  /** Where the shown location came from — a real opt-in choice, the edge's
+   * IP-approximate location (no opt-in yet), or neither (the feed's
+   * "thickest air" fallback). Governs the eyebrow text, the fallback band,
+   * and CTA visibility below. Deliberately separate from `data.isPersonalized`
+   * (which only says "was any coordinate used", approx included) — the
+   * caller (`Home.tsx`) already tracks its own `choice`/`approx` state and
+   * is the only place that can tell these two apart. */
+  locationSource: 'user' | 'approx' | 'none'
   onRequestLocation: () => void
   onSelectCity: (city: WeatherCity) => void
 }
@@ -42,14 +50,21 @@ const VALUE_SPRING: SpringConfig = { damping: 1.0, response: 0.5 }
  * cities) — very unlikely to be the visitor's own air. The eyebrow, a
  * fallback band, and two CTAs ("see air quality near me" / "search a
  * location") say so explicitly and offer a way out, rather than implying
- * this is "your" air. Once personalized (`data.isPersonalized`), the band
- * and CTAs drop and the eyebrow reads as a plain observation location.
+ * this is "your" air. Once personalized (`locationSource === 'user'`), the
+ * band and CTAs drop and the eyebrow reads as a plain observation location.
+ *
+ * First visit, before any opt-in, `locationSource === 'approx'` covers the
+ * middle ground: the edge's IP-approximate location resolved a nearby city,
+ * which is closer than the fallback but still not exact — the eyebrow says
+ * so ("~ CITY · APPROXIMATE (IP-BASED)") and the CTAs stay up, since the
+ * visitor hasn't actually chosen anything yet.
  */
 export default function HomeHero({
   data,
   nowMs,
   requestingLocation,
   locationDenied,
+  locationSource,
   onRequestLocation,
   onSelectCity,
 }: HomeHeroProps) {
@@ -136,8 +151,10 @@ export default function HomeHero({
     >
       <div className="home-hero__inner">
         <div className="home-hero__eyebrow">
-          {data.isPersonalized ? (
+          {locationSource === 'user' ? (
             <>MY LOCATION · {data.city}, {data.countryCode}</>
+          ) : locationSource === 'approx' ? (
+            <>~ {data.city} · APPROXIMATE (IP-BASED)</>
           ) : (
             <>NOW · {data.city}, {data.countryCode} · FALLBACK: THICKEST AIR</>
           )}
@@ -159,14 +176,14 @@ export default function HomeHero({
           </div>
         </div>
 
-        {!data.isPersonalized && (
+        {locationSource === 'none' && (
           <div className="home-hero__fallback-band t-caption">
             <b>Showing Earth's thickest air right now</b> — not your local reading.
           </div>
         )}
 
         <div className="home-hero__location-ctas">
-          {!data.isPersonalized ? (
+          {locationSource !== 'user' ? (
             <>
               <button
                 type="button"
@@ -197,9 +214,14 @@ export default function HomeHero({
           )}
         </div>
 
-        {locationDenied && !data.isPersonalized && (
+        {locationDenied && locationSource === 'none' && (
           <p className="home-hero__location-note t-caption">
             Location permission was not granted — showing the global fallback.
+          </p>
+        )}
+        {locationDenied && locationSource === 'approx' && (
+          <p className="home-hero__location-note t-caption">
+            Location permission was not granted — showing an approximate (IP-based) location instead.
           </p>
         )}
 

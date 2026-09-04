@@ -82,14 +82,22 @@ export interface AqiCapsuleProps {
  * UI Tier-1 P1: reads the shared `useLocationPersonalization` choice (set
  * from the Home hero's "see air quality near me" / "search a location"
  * CTAs) so a visitor who personalizes on Home sees the same personalized
- * reading here on Today/Globe/Insights/Landing, not a second prompt. Idle
- * state always shows a location label; unpersonalized (the feed's
- * "thickest air" fallback pick) additionally shows a "NOT YOUR LOCATION"
- * warning, since that number is very unlikely to be the visitor's own air.
+ * reading here on Today/Globe/Insights/Landing, not a second prompt. Before
+ * that opt-in it falls back to the same `approx` (edge IP) point Home uses,
+ * so the two surfaces never disagree about where the visitor is. Idle state
+ * always shows a location label, badged by how the point was obtained:
+ * nothing for an opt-in choice, "APPROXIMATE" for the IP guess, and "NOT
+ * YOUR LOCATION" for the feed's "thickest air" fallback pick — that last
+ * number is very unlikely to be the visitor's own air.
  */
 export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
-  const { choice } = useLocationPersonalization()
-  const personalizedLocation = choice ? { lat: choice.lat, lon: choice.lon } : null
+  const { choice, approx } = useLocationPersonalization()
+  const point = choice ?? approx
+  const personalizedLocation = point ? { lat: point.lat, lon: point.lon } : null
+  // Same three-way honesty as the Home hero: an opt-in choice is the
+  // visitor's own location, the edge's IP guess is only approximate, and
+  // neither means this is the feed's thickest-air pick.
+  const locationSource: 'user' | 'approx' | 'none' = choice ? 'user' : approx ? 'approx' : 'none'
   const data = useCapsuleData(personalizedLocation)
   useReducedMotion()
   const [open, setOpen] = useState(false)
@@ -258,7 +266,8 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
       <>
         <span className="aq-capsule__loc-row t-micro">
           <span className="aq-capsule__loc">{data.city}</span>
-          {!data.isPersonalized && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
+          {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
+          {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
         </span>
         <span className="aq-capsule__reading-row">
           <AqiDot tier={data.tier} size={10} />
@@ -270,9 +279,12 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
         </span>
       </>
     )
-    ariaLabel = data.isPersonalized
-      ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
-      : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
+    ariaLabel =
+      locationSource === 'user'
+        ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
+        : locationSource === 'approx'
+          ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — approximate location, expand for details`
+          : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
   }
 
   return (

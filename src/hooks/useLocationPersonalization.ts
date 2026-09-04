@@ -8,9 +8,17 @@
  * `navigator.geolocation` sets `denied`, which the caller uses to reveal the
  * city-search fallback (`CitySearch`, already used by `/today`'s
  * `WeatherHero`) rather than silently doing nothing.
+ *
+ * `approx` is a separate value, not folded into `choice` — the store's
+ * "`choice` stays `null` until a real request/pick" invariant (see
+ * `locationChoiceStore.ts`'s header) is deliberately untouched here. A
+ * caller that wants "the best location we have" resolves its own
+ * `choice ?? approx` priority (Home hero does this explicitly, so it can
+ * still tell the visitor a reading is only approximate).
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocationChoiceStore, type LocationChoice } from '../store/locationChoiceStore'
+import { getApproxLocation, type ApproxLocation } from '../lib/geo/approxLocation'
 import type { WeatherCity } from '../lib/cityCatalog'
 
 const GEOLOCATION_TIMEOUT_MS = 8000
@@ -18,6 +26,10 @@ const GEOLOCATION_MAX_AGE_MS = 5 * 60 * 1000
 
 export interface UseLocationPersonalizationResult {
   choice: LocationChoice | null
+  /** The edge's IP-approximate location, or `null` until it resolves (or
+   * fails). Independent of `choice` — still populated even after a real
+   * pick lands, so a later `clearChoice()` has an immediate fallback. */
+  approx: ApproxLocation | null
   requesting: boolean
   denied: boolean
   requestGeolocation: () => void
@@ -31,6 +43,17 @@ export function useLocationPersonalization(): UseLocationPersonalizationResult {
   const clearChoice = useLocationChoiceStore((s) => s.clearChoice)
   const [requesting, setRequesting] = useState(false)
   const [denied, setDenied] = useState(false)
+  const [approx, setApprox] = useState<ApproxLocation | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getApproxLocation().then((result) => {
+      if (alive) setApprox(result)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const requestGeolocation = useCallback((): void => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -65,5 +88,5 @@ export function useLocationPersonalization(): UseLocationPersonalizationResult {
     [setChoice],
   )
 
-  return { choice, requesting, denied, requestGeolocation, selectCity, clearChoice }
+  return { choice, approx, requesting, denied, requestGeolocation, selectCity, clearChoice }
 }
