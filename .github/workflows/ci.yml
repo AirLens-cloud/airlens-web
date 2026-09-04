@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [main]
 
+# One live run per PR. Pushing three times to a branch used to leave three full
+# runs racing to completion; only the last one's verdict was ever read, and the
+# other two still billed every minute they ran.
+#
+# `cancel-in-progress` is deliberately PR-only. On `main` each run is the record
+# for one commit — cancelling it would leave that commit with no verdict at all,
+# which is a worse trade than the minutes it saves. Main runs queue instead.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   # gitleaks-action v2 lists the PR's commits via the API on pull_request runs.
