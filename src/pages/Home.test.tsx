@@ -15,6 +15,13 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
   return { ...actual, useCapsuleData: vi.fn() }
 })
 
+// The hero's location-source wording (MY LOCATION / approximate / fallback)
+// is driven by this hook's own `choice`/`approx`, independently of the
+// mocked capsule data above — mocked here so each test controls it directly
+// instead of depending on the real (localStorage-backed) store + a real
+// `fetch('/api/geo')` call.
+vi.mock('../hooks/useLocationPersonalization', () => ({ useLocationPersonalization: vi.fn() }))
+
 // HomeStoriesResearch (below-the-fold, renders regardless of hero status) has
 // its own fetch/state coverage in HomeStoriesResearch.test.tsx — mocked here
 // only so this file's hero-focused tests don't trigger a real, unmocked
@@ -22,6 +29,7 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
 vi.mock('../api/blog', () => ({ fetchBlogFeed: vi.fn() }))
 
 import { useCapsuleData, type CapsuleDataState, type CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
+import { useLocationPersonalization } from '../hooks/useLocationPersonalization'
 import { fetchBlogFeed } from '../api/blog'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
@@ -60,6 +68,23 @@ function mockData(state: CapsuleDataState) {
   vi.mocked(useCapsuleData).mockReturnValue(state)
 }
 
+type LocationPersonalizationResult = ReturnType<typeof useLocationPersonalization>
+
+/** Defaults to the unpersonalized state (no choice, no approx) — matches
+ * `readyFixture()`'s own `isPersonalized: false` default below. */
+function mockLocation(overrides: Partial<LocationPersonalizationResult> = {}) {
+  vi.mocked(useLocationPersonalization).mockReturnValue({
+    choice: null,
+    approx: null,
+    requesting: false,
+    denied: false,
+    requestGeolocation: vi.fn(),
+    selectCity: vi.fn(),
+    clearChoice: vi.fn(),
+    ...overrides,
+  })
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
@@ -72,6 +97,7 @@ beforeEach(() => {
   // Never resolves — these tests assert synchronously and don't care about
   // HomeStoriesResearch's own states (covered in its own test file).
   vi.mocked(fetchBlogFeed).mockReturnValue(new Promise(() => {}))
+  mockLocation()
 })
 
 afterEach(() => {
@@ -191,8 +217,8 @@ describe('Home page — ready state', () => {
     expect(note?.textContent).toMatch(/feasibility review/i)
   })
 
-  it('shows the fallback band and both location CTAs for the unpersonalized (thickest-air) reading', () => {
-    // Arrange
+  it('shows the fallback band and both location CTAs with no choice and no approx (thickest-air reading)', () => {
+    // Arrange — mockLocation() default (choice: null, approx: null) already applies.
     mockData(readyFixture({ isPersonalized: false }))
     // Act
     const { container, getByText } = render(<Home />)
@@ -203,8 +229,9 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/FALLBACK: THICKEST AIR/)
   })
 
-  it('hides the fallback band and CTA pair once the reading is personalized', () => {
+  it('hides the fallback band and CTA pair once a real choice personalizes the reading', () => {
     // Arrange
+    mockLocation({ choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' } })
     mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
     // Act
     const { container, getByText, queryByText } = render(<Home />)
@@ -213,6 +240,34 @@ describe('Home page — ready state', () => {
     expect(queryByText('See air quality near me')).toBeNull()
     expect(getByText('Not you? Search again')).not.toBeNull()
     expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · Paris, FR/)
+  })
+
+  it('shows the approximate-location eyebrow (still with location CTAs) when only approx resolved', () => {
+    // Arrange — no stored choice, but the IP-approximate lookup found one.
+    mockLocation({ approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' } })
+    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    // Act
+    const { container, getByText, queryByText } = render(<Home />)
+    // Assert — approximate, not a real choice: the fallback band is gone
+    // (a nearby reading, not the global worst), but the opt-in CTAs stay up.
+    expect(container.querySelector('.home-hero__fallback-band')).toBeNull()
+    expect(getByText('See air quality near me')).not.toBeNull()
+    expect(getByText('Search a location')).not.toBeNull()
+    expect(queryByText('Not you? Search again')).toBeNull()
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/~ Paris · APPROXIMATE \(IP-BASED\)/)
+  })
+
+  it('prefers a real choice over approx when both are present', () => {
+    // Arrange
+    mockLocation({
+      choice: { lat: 51.5074, lon: -0.1278, label: 'London, GB', source: 'geolocation' },
+      approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' },
+    })
+    mockData(readyFixture({ isPersonalized: true, city: 'London', countryCode: 'GB' }))
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · London, GB/)
   })
 
   it('renders TrustLine with DQSS withheld and p10/p90 not published for the deterministic forecast', () => {

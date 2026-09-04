@@ -1,10 +1,16 @@
 // AAA coverage for useLocationPersonalization: no-prompt default, denial /
 // unsupported-browser handling (never guesses a location), success write-
-// through to the shared store, and selectCity's derived label.
+// through to the shared store, selectCity's derived label, and the
+// independently-resolved `approx` value (never folded into `choice` — see
+// the hook's own header for why).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act, cleanup } from '@testing-library/react'
+import { renderHook, act, cleanup, waitFor } from '@testing-library/react'
 import { useLocationPersonalization } from './useLocationPersonalization'
 import { useLocationChoiceStore } from '../store/locationChoiceStore'
+
+vi.mock('../lib/geo/approxLocation', () => ({ getApproxLocation: vi.fn() }))
+
+import { getApproxLocation } from '../lib/geo/approxLocation'
 
 afterEach(() => {
   cleanup()
@@ -15,15 +21,19 @@ afterEach(() => {
 
 beforeEach(() => {
   useLocationChoiceStore.setState({ choice: null })
+  // Default: no approximate location — tests below the "approx" describe
+  // block override this per-case.
+  vi.mocked(getApproxLocation).mockResolvedValue(null)
 })
 
 describe('useLocationPersonalization', () => {
-  it('starts with no choice and no prompt fired', () => {
+  it('starts with no choice, no prompt fired, and no approx yet (unresolved)', () => {
     const { result } = renderHook(() => useLocationPersonalization())
 
     expect(result.current.choice).toBeNull()
     expect(result.current.requesting).toBe(false)
     expect(result.current.denied).toBe(false)
+    expect(result.current.approx).toBeNull()
   })
 
   it('marks denied (never guesses a location) when geolocation is unsupported', () => {
@@ -100,5 +110,29 @@ describe('useLocationPersonalization', () => {
       label: 'Tokyo, JP',
       source: 'search',
     })
+  })
+})
+
+describe('useLocationPersonalization — approx', () => {
+  it('resolves the approximate location independently of choice', async () => {
+    // Arrange
+    vi.mocked(getApproxLocation).mockResolvedValue({ lat: 35.6762, lon: 139.6503, city: 'Tokyo' })
+    // Act
+    const { result } = renderHook(() => useLocationPersonalization())
+    // Assert
+    await waitFor(() => expect(result.current.approx).toEqual({ lat: 35.6762, lon: 139.6503, city: 'Tokyo' }))
+    expect(result.current.choice).toBeNull() // never folded into choice
+  })
+
+  it('stays populated after a real choice lands — clearChoice has an immediate fallback', async () => {
+    // Arrange
+    vi.mocked(getApproxLocation).mockResolvedValue({ lat: 35.6762, lon: 139.6503, city: 'Tokyo' })
+    const { result } = renderHook(() => useLocationPersonalization())
+    await waitFor(() => expect(result.current.approx).not.toBeNull())
+    // Act
+    act(() => result.current.selectCity({ name: 'Paris', lat: 48.8566, lon: 2.3522, countryCode: 'FR' }))
+    // Assert
+    expect(result.current.choice).not.toBeNull()
+    expect(result.current.approx).toEqual({ lat: 35.6762, lon: 139.6503, city: 'Tokyo' })
   })
 })

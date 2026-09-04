@@ -32,8 +32,19 @@ import '../styles/home.css'
  * withhold it.
  */
 export default function Home() {
-  const { choice, requesting, denied, requestGeolocation, selectCity } = useLocationPersonalization()
-  const personalizedLocation = choice ? { lat: choice.lat, lon: choice.lon } : null
+  const { choice, approx, requesting, denied, requestGeolocation, selectCity } = useLocationPersonalization()
+  // Priority chain: a real opt-in choice beats the IP-approximate location,
+  // which beats the feed's "thickest air" fallback pick. `locationSource`
+  // carries which of the three won, so HomeHero can say so honestly (a
+  // fallback pick and an approximate guess must never read as the same
+  // thing — Glass-box) instead of collapsing to `data.isPersonalized`'s
+  // coarser "was any coordinate personalized" boolean.
+  const personalizedLocation = choice
+    ? { lat: choice.lat, lon: choice.lon }
+    : approx
+      ? { lat: approx.lat, lon: approx.lon }
+      : null
+  const locationSource: 'user' | 'approx' | 'none' = choice ? 'user' : approx ? 'approx' : 'none'
   const data = useCapsuleData(personalizedLocation)
   // Read once, in a lazy initializer (React's documented escape hatch for a
   // one-time non-deterministic read) rather than calling `Date.now()`
@@ -65,6 +76,7 @@ export default function Home() {
           nowMs={renderedAtMs}
           requestingLocation={requesting}
           locationDenied={denied}
+          locationSource={locationSource}
           onRequestLocation={requestGeolocation}
           onSelectCity={selectCity}
         />
