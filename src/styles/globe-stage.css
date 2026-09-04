@@ -628,7 +628,7 @@
 .obs-surface .gtv-dim { color: var(--obs-hud-dim); font-style: italic; }
 
 .obs-surface .gtv-flag {
-  margin-left: 6px;
+  margin-left: var(--sp-1);
   color: var(--orange);
   font: 700 8px/1 var(--obs-mono);
   letter-spacing: .08em;
@@ -640,7 +640,7 @@
 }
 
 .obs-surface .gtv-caveat {
-  padding-top: 4px;
+  padding-top: var(--sp-1);
   color: var(--orange);
   font: 500 10px/1.4 var(--obs-display);
 }
