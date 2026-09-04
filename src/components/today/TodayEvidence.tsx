@@ -24,8 +24,12 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
           <span className="today-cell__label m">GRID</span>
           {grid.status === 'ready' ? (
             <p className="t-micro">
-              <span className="unit">µg/m³</span> · analysis/interpolated · valid {formatUtcTime(grid.updatedAt)} · source
-              global_grid
+              {/* "analysis" is right — the producer reads GEFS's f000 `anl`
+                  record, not a forecast lead — but "interpolated" was not:
+                  the grid is decimated to whole degrees and we read the
+                  nearest surviving point. */}
+              <span className="unit">µg/m³</span> · analysis/nearest grid point · valid {formatUtcTime(grid.updatedAt)} ·
+              source global_grid
               {grid.stale ? ' · stale' : ''}
               {/* Named here too: the AGREEMENT cell drops to "not enough
                   sources" when the grid is unverifiable, and without this the

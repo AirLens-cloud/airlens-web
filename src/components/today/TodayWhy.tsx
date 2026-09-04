@@ -62,7 +62,13 @@ export default function TodayWhy({ grid, cams, weather, weatherStatus, weatherCo
                 {Math.round(grid.pm25)} <small>µg/m³</small>
               </span>
               <span className="today-cell__sub t-micro">
-                {grid.stale ? 'stale · ' : ''}analysis · interpolated · valid {formatUtcTime(grid.updatedAt)}
+                {/* "interpolated" was wrong and the glossary says why: it
+                    defines the word as a value inferred from surrounding
+                    cells, and nothing here infers anything. The producer
+                    decimates GEFS's native grid to whole degrees and this
+                    hook takes the nearest surviving point, distance and all
+                    — which is what TodayAnswer already tells the reader. */}
+                {grid.stale ? 'stale · ' : ''}analysis · nearest grid point · valid {formatUtcTime(grid.updatedAt)}
               </span>
               {/* The cell keeps its real number even when we can't stand
                   behind it — hiding the figure would leave no trace that the

@@ -167,17 +167,50 @@ const CADENCE_3H = '3h';
  */
 const CDN_COVERED_AQ_IDS: readonly string[] = ['pm25', 'pm10'];
 
-const aqPipeline = (id: 'pm25' | 'pm10' | 'o3' | 'no2' | 'co', varKey: string): PhenomenonPipeline => ({
-  feed: 'aq-grid',
-  varKey,
-  storagePath: `aq-data/current-${id}-grid.json`,
-  cdnPath: CDN_COVERED_AQ_IDS.includes(id) ? `current-${id}-grid.json` : undefined,
-  staticPath: `/data/current-${id}-grid.json`,
-  source: 'Open-Meteo Air Quality',
-  cadence: CADENCE_3H,
-  resolution: '5°',
-  freshnessSlaH: null,
-});
+/**
+ * The particulates and the gases do not come from the same place, and until
+ * 2026-09-04 this file said they did — every one of the five was labelled
+ * "Open-Meteo Air Quality" at 5°, which /data-sources, /datasets and the
+ * Globe HUD then repeated to readers.
+ *
+ * Each artifact states its own provenance, and that is the authority here.
+ * Read off the live files that day: `current-pm25-grid.json` and
+ * `current-pm10-grid.json` both carry `"source": "NOAA GEFS-Aerosols"` with
+ * `nLat 181 × nLon 360` at 1°, while `current-{o3,no2,co}-grid.json` carry
+ * `"source": "Open-Meteo (CAMS)"` with `nLat 33 × nLon 72` at 5°. So the old
+ * label was wrong twice over for PM — wrong provider and a resolution five
+ * times coarser than the grid actually shipped — and only loosely right for
+ * the gases. The comment above already named `collect_gefs_chem_global.py`,
+ * so the code knew where PM came from; only the label had drifted.
+ */
+const AQ_PROVENANCE = {
+  particulate: { source: 'NOAA GEFS-Aerosols', resolution: '1°' },
+  gas: { source: 'Open-Meteo (CAMS)', resolution: '5°' },
+} as const;
+
+/**
+ * Which feeds come from the aerosol model. This is the same pair as
+ * `CDN_COVERED_AQ_IDS` today and is still written out separately, because the
+ * two say different things — one is "has a CDN path", the other is "was
+ * produced by GEFS-Aerosols". Sharing one list would quietly relabel a
+ * pollutant's provenance the day a CDN path is added or dropped.
+ */
+const GEFS_AEROSOL_AQ_IDS: readonly string[] = ['pm25', 'pm10'];
+
+const aqPipeline = (id: 'pm25' | 'pm10' | 'o3' | 'no2' | 'co', varKey: string): PhenomenonPipeline => {
+  const provenance = GEFS_AEROSOL_AQ_IDS.includes(id) ? AQ_PROVENANCE.particulate : AQ_PROVENANCE.gas;
+  return {
+    feed: 'aq-grid',
+    varKey,
+    storagePath: `aq-data/current-${id}-grid.json`,
+    cdnPath: CDN_COVERED_AQ_IDS.includes(id) ? `current-${id}-grid.json` : undefined,
+    staticPath: `/data/current-${id}-grid.json`,
+    source: provenance.source,
+    cadence: CADENCE_3H,
+    resolution: provenance.resolution,
+    freshnessSlaH: null,
+  };
+};
 
 /** 기상 격자 (STEP=10, 위도 −80…80). */
 const weatherPipeline = (varKey: string): PhenomenonPipeline => ({
