@@ -99,6 +99,33 @@ describe('GlobeTableView', () => {
     expect(seoulRow?.getAttribute('aria-selected')).toBe('true')
   })
 
+  it('keeps a beyond-scale cell in its ranked place and marks it, without touching the value', () => {
+    // Arrange — the real max published on 2026-09-04 (Yakutia fire belt),
+    // still ranked first by PM2.5 descending against the two normal cells.
+    useGlobeGridSnapshotMock.mockReturnValue({
+      ...SNAPSHOT,
+      nearbyCells: [
+        ...SNAPSHOT.nearbyCells,
+        { lat: 65, lon: 116, pm25: 15867.96, aqi: 500, updatedAt: '2026-08-28T08:00:00Z', plausibility: { verdict: 'beyond-scale', reason: 'beyond the top of our reporting scale — we cannot verify this reading' } },
+      ],
+    })
+    // Act
+    render(<GlobeTableView />)
+    const rows = screen.getAllByRole('row').slice(1)
+    // Assert — first row (highest PM2.5) is the unverified cell, real number intact.
+    expect(rows[0].textContent).toContain('15868.0')
+    expect(rows[0].textContent).toContain('BEYOND SCALE')
+    expect(screen.getByText(/outside the reportable scale/i)).toBeTruthy()
+  })
+
+  it('never flags a normal cell as beyond scale', () => {
+    // Arrange / Act — SNAPSHOT's two cells (42.3, 68.1) carry no plausibility field.
+    render(<GlobeTableView />)
+    // Assert
+    expect(screen.queryByText('BEYOND SCALE')).toBeNull()
+    expect(screen.queryByText(/outside the reportable scale/i)).toBeNull()
+  })
+
   it('renders an honest-empty state instead of a table when the grid snapshot is unavailable', () => {
     // Arrange
     useGlobeGridSnapshotMock.mockReturnValue(null)

@@ -5,7 +5,12 @@
  * `useAtmosphericViewModel()` (a Globe-engine hook); this port takes the same
  * fields as props instead, so it renders with no Globe engine/store present.
  * react-i18next stripped — plain-English default props.
+ *
+ * PM2.5's own range top gets a second caveat line beside `forecastCaveat`
+ * when it's beyond what `gridPlausibility.ts` calls reportable — the range
+ * number itself is never touched, same rule as the Table/Map cell flags.
  */
+import { REPORTABLE_MAX_UGM3, classifyPm25 } from '../../../lib/config/gridPlausibility'
 import type { AtmosphericMode } from '../../../types/globe'
 
 export type GlobeObsHudStatus = 'ready' | 'stale' | 'unavailable' | 'loading'
@@ -73,6 +78,12 @@ export default function GlobeObsHud({
   forecastCaveat = 'GEFS single-member forecast — no uncertainty band',
 }: GlobeObsHudProps) {
   const rangeLabel = range ? `${range[0].toFixed(1)}–${range[1].toFixed(1)}` : null
+  // `label` is the deck's own `PHENOMENA.pm25.hud.label` literal — the one
+  // atmospheric mode `gridPlausibility.ts`'s scale applies to. Range comes
+  // straight from `activeGridMeta`/`ScalarFieldOverlay`, unrelated to the
+  // Table/Map cell-level `plausibility` field; classified here so the strip
+  // carries the same caveat rather than only the two grid-payload views.
+  const pm25RangeVerdict = label === 'PM2.5' && range != null ? classifyPm25(range[1]) : null
 
   return (
     <section className="gobs-hud m num" aria-label={ariaLabel}>
@@ -99,6 +110,9 @@ export default function GlobeObsHud({
         </span>
       )}
       {mode === 'forecast' && <span className="dim">{forecastCaveat}</span>}
+      {pm25RangeVerdict?.verdict === 'beyond-scale' && (
+        <span className="warn">Range top is {pm25RangeVerdict.reason} (scale tops out at {REPORTABLE_MAX_UGM3} µg/m³).</span>
+      )}
     </section>
   )
 }

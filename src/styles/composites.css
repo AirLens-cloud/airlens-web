@@ -385,6 +385,7 @@ canvas.cursor-trail { z-index: 2; }
 .obs-surface .gobs-hud .strong { color: var(--obs-ink); }
 .obs-surface .gobs-hud .tick { color: var(--obs-cyan); }
 .obs-surface .gobs-hud .dim { color: var(--obs-hud-dim); }
+.obs-surface .gobs-hud .warn { color: var(--orange); }
 .obs-surface .gobs-live-dot {
   display: inline-block; width: 5px; height: 5px; border-radius: 50%;
   background: var(--orange); margin-right: 6px; vertical-align: 1px;

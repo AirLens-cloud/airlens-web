@@ -77,6 +77,42 @@ describe('GlobeMapView — coverage', () => {
     expect(Math.max(...ys)).toBeGreaterThan(300) // southern dot near the bottom edge
   })
 
+  it('names a beyond-scale cell in aria-label and title without changing its value or position', async () => {
+    // Arrange — the real max published on 2026-09-04 (Yakutia fire belt).
+    useGlobeGridSnapshotMock.mockReturnValue({
+      pm25: 15867.96, aqi: 500, lat: 65, lon: 116, source: 'global_grid', updatedAt: '2026-08-28T08:00:00Z',
+      nearbyCells: [
+        {
+          lat: 65, lon: 116, pm25: 15867.96, aqi: 500, updatedAt: '2026-08-28T08:00:00Z',
+          plausibility: { verdict: 'beyond-scale', reason: 'beyond the top of our reporting scale — we cannot verify this reading' },
+        },
+      ],
+    })
+    const GlobeMapView = (await import('./GlobeMapView')).default
+    // Act
+    const { container } = render(<GlobeMapView />)
+    const dot = container.querySelector('.gmv-dot') as SVGCircleElement
+    // Assert — real number carried through, reason appended rather than replacing it.
+    expect(dot.getAttribute('aria-label')).toContain('15868.0')
+    expect(dot.getAttribute('aria-label')).toContain('we cannot verify this reading')
+    expect(dot.querySelector('title')?.textContent).toContain('15868.0')
+    expect(dot.querySelector('title')?.textContent).toContain('we cannot verify this reading')
+  })
+
+  it('leaves a normal cell aria-label and title unmarked', async () => {
+    // Arrange / Act — plausibility absent, reads as reportable.
+    useGlobeGridSnapshotMock.mockReturnValue({
+      pm25: 10, aqi: 42, lat: 0, lon: 0, source: 'global_grid', updatedAt: '2026-08-28T08:00:00Z',
+      nearbyCells: [{ lat: 0, lon: 0, pm25: 10, aqi: 42, updatedAt: '2026-08-28T08:00:00Z', grade: 'Good' }],
+    })
+    const GlobeMapView = (await import('./GlobeMapView')).default
+    const { container } = render(<GlobeMapView />)
+    const dot = container.querySelector('.gmv-dot') as SVGCircleElement
+    // Assert
+    expect(dot.getAttribute('aria-label')).not.toContain('cannot verify')
+    expect(dot.querySelector('title')?.textContent).not.toContain('cannot verify')
+  })
+
   it('falls back to the static globe when the grid feed itself is unavailable', async () => {
     // Arrange
     useGlobeGridSnapshotMock.mockReturnValue(null)
