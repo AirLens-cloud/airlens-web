@@ -12,3 +12,18 @@ Korean copy never renders in Crimson Pro — Hangul falls back to Inter/system).
 
 Free/open (OFL) — self-hosting/redistribution as part of this application is
 permitted under the license terms.
+
+## Copyright and full licence text
+
+> Copyright 2018 The Crimson Pro Project Authors
+> (https://github.com/Fonthausen/CrimsonPro)
+
+OFL 1.1 §1 requires the copyright notice **and the licence itself** to travel
+with every copy — a link is not enough once the files are redistributed, which
+is what publishing this repository does. The full text is in `OFL.txt` beside
+this file (from `google/fonts/ofl/crimsonpro/OFL.txt`).
+
+**Reserved Font Name: none.** The copyright line carries no "with Reserved Font
+Name" clause, so the Latin subset shipped here does not have to be renamed.
+Checked 2026-09-04 against upstream; re-check before subsetting a *different*
+family, where the answer is often the opposite.

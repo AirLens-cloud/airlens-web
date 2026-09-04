@@ -117,4 +117,48 @@ describe('fetchFeedRegistry', () => {
     expect(forecast?.status).toBe('unavailable')
     expect(forecast?.lastSuccess).toBeNull()
   })
+
+  // Legal obligation, not a preference: CC BY 4.0 specifies this sentence for
+  // Copernicus/CAMS data, and the forecast feed carries it. Asserted verbatim
+  // and character-for-character so a well-meaning reword ("Copernicus CAMS
+  // data") fails here instead of silently putting the site back out of
+  // compliance. It must also survive an unreachable feed, because last-good
+  // retention keeps serving the entry after the poll fails.
+  const COPERNICUS =
+    'Open-Meteo CAMS. Generated using Copernicus Atmosphere Monitoring Service information 2026.'
+
+  it('carries the licence-mandated Copernicus wording on the CAMS feed', async () => {
+    // Arrange
+    installFetch()
+    // Act
+    const registry = await fetchFeedRegistry()
+    const forecast = registry.feeds.find((f) => f.id === 'forecast')
+    // Assert
+    expect(forecast?.attribution).toBe(COPERNICUS)
+  })
+
+  it('keeps the Copernicus wording when the feed is unreachable', async () => {
+    // Arrange — never a successful poll, so the entry is built from the
+    // failure path rather than from a probe result.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 }) as Response))
+    // Act
+    const registry = await fetchFeedRegistry()
+    const forecast = registry.feeds.find((f) => f.id === 'forecast')
+    // Assert
+    expect(forecast?.status).toBe('unavailable')
+    expect(forecast?.attribution).toBe(COPERNICUS)
+  })
+
+  it('leaves attribution null where no licence mandates wording', async () => {
+    // Guards the opposite failure: filling every row with a plausible string
+    // would be the fabrication `LICENSE_NOT_PUBLISHED` exists to refuse.
+    // Arrange
+    installFetch()
+    // Act
+    const registry = await fetchFeedRegistry()
+    const others = registry.feeds.filter((f) => f.id !== 'forecast')
+    // Assert
+    expect(others.length).toBeGreaterThan(0)
+    expect(others.every((f) => f.attribution === null)).toBe(true)
+  })
 })

@@ -11,6 +11,13 @@ dist-ssr/
 .env.*.local
 !.env.example
 
+# wrangler local secrets. `workers/assistant/wrangler.toml` tells developers to
+# put SESSION_HMAC_SECRET / TURNSTILE_SECRET / ADMIN_REINDEX_SECRET in a
+# ".dev.vars file, gitignored" — which was not true until this line existed.
+# HMAC secrets are random strings, so gitleaks' generic rules may not catch one.
+.dev.vars
+.dev.vars.*
+
 # editor / OS
 .DS_Store
 *.local

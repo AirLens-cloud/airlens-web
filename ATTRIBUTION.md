@@ -42,10 +42,31 @@ code, not just with this deployment.
 ## Fonts bundled and redistributed
 
 All under the SIL Open Font License 1.1, which permits redistribution as part of
-this application. Per-file detail stays next to the files:
+this application. OFL §1 requires the copyright notice **and the full licence**
+to ship with every copy, so each directory carries both — a link would have been
+enough while this repository was private and is not enough now that publishing it
+constitutes redistribution:
 
-- `public/fonts/crimson-pro/LICENSE.md` — Crimson Pro (variable, Latin subset)
-- `public/fonts/observatory/LICENSE.md` — Overused Grotesk (subset)
+| Family | Copyright | Files |
+|---|---|---|
+| Crimson Pro (variable, Latin subset) | Copyright 2018 The Crimson Pro Project Authors | `public/fonts/crimson-pro/{LICENSE.md,OFL.txt}` |
+| Overused Grotesk (subset) | Copyright (c) 2023-2025, Bao Nguyen/RandomMaerks | `public/fonts/observatory/{LICENSE.md,OFL.txt}` |
+
+Both are shipped as **subsets**, i.e. Modified Versions under the OFL. Neither
+upstream copyright line carries a Reserved Font Name clause (checked 2026-09-04),
+so neither has to be renamed — the answer differs per family, so re-check before
+subsetting a new one.
+
+## Assets whose provenance is not yet recorded
+
+Honest gap rather than a silent one. These are committed and therefore
+redistributed, and their upstreams have not been verified: `public/textures/
+earth-bump.png`, `earth-land-mask.png`, `public/mirror/data/earth-topo.json`,
+`public/geo/seoul-districts.json`, `public/icons.svg`. (`public/textures/
+earth-night-2k.jpg` is credited in code — `src/lib/config/globe-presets.ts:99`,
+NASA Black Marble 2016, public domain — but belongs in this table too.)
+`seoul-districts.json` is the one to check first: Korean administrative
+boundaries can carry usage conditions that the others almost certainly do not.
 
 ## What is deliberately *not* claimed here
 
