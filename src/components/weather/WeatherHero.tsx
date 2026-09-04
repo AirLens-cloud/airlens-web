@@ -77,7 +77,11 @@ export default function WeatherHero({
           <div className="wx-hero__place">
             <span className="wx-hero__place-name">{location.label}</span>
             <span className="wx-hero__place-source">
-              {location.source === 'user' ? 'CHOSEN LOCATION' : 'DEFAULT LOCATION'}
+              {location.source === 'user'
+                ? 'CHOSEN LOCATION'
+                : location.source === 'approx'
+                  ? 'APPROXIMATE LOCATION'
+                  : 'DEFAULT LOCATION'}
             </span>
           </div>
           <div className="wx-hero__actions">
