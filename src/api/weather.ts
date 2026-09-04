@@ -66,8 +66,10 @@ type GfsRecord = {
 }
 
 /**
- * HF live-data repo holds the full 1° grid; the committed static file is a
- * 2° downsample.
+ * HF live-data repo is the primary; the committed static file (2nd, in
+ * `public/data/weather/current/`) is a verbatim mirror of the same artifact,
+ * refreshed on every build by scripts/prefetch-fallback-data.mjs — not an
+ * actual reduced-resolution downsample.
  */
 function windSources(slug: string): string[] {
   return [
@@ -93,6 +95,12 @@ export async function fetchWindField(
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
       if (!res.ok) continue
+      // A missing static fallback file used to come back 200 + index.html
+      // (the SPA catch-all in public/_redirects) — `functions/data/[[path]].ts`
+      // now 404s that server-side; this guard is defense-in-depth for hosts
+      // that don't run that Function (e.g. `vite preview`).
+      const contentType = res.headers?.get('content-type') ?? ''
+      if (contentType.includes('text/html')) continue
       const records = await res.json() as [GfsRecord, GfsRecord]
       if (!Array.isArray(records) || records.length < 2) continue
       const h = records[0].header
