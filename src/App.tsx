@@ -7,6 +7,7 @@ import Today from './pages/Today'
 import Home from './pages/Home'
 import FluidChrome from './app/FluidChrome'
 import { matchRoute, type Route } from './app/router'
+import { LEGACY_REDIRECTS } from './app/redirects'
 import Dispatch from './pages/Dispatch'
 import NewsArticle from './pages/NewsArticle'
 import Blog from './pages/Blog'
@@ -28,16 +29,15 @@ import NotFound from './pages/NotFound'
 import SiteChrome, { type ChromeVariant } from './app/SiteChrome'
 
 /**
- * WeatherRedirectShim — `/weather` no longer has its own page. Today absorbed
- * it (DECISIONS-2026-08-28 D4): the route now bounces to `/today` with its
- * Conditions tab pre-selected, so existing links/bookmarks keep working
- * instead of 404ing. `location.replace` (not `.href =`) so the old URL
- * never lands in browser history.
+ * RedirectShim — renders nothing and bounces to `to`. Used for every path in
+ * `LEGACY_REDIRECTS` (see `./app/redirects` for what each one is and why).
+ * `location.replace` (not `.href =`) so the dead URL never lands in browser
+ * history and Back does not walk the visitor into it again.
  */
-function WeatherRedirectShim() {
+function RedirectShim({ to }: { to: string }) {
   useEffect(() => {
-    window.location.replace('/today?tab=conditions')
-  }, [])
+    window.location.replace(to)
+  }, [to])
   return null
 }
 
@@ -107,13 +107,18 @@ export const routes: Array<Route<RouteRender>> = [
       chrome: 'overlay',
     }),
   },
-  // /weather is absorbed into /today (DECISIONS-2026-08-28 D4) — this is now
-  // a redirect shim, not a page render. `Weather.tsx` itself was retired in
-  // Wave 2A (dead code — `WeatherHero` and the Conditions-tab section
-  // components it used to own are now Today's directly, sharing weather.css).
-  // 'bare' because the redirect is instant — mounting nav chrome first would
-  // only flash it for one render before `location.replace` fires.
-  { path: '/weather', render: () => ({ element: <WeatherRedirectShim />, chrome: 'bare' }) },
+  // Legacy paths (`./app/redirects`) — `/weather` among them, absorbed into
+  // /today by DECISIONS-2026-08-28 D4 (`Weather.tsx` itself was retired in
+  // Wave 2A; `WeatherHero` and its Conditions-tab sections are Today's now,
+  // sharing weather.css). All 'bare': the redirect is instant, so mounting nav
+  // chrome would only flash it for one render before `location.replace` fires.
+  // Spread before the page routes so the table stays readable, not because
+  // order matters — every `from` is an exact path with no page counterpart,
+  // which `App.test.tsx` asserts.
+  ...LEGACY_REDIRECTS.map(({ from, to }) => ({
+    path: from,
+    render: () => ({ element: <RedirectShim to={to} />, chrome: 'bare' as ChromeVariant }),
+  })),
   // Today's own hero (WeatherHero) is a temperature/sky reading, not an AQI
   // readout — its former always-visible PM2.5 HUD+Answer content moved into
   // the Insight tab (Weather Storyboard v3, Wave 2A), so wrapping in

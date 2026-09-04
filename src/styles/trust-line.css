@@ -28,6 +28,16 @@
 .trust-line__na {
   color: var(--ink-2);
   font-style: italic;
+  /* Re-enable wrapping inside the item's `nowrap` (which is inherited). That
+     nowrap exists to keep a key glued to its value — "obs age 21h" must not
+     split across lines — but a withheld/unpublished reason is a sentence, not
+     a value: "p10–p90 not published (this data source publishes no uncertainty
+     range)" measured 469px against a 390px viewport and pushed the whole page
+     sideways (documentElement.scrollWidth 502 vs clientWidth 390, CDP device
+     emulation at 390×844). Truncating or hiding it is not an option — the
+     reason IS the Glass-box contract this component exists for — so it wraps
+     instead. The key run stays nowrap, so nothing splits mid-pair. */
+  white-space: normal;
 }
 
 .trust-line a {

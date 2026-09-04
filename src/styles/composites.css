@@ -334,7 +334,6 @@
 .msg-eyebrow { font: 500 9px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
 .msg-asst-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .msg-asst-mark { display: inline-flex; color: var(--ink-2); }
-.msg-dqss { margin-left: auto; }
 .msg-user .msg-body { margin-top: 4px; }
 /* .msg-body's font/line-height/color match .t-body exactly (see typography.css)
    — components add the `t-body` class instead of redeclaring the same values here. */
