@@ -52,8 +52,8 @@ const INSTRUMENTS: InstrumentDef[] = [
     idx: '02',
     kind: 'network',
     heading: 'Spatial Intelligence',
-    body: 'Ground stations fused with ACAG V6 satellite retrievals and MAIAC AOD, resolved to a 1km × 1km grid, refreshed hourly.',
-    source: 'stations + ACAG V6 + MAIAC AOD',
+    body: 'Ground stations and weather conditioned into a 1km × 1km grid, refreshed hourly. The satellite AOD channel is wired but contributes nothing to the live grid today.',
+    source: 'stations + weather (AOD channel idle)',
   },
   {
     idx: '03',
