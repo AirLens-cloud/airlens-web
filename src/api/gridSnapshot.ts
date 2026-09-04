@@ -177,6 +177,12 @@ async function fetchArtifact(url: string): Promise<RawGridArtifact | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) return null;
+    // A missing static fallback file used to come back 200 + index.html (the
+    // SPA catch-all in public/_redirects) — `functions/data/[[path]].ts` now
+    // 404s that server-side, but this guard stays as defense-in-depth for
+    // any host that doesn't run that Function (e.g. `vite preview`).
+    const contentType = res.headers?.get('content-type') ?? '';
+    if (contentType.includes('text/html')) return null;
     const body = (await res.json()) as unknown;
     return body && typeof body === 'object' ? (body as RawGridArtifact) : null;
   } catch {

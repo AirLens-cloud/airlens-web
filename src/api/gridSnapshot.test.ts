@@ -32,6 +32,20 @@ function failResponse(status = 503): Response {
   return { ok: false, status, json: async () => ({ error: 'unavailable' }) } as unknown as Response
 }
 
+/**
+ * Simulates the pre-fix bug: a missing static fallback file answered by the
+ * SPA catch-all (`public/_redirects`'s `/* /index.html 200`) instead of a
+ * 404 — `ok: true`, status 200, but an HTML body.
+ */
+function htmlResponse(): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null) },
+    json: async () => { throw new SyntaxError('Unexpected token < in JSON at position 0') },
+  } as unknown as Response
+}
+
 describe('fetchGlobalGridSnapshot — HF → static adapter', () => {
   it('ranks points by haversine distance from the given origin (closest first)', async () => {
     // Arrange — Seoul origin, a near point (itself), a mid-distance point, a far one.
@@ -135,6 +149,18 @@ describe('fetchGlobalGridSnapshot — HF → static adapter', () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('huggingface.co')
     expect(String(fetchMock.mock.calls[1][0])).toBe('/data/current-pm25-grid.json')
     expect(result.pm25).toBe(30)
+  })
+
+  it('treats a 200+HTML response (SPA catch-all masking a missing file) as unavailable, not as valid JSON', async () => {
+    // Arrange — HF miss, static "hit" that is actually the index.html shell.
+    fetchMock
+      .mockResolvedValueOnce(failResponse(404))
+      .mockResolvedValueOnce(htmlResponse())
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act + Assert — both cascade entries exhausted, no JSON.parse crash.
+    await expect(fetchGlobalGridSnapshot({})).rejects.toThrow()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('rejects when both sources are unreachable', async () => {
