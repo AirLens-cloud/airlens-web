@@ -1,4 +1,10 @@
-// /api/geo — IP-approximate location for first-visit personalization.
+// /edge-geo — IP-approximate location for first-visit personalization.
+//
+// Deliberately NOT under /api/: `airlens.cloud/api/*` is claimed by the
+// airlens-api Worker route, and a Worker route wins over Pages Functions on
+// the same hostname. A Function at /api/geo deploys clean and then answers
+// the Worker's own 404 in production — measured, not theorized. Keep this
+// path outside /api/ unless that Worker route is retired.
 //
 // Cloudflare's edge already resolves an approximate lat/lon for every
 // request (`request.cf.latitude`/`longitude` — strings, both nullable) —
