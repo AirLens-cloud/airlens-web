@@ -227,6 +227,10 @@ export type ChatErrorCode =
   | 'turnstile_failed'
   | 'rate_limited'
   | 'quota_exceeded'
+  /** The quota counters could not be read, so the request was refused rather
+   *  than served uncapped (quota.ts fails closed). Distinct from
+   *  rate_limited/quota_exceeded on purpose: the caller exceeded nothing. */
+  | 'quota_unavailable'
   | 'origin_denied'
   | 'invalid_body'
   /** guardrails.ts checkGuardrails rejected the message (injection attempt,

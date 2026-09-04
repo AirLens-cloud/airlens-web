@@ -167,12 +167,49 @@ describe('checkGlobalBudget — account-wide daily request budget', () => {
     expect(third.consumed).toBe(800);
   });
 
-  it('fails open when the KV store throws', async () => {
-    // Arrange
+  it('fails closed (degraded) when the KV store throws', async () => {
+    // Arrange — an unreadable ledger must not authorize the paid generation
+    // it exists to cap. On this guard "denied" means buildDegradedStream,
+    // so the caller still gets a sourced answer (index.ts).
     const env = makeEnv(new ThrowingKV(), { DAILY_REQUEST_BUDGET: '1000', REQUEST_COST_ESTIMATE: '300' });
     // Act
     const result = await checkGlobalBudget(env);
     // Assert
-    expect(result.allowed).toBe(true);
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('store_unavailable');
+  });
+});
+
+describe('quota guards — KV outage fails closed and says so', () => {
+  // The three guards used to return allowed:true on a KV exception, which
+  // removed every cap in front of a paid model exactly when the platform was
+  // already unhealthy. They now refuse — and carry a reason, so the caller
+  // can tell the user it is an outage rather than a limit they exceeded.
+  it('checkRateLimit refuses with store_unavailable, not limit_exceeded', async () => {
+    // Arrange / Act
+    const result = await checkRateLimit(makeEnv(new ThrowingKV()), 's:abc');
+    // Assert
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('store_unavailable');
+    expect(result.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it('checkDailyQuota refuses with store_unavailable, not limit_exceeded', async () => {
+    // Arrange / Act
+    const result = await checkDailyQuota(makeEnv(new ThrowingKV()), 's:abc');
+    // Assert
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('store_unavailable');
+    expect(result.retryAfterSeconds).toBeGreaterThan(0);
+  });
+
+  it('an absent binding still fails OPEN — misconfig is not an outage', async () => {
+    // Arrange — dev/local runs without CHAT_QUOTA bound. Conflating that
+    // with a live KV failure would make the worker unusable offline, so the
+    // two paths stay deliberately different.
+    // Act / Assert
+    expect((await checkRateLimit(makeEnv(undefined), 's:abc')).allowed).toBe(true);
+    expect((await checkDailyQuota(makeEnv(undefined), 's:abc')).allowed).toBe(true);
+    expect((await checkGlobalBudget(makeEnv(undefined))).allowed).toBe(true);
   });
 });

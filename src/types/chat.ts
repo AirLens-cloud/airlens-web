@@ -60,7 +60,10 @@ export type ChatStreamEvent =
   // so they omit it rather than fabricate a value.
   | { type: 'done'; budget: ChatBudgetStatus; intent: ChatIntent; finish_reason?: string | null }
 
-export type ChatErrorCode = 'turnstile_failed' | 'rate_limited' | 'quota_exceeded' | 'origin_denied' | 'invalid_body'
+// `quota_unavailable` (503) is not a limit the caller hit — it means the
+// worker could not read its quota counters and refused rather than serve
+// uncapped (workers/assistant/src/quota.ts).
+export type ChatErrorCode = 'turnstile_failed' | 'rate_limited' | 'quota_exceeded' | 'quota_unavailable' | 'origin_denied' | 'invalid_body'
 
 export interface ChatErrorBody {
   error: string

@@ -5,10 +5,25 @@ const RATE_LIMIT_TTL_SECONDS = 120;
 const DAILY_QUOTA_TTL_SECONDS = 90_000;
 const BUDGET_TTL_SECONDS = 90_000;
 
+/**
+ * Why a request was allowed or refused. The caller needs this because
+ * "you hit your limit" and "we cannot tell whether you hit your limit" are
+ * different facts and must not be reported to the user with the same message.
+ */
+export type QuotaReason = 'ok' | 'limit_exceeded' | 'store_unavailable';
+
 export interface QuotaResult {
   allowed: boolean;
   retryAfterSeconds: number;
+  reason: QuotaReason;
 }
+
+/**
+ * How long a caller is asked to wait when the quota store itself is down.
+ * Short on purpose: a KV blip is usually seconds, and the counter it guards
+ * is per-minute, so a long backoff would outlast the outage it reports.
+ */
+const STORE_UNAVAILABLE_RETRY_SECONDS = 30;
 
 function secondsToNextMinute(now: Date): number {
   return 60 - now.getSeconds();
@@ -28,7 +43,7 @@ function secondsToNextUtcMidnight(now: Date): number {
 export async function checkRateLimit(env: Env, identifier: string): Promise<QuotaResult> {
   const limit = parseInt(env.RATE_LIMIT_PER_MINUTE, 10);
   if (!Number.isFinite(limit) || limit <= 0 || !env.CHAT_QUOTA) {
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, reason: 'ok' };
   }
 
   const now = new Date();
@@ -40,14 +55,18 @@ export async function checkRateLimit(env: Env, identifier: string): Promise<Quot
     const count = raw ? parseInt(raw, 10) : 0;
 
     if (count >= limit) {
-      return { allowed: false, retryAfterSeconds: secondsToNextMinute(now) };
+      return { allowed: false, retryAfterSeconds: secondsToNextMinute(now), reason: 'limit_exceeded' };
     }
 
     await env.CHAT_QUOTA.put(key, String(count + 1), { expirationTtl: RATE_LIMIT_TTL_SECONDS });
-    return { allowed: true, retryAfterSeconds: 0 };
-  } catch {
-    // A KV blip must not take chat down — fail OPEN.
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, reason: 'ok' };
+  } catch (err) {
+    // Fail CLOSED (2026-09-03, was fail-open). With the counter unreadable
+    // there is no cap at all, and an uncapped path in front of a paid model
+    // is a worse outcome than a short refusal. The caller must report this
+    // as an outage, not as "you hit your limit" — see reason.
+    console.warn('checkRateLimit: KV unavailable, failing closed:', err instanceof Error ? err.message : err);
+    return { allowed: false, retryAfterSeconds: STORE_UNAVAILABLE_RETRY_SECONDS, reason: 'store_unavailable' };
   }
 }
 
@@ -59,7 +78,7 @@ export async function checkRateLimit(env: Env, identifier: string): Promise<Quot
 export async function checkDailyQuota(env: Env, identifier: string): Promise<QuotaResult> {
   const limit = parseInt(env.DAILY_MESSAGE_LIMIT, 10);
   if (!Number.isFinite(limit) || limit <= 0 || !env.CHAT_QUOTA) {
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, reason: 'ok' };
   }
 
   const now = new Date();
@@ -71,13 +90,15 @@ export async function checkDailyQuota(env: Env, identifier: string): Promise<Quo
     const count = raw ? parseInt(raw, 10) : 0;
 
     if (count >= limit) {
-      return { allowed: false, retryAfterSeconds: secondsToNextUtcMidnight(now) };
+      return { allowed: false, retryAfterSeconds: secondsToNextUtcMidnight(now), reason: 'limit_exceeded' };
     }
 
     await env.CHAT_QUOTA.put(key, String(count + 1), { expirationTtl: DAILY_QUOTA_TTL_SECONDS });
-    return { allowed: true, retryAfterSeconds: 0 };
-  } catch {
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: true, retryAfterSeconds: 0, reason: 'ok' };
+  } catch (err) {
+    // Fail CLOSED — same reasoning as checkRateLimit.
+    console.warn('checkDailyQuota: KV unavailable, failing closed:', err instanceof Error ? err.message : err);
+    return { allowed: false, retryAfterSeconds: STORE_UNAVAILABLE_RETRY_SECONDS, reason: 'store_unavailable' };
   }
 }
 
@@ -100,7 +121,7 @@ export async function checkGlobalBudget(env: Env): Promise<BudgetResult> {
   const estimate = parseInt(env.REQUEST_COST_ESTIMATE, 10);
 
   if (!Number.isFinite(budget) || budget <= 0 || !Number.isFinite(estimate) || estimate <= 0 || !env.CHAT_QUOTA) {
-    return { allowed: true, retryAfterSeconds: 0, consumed: 0, budget: 0 };
+    return { allowed: true, retryAfterSeconds: 0, consumed: 0, budget: 0, reason: 'ok' };
   }
 
   const now = new Date();
@@ -113,14 +134,20 @@ export async function checkGlobalBudget(env: Env): Promise<BudgetResult> {
 
     if (consumed + estimate > budget) {
       // Denied — do NOT advance the counter (same as checkDailyQuota).
-      return { allowed: false, retryAfterSeconds: secondsToNextUtcMidnight(now), consumed, budget };
+      return { allowed: false, retryAfterSeconds: secondsToNextUtcMidnight(now), consumed, budget, reason: 'limit_exceeded' };
     }
 
     const next = consumed + estimate;
     await env.CHAT_QUOTA.put(key, String(next), { expirationTtl: BUDGET_TTL_SECONDS });
-    return { allowed: true, retryAfterSeconds: 0, consumed: next, budget };
+    return { allowed: true, retryAfterSeconds: 0, consumed: next, budget, reason: 'ok' };
   } catch (err) {
-    console.warn('checkGlobalBudget: KV read/write failed, failing open:', err instanceof Error ? err.message : err);
-    return { allowed: true, retryAfterSeconds: 0, consumed: 0, budget };
+    // Fail CLOSED (2026-09-03, was fail-open). "Denied" on this guard does
+    // not reject the request — index.ts routes it to buildDegradedStream,
+    // which still answers from retrieved sources and only skips the paid
+    // generation. So closing here costs the caller an answer's polish, not
+    // the answer, while keeping the ledger's purpose intact when the ledger
+    // itself cannot be read.
+    console.warn('checkGlobalBudget: KV unavailable, failing closed (degraded):', err instanceof Error ? err.message : err);
+    return { allowed: false, retryAfterSeconds: 0, consumed: 0, budget, reason: 'store_unavailable' };
   }
 }

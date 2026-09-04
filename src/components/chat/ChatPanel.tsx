@@ -170,10 +170,15 @@ export default function ChatPanel({ onClose, apiBaseOverride }: ChatPanelProps) 
               what is typed here leaves the device (worker → Cloudflare
               Workers AI). Before this line the panel said nothing at all
               about that. Kept to one sentence so it informs rather than
-              becoming the wall of text people learn to skip. */}
+              becoming the wall of text people learn to skip.
+              The purpose stated here must stay no broader than the one in
+              content/legal.ts ("finding quality regressions and gaps in the
+              documentation the assistant searches"). Until 2026-09-03 this
+              said "to improve the assistant", which reads as consent to
+              train on what people type — not what happens. */}
           <p className="t-caveat chat-privacy-note">
             Messages are sent to Cloudflare Workers AI to generate a reply, and a copy with personal
-            details masked is kept to improve the assistant — avoid personal details.{' '}
+            details masked is kept to check answer quality — avoid personal details.{' '}
             <a href="/legal/privacy">Privacy</a>
           </p>
 
