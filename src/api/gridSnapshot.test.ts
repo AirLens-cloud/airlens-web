@@ -234,3 +234,82 @@ describe('fetchGlobalGridSnapshot — HF → static adapter', () => {
     expect(result.grade).toBe('Unhealthy') // 35 < 50 <= 75
   })
 })
+
+describe('fetchGlobalGridSnapshot — plausibility verdicts', () => {
+  /**
+   * The live artifact's real maximum on 2026-09-04, at 65°N 116°E in the
+   * Yakutia fire belt. Using the shipped number rather than a round synthetic
+   * one means a regression here is a regression against data that reached
+   * production.
+   */
+  const YAKUTIA_MAX = { lat: 65, lon: 116, pm25: 15867.96 }
+
+  it('passes a beyond-scale cell through at full value — verdict, never a clamp', async () => {
+    // Arrange
+    fetchMock.mockResolvedValueOnce(okResponse({
+      updated_at: '2026-08-25T11:00:00.000Z',
+      points: [YAKUTIA_MAX],
+    }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const result = await fetchGlobalGridSnapshot({ lat: 65, lon: 116, limit: 1 })
+
+    // Assert — the number is untouched. If this ever shrinks, the classifier
+    // has been turned into the clamp it exists to replace.
+    expect(result.pm25).toBe(15867.96)
+    expect(result.nearbyCells[0].pm25).toBe(15867.96)
+    expect(result.plausibility?.verdict).toBe('beyond-scale')
+    expect(result.nearbyCells[0].plausibility?.verdict).toBe('beyond-scale')
+  })
+
+  it('marks the AQI saturation that was already happening silently', async () => {
+    // Arrange — pm25ToAqi returns 500 for anything past the last EPA
+    // breakpoint, so this cell has looked identical to a 500.4 one all along.
+    fetchMock.mockResolvedValueOnce(okResponse({
+      updated_at: '2026-08-25T11:00:00.000Z',
+      points: [YAKUTIA_MAX],
+    }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const result = await fetchGlobalGridSnapshot({ lat: 65, lon: 116, limit: 1 })
+
+    // Assert — saturation still happens; what changed is that it is now named.
+    expect(result.aqi).toBe(500)
+    expect(result.plausibility?.verdict).not.toBe('reportable')
+  })
+
+  it('leaves ordinary background air reportable with an empty reason', async () => {
+    // Arrange — the artifact's global median.
+    fetchMock.mockResolvedValueOnce(okResponse({
+      updated_at: '2026-08-25T11:00:00.000Z',
+      points: [{ lat: 37.5, lon: 127.0, pm25: 4.97 }],
+    }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const result = await fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })
+
+    // Assert
+    expect(result.plausibility?.verdict).toBe('reportable')
+    expect(result.plausibility?.reason).toBe('')
+  })
+
+  it('does not reorder or drop cells because of a verdict — ranking stays distance-only', async () => {
+    // Arrange — the beyond-scale cell is the closest one.
+    fetchMock.mockResolvedValueOnce(okResponse({
+      updated_at: '2026-08-25T11:00:00.000Z',
+      points: [YAKUTIA_MAX, { lat: 60, lon: 116, pm25: 8 }],
+    }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const result = await fetchGlobalGridSnapshot({ lat: 65, lon: 116, limit: 2, radiusKm: 2000 })
+
+    // Assert — both survive, closest still first. Dropping the cell here
+    // would make the nearest-cell lookup silently answer with a distant one.
+    expect(result.nearbyCells).toHaveLength(2)
+    expect(result.nearbyCells[0].pm25).toBe(15867.96)
+  })
+})

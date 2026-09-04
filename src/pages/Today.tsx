@@ -22,6 +22,7 @@ import { useTodayGrid } from '../hooks/useTodayGrid'
 import { useTodayCams } from '../hooks/useTodayCams'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
 import { computeSourceAgreement } from '../lib/today/sourceAgreement'
+import { isReportable } from '../lib/config/gridPlausibility'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import TrustLine from '../components/wireframe/TrustLine'
 import WeatherHero from '../components/weather/WeatherHero'
@@ -66,7 +67,16 @@ export default function Today() {
     setLocation({ lat: city.lat, lon: city.lon, label: `${city.name}, ${city.countryCode}` })
   }
 
-  const gridPm25 = grid.status === 'ready' ? grid.pm25 : null
+  // A GRID cell the model could not plausibly have produced (the live
+  // artifact ships 1° cells in the thousands of µg/m³ over boreal fire
+  // plumes) stops backing the day's judgment — it does not stop being shown.
+  // The number stays visible with its reason in TodayWhy/TodayEvidence; what
+  // it loses is the right to decide the headline, the tier, and the
+  // source-agreement claim. Without this it would win the `??` below purely
+  // by being the preferred source and put "15868 µg/m³ · hazardous" on
+  // someone's local air.
+  const usableGrid = grid.status === 'ready' && isReportable(grid.plausibility) ? grid : null
+  const gridPm25 = usableGrid?.pm25 ?? null
   const camsPm25 = cams.status === 'ready' ? cams.current : null
   // GRID (an analysis snapshot for this exact coordinate) is preferred over
   // CAMS (a forecast resolved to the nearest feed city) as the primary
@@ -78,9 +88,9 @@ export default function Today() {
 
   let agreeCount = 0
   let resolvedCount = 0
-  if (grid.status === 'ready') {
+  if (usableGrid) {
     resolvedCount += 1
-    if (tierFromPm25(grid.pm25) === primaryTier) agreeCount += 1
+    if (tierFromPm25(usableGrid.pm25) === primaryTier) agreeCount += 1
   }
   if (cams.status === 'ready') {
     resolvedCount += 1
@@ -92,8 +102,8 @@ export default function Today() {
   // missing/loading, CAMS filled in) must check `cams.stale` instead, or a
   // stale forecast-fallback bundle (`forecastSource.ts`'s "may be stale"
   // static fallback) would render as unconditionally "ready".
-  const primaryIsGrid = grid.status === 'ready'
-  const primaryStale = primaryIsGrid ? grid.stale : cams.status === 'ready' ? cams.stale === true : false
+  const primaryIsGrid = usableGrid !== null
+  const primaryStale = usableGrid ? usableGrid.stale : cams.status === 'ready' ? cams.stale === true : false
   const hudStatus: TodayHudStatus =
     primaryPm25 !== null
       ? primaryStale
@@ -103,24 +113,29 @@ export default function Today() {
         ? 'loading'
         : 'unavailable'
 
-  const validTimeMs =
-    grid.status === 'ready'
-      ? new Date(grid.updatedAt).getTime()
-      : cams.status === 'ready' && cams.series24h[0]
-        ? new Date(cams.series24h[0].time).getTime()
-        : null
-  const updatedAgeMs =
-    grid.status === 'ready'
-      ? nowMs - new Date(grid.updatedAt).getTime()
-      : cams.status === 'ready'
-        ? nowMs - new Date(cams.updatedAt).getTime()
-        : null
-  const natureLabel = grid.status === 'ready' ? '[ANALYSIS]' : cams.status === 'ready' ? '[FORECAST]' : '[NO DATA]'
-  const primaryCity = grid.status === 'ready' ? location.label : cams.status === 'ready' ? cams.cityName : location.label
+  // Every line below describes the source *backing the headline*, so each
+  // reads `usableGrid` rather than `grid.status` — an unverifiable cell hands
+  // the headline to CAMS, and the timestamp, place, distance and nature label
+  // have to follow it there or they would describe a reading no longer shown.
+  const validTimeMs = usableGrid
+    ? new Date(usableGrid.updatedAt).getTime()
+    : cams.status === 'ready' && cams.series24h[0]
+      ? new Date(cams.series24h[0].time).getTime()
+      : null
+  const updatedAgeMs = usableGrid
+    ? nowMs - new Date(usableGrid.updatedAt).getTime()
+    : cams.status === 'ready'
+      ? nowMs - new Date(cams.updatedAt).getTime()
+      : null
+  const natureLabel = usableGrid ? '[ANALYSIS]' : cams.status === 'ready' ? '[FORECAST]' : '[NO DATA]'
+  const primaryCity = usableGrid ? location.label : cams.status === 'ready' ? cams.cityName : location.label
   const primaryCountryCode = cams.status === 'ready' ? cams.countryCode : null
-  const primaryDistanceKm = grid.status === 'ready' ? grid.distanceKm : cams.status === 'ready' ? cams.distanceKm : null
-  const validTimeIso =
-    grid.status === 'ready' ? grid.updatedAt : cams.status === 'ready' ? (cams.series24h[0]?.time ?? cams.updatedAt) : null
+  const primaryDistanceKm = usableGrid ? usableGrid.distanceKm : cams.status === 'ready' ? cams.distanceKm : null
+  const validTimeIso = usableGrid
+    ? usableGrid.updatedAt
+    : cams.status === 'ready'
+      ? (cams.series24h[0]?.time ?? cams.updatedAt)
+      : null
 
   // UI Tier-1 P3-B: same DQSS/p10-p90 honesty split as `useCapsuleData` —
   // GRID (`gridSnapshot.ts`) carries a real `dqss` when the source artifact

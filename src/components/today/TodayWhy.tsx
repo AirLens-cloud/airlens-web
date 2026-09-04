@@ -12,6 +12,7 @@ import WfDataState from '../wireframe/WfDataState'
 import { sectionDataState } from '../weather/sectionState'
 import { describeWind, describeHumidity, describeSixHourTrend } from '../../lib/today/observedConditions'
 import { formatUtcTime } from '../../lib/home/whyNow'
+import { isReportable } from '../../lib/config/gridPlausibility'
 import type { TodayGridState } from '../../hooks/useTodayGrid'
 import type { TodayCamsState } from '../../hooks/useTodayCams'
 import type { OpenMeteoWeatherHourly } from '../../types/forecast'
@@ -61,8 +62,23 @@ export default function TodayWhy({ grid, cams, weather, weatherStatus, weatherCo
                 {Math.round(grid.pm25)} <small>µg/m³</small>
               </span>
               <span className="today-cell__sub t-micro">
-                {grid.stale ? 'stale · ' : ''}analysis · interpolated · valid {formatUtcTime(grid.updatedAt)}
+                {/* "interpolated" was wrong and the glossary says why: it
+                    defines the word as a value inferred from surrounding
+                    cells, and nothing here infers anything. The producer
+                    decimates GEFS's native grid to whole degrees and this
+                    hook takes the nearest surviving point, distance and all
+                    — which is what TodayAnswer already tells the reader. */}
+                {grid.stale ? 'stale · ' : ''}analysis · nearest grid point · valid {formatUtcTime(grid.updatedAt)}
               </span>
+              {/* The cell keeps its real number even when we can't stand
+                  behind it — hiding the figure would leave no trace that the
+                  model produced it. What it gets is the reason, and Today.tsx
+                  has already handed the headline to CAMS. */}
+              {!isReportable(grid.plausibility) && (
+                <span className="today-cell__void t-caption">
+                  Not used for today&apos;s judgment — {grid.plausibility?.reason}.
+                </span>
+              )}
             </>
           )}
         </div>

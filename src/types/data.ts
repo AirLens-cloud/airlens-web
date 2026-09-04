@@ -5,6 +5,7 @@
  * (color scale / legend / layer-grammar) types stay in the source monorepo,
  * which still owns the Globe rendering surface this repo doesn't have yet.
  */
+import type { Pm25Plausibility } from '../lib/config/gridPlausibility'
 
 // ── Overlay / grid ──────────────────────────────────────────────────────────
 
@@ -125,6 +126,11 @@ export interface GlobalGridCell {
   confidence?: number
   distanceKm?: number
   grade?: PM25Grade
+  /** Whether `pm25` is a value we can stand behind — see
+   * `lib/config/gridPlausibility.ts`. Optional so fixtures predating the
+   * check stay valid; absent reads as reportable. `pm25` is never altered by
+   * this verdict. */
+  plausibility?: Pm25Plausibility
 }
 
 export interface GlobalGridSnapshot {
@@ -140,6 +146,8 @@ export interface GlobalGridSnapshot {
   grade?: PM25Grade
   /** 48h — true when the source artifact's `updatedAt` is older than that. */
   stale?: boolean
+  /** Verdict for the primary (`pm25`) reading — mirrors `nearbyCells[0]`. */
+  plausibility?: Pm25Plausibility
 }
 
 export interface GlobalGridSnapshotOptions {

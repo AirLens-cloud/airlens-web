@@ -4,6 +4,7 @@
  * into a blended number (page-specs/today-decision-surface.md §4/§6).
  */
 import { formatUtcTime } from '../../lib/home/whyNow'
+import { isReportable } from '../../lib/config/gridPlausibility'
 import type { TodayGridState } from '../../hooks/useTodayGrid'
 import type { TodayCamsState } from '../../hooks/useTodayCams'
 import type { SourceAgreement } from '../../lib/today/sourceAgreement'
@@ -23,9 +24,18 @@ export default function TodayEvidence({ grid, cams, agreement }: TodayEvidencePr
           <span className="today-cell__label m">GRID</span>
           {grid.status === 'ready' ? (
             <p className="t-micro">
-              <span className="unit">µg/m³</span> · analysis/interpolated · valid {formatUtcTime(grid.updatedAt)} · source
-              global_grid
+              {/* "analysis" is right — the producer reads GEFS's f000 `anl`
+                  record, not a forecast lead — but "interpolated" was not:
+                  the grid is decimated to whole degrees and we read the
+                  nearest surviving point. */}
+              <span className="unit">µg/m³</span> · analysis/nearest grid point · valid {formatUtcTime(grid.updatedAt)} ·
+              source global_grid
               {grid.stale ? ' · stale' : ''}
+              {/* Named here too: the AGREEMENT cell drops to "not enough
+                  sources" when the grid is unverifiable, and without this the
+                  reader would have no way to tell why a source that clearly
+                  resolved stopped counting. */}
+              {!isReportable(grid.plausibility) ? ` · ${grid.plausibility?.reason}` : ''}
             </p>
           ) : (
             <p className="t-micro">Not available.</p>

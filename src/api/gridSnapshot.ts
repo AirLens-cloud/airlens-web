@@ -20,6 +20,7 @@
  */
 import { HF_LIVE_BASE } from '../lib/config/dataSources';
 import { pm25ToAqi } from '../lib/config/aqi';
+import { classifyPm25 } from '../lib/config/gridPlausibility';
 import type { GlobalGridCell, GlobalGridSnapshot, GlobalGridSnapshotOptions, PM25Grade } from '../types/data';
 
 const GRID_OBJECT_PATH = 'aq-data/current-pm25-grid.json';
@@ -245,12 +246,17 @@ export async function fetchGlobalGridSnapshot(
         lat: p.lat,
         lon: p.lon,
         pm25: p.pm25,
+        // Both of these saturate: `pm25ToAqi` returns 500 for anything past
+        // the last EPA breakpoint and `gradeFromPm25` tops out at 75, so a
+        // 15,868 µg/m³ cell arrives here looking exactly like an 80 one.
+        // `plausibility` is what keeps that collapse from passing silently.
         aqi: p.aqi ?? pm25ToAqi(p.pm25),
         grade: gradeFromPm25(p.pm25),
         updatedAt,
         dqss: p.dqss,
         confidence: p.confidence,
         distanceKm,
+        plausibility: classifyPm25(p.pm25),
       };
     })
     .filter((p) => !origin || (p.distanceKm ?? 0) <= radiusKm)
@@ -278,5 +284,6 @@ export async function fetchGlobalGridSnapshot(
     confidence: primary.confidence,
     stale,
     nearbyCells,
+    plausibility: primary.plausibility,
   };
 }

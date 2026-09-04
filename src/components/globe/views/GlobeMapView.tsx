@@ -26,6 +26,7 @@ import { useGlobeGridSnapshot } from '../../../hooks/useGlobeData'
 import { useCountryFeatures } from '../../../hooks/useCountryData'
 import { gradeToHex } from '../../../lib/globe/gradeColor'
 import { MAP_VIEW_W, MAP_VIEW_H, project, featurePath } from '../../../lib/globe/equirectProjection'
+import { isReportable } from '../../../lib/config/gridPlausibility'
 import GlobeFallback from '../GlobeFallback'
 import type { GlobalGridCell } from '../../../types/data'
 
@@ -90,6 +91,10 @@ export default function GlobeMapView() {
         {withId.map(({ stationUid, cell }) => {
           const { x, y } = project(cell.lat, cell.lon)
           const active = selectedStation?.station_uid === stationUid
+          // A dot's colour/position never changes on the verdict — only the
+          // text a screen reader or hover gets grows a clause, same as the
+          // sighted BEYOND SCALE flag in GlobeTableView.
+          const beyondScaleNote = isReportable(cell.plausibility) ? '' : ` — ${cell.plausibility?.reason}`
           return (
             <circle
               key={stationUid}
@@ -100,7 +105,7 @@ export default function GlobeMapView() {
               style={{ fill: gradeToHex(cell.grade) }}
               role="button"
               tabIndex={0}
-              aria-label={`Grid cell ${cell.lat.toFixed(1)}, ${cell.lon.toFixed(1)} — PM2.5 ${cell.pm25.toFixed(1)} µg/m³`}
+              aria-label={`Grid cell ${cell.lat.toFixed(1)}, ${cell.lon.toFixed(1)} — PM2.5 ${cell.pm25.toFixed(1)} µg/m³${beyondScaleNote}`}
               aria-pressed={active}
               onClick={() => select(stationUid, cell)}
               onKeyDown={(e) => {
@@ -109,7 +114,7 @@ export default function GlobeMapView() {
                 select(stationUid, cell)
               }}
             >
-              <title>{`${cell.pm25.toFixed(1)} µg/m³ · ${cell.grade ?? '—'}`}</title>
+              <title>{`${cell.pm25.toFixed(1)} µg/m³ · ${cell.grade ?? '—'}${beyondScaleNote}`}</title>
             </circle>
           )
         })}

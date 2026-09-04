@@ -18,6 +18,7 @@
 import { useGlobeStore } from '../../../store/globeStore'
 import { COLOR_BAR_CONFIGS, OVERLAY_DISPLAY_LABELS } from '../../../lib/config/globeOverlays'
 import { GLOBE_CONFIG } from '../../../lib/config/globe'
+import { REPORTABLE_MAX_UGM3, classifyPm25 } from '../../../lib/config/gridPlausibility'
 import LiquidGlass from '../../fluid/LiquidGlass'
 
 const WIND_SAMPLES = [
@@ -65,6 +66,12 @@ export default function GlobeLegend() {
 
   const fresh = meta != null && meta.overlayType === active
   const hasRange = fresh && Number.isFinite(meta.min) && Number.isFinite(meta.max)
+  // The published max can sit far past what `pm25ToAqi`/`gradeFromPm25` are
+  // defined over (gridPlausibility.ts's doc comment: 15,868 µg/m³ measured in
+  // the Yakutia fire belt) — the number stays in the header exactly as
+  // fetched; this only adds the caveat that we cannot stand behind the top of
+  // it.
+  const pm25RangeVerdict = active === 'pm25' && hasRange ? classifyPm25(meta.max) : null
 
   // A resolved timeline frame relabels NOW as FORECAST/PAST · VALID <local time>.
   const isTimeline = fresh && active === 'pm25' && meta.leadHours != null && timeOffsetHours !== 0
@@ -90,6 +97,11 @@ export default function GlobeLegend() {
           <span key={tick}>{tick}</span>
         ))}
       </div>
+      {pm25RangeVerdict?.verdict === 'beyond-scale' && (
+        <span className="lg-caveat">
+          Range max above is {pm25RangeVerdict.reason} (scale tops out at {REPORTABLE_MAX_UGM3} µg/m³).
+        </span>
+      )}
       {active === 'wind' && (
         <div className="lg-wind-motion" aria-label="How to read wind speed">
           {WIND_SAMPLES.map((sample) => (

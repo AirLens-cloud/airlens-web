@@ -11,10 +11,14 @@
  * element mounts and unmounts on every hover, and LiquidGlass rebuilds a
  * displacement map per mount. It uses the same night-glass tokens in CSS
  * instead, so the material reads identically without the per-hover cost.
+ *
+ * A PM2.5 cell past `gridPlausibility.ts`'s scale keeps its real sampled
+ * number here too — the readout only grows a caveat line, never a clamp.
  */
 import { useEffect, useState } from 'react'
 import { useGlobeStore } from '../../../store/globeStore'
 import { OVERLAY_DISPLAY_LABELS } from '../../../lib/config/globeOverlays'
+import { classifyPm25 } from '../../../lib/config/gridPlausibility'
 
 function fmtCoord(lat: number, lon: number): string {
   return `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? 'E' : 'W'}`
@@ -39,6 +43,10 @@ export default function GlobeGridTooltip() {
   const info = OVERLAY_DISPLAY_LABELS[overlayType]
   if (!info) return null
 
+  // Only the PM2.5 field has a scale gridPlausibility.ts is defined over —
+  // other overlays (temp, wind, ...) have no verdict to render here.
+  const pm25Verdict = overlayType === 'pm25' && gridHover.value != null ? classifyPm25(gridHover.value) : null
+
   return (
     <div className="globe-grid-readout" style={{ left: pos.x + 16, top: pos.y - 8 }} aria-hidden="true">
       <div className="gr-name">{info.label}</div>
@@ -52,6 +60,7 @@ export default function GlobeGridTooltip() {
           <span className="gr-nodata">Not measured</span>
         )}
       </div>
+      {pm25Verdict?.verdict === 'beyond-scale' && <div className="gr-caveat">{pm25Verdict.reason}</div>}
       <div className="gr-coords">{fmtCoord(gridHover.lat, gridHover.lon)}</div>
     </div>
   )

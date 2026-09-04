@@ -386,3 +386,108 @@ describe('Today page', () => {
     expect(container.querySelector('[data-testid="trust-line"]')).toBeNull()
   })
 })
+
+/**
+ * The live artifact ships 1° cells in the thousands of µg/m³ over boreal fire
+ * plumes (max 15,867.96 at 65°N 116°E, measured 2026-09-04). GRID is the
+ * preferred source, so without a plausibility check such a cell would win the
+ * headline outright and tell a reader their local air was 15,868 µg/m³.
+ *
+ * The contract these tests pin is narrow and worth stating: the value is
+ * never altered or hidden, it just stops being allowed to decide anything.
+ */
+describe('Today — an unverifiable GRID cell', () => {
+  const BEYOND_SCALE = {
+    status: 'ready' as const,
+    pm25: 15867.96,
+    updatedAt: '2026-08-26T00:00:00Z',
+    stale: false,
+    distanceKm: 12,
+    plausibility: { verdict: 'beyond-scale' as const, reason: 'beyond the top of our reporting scale — we cannot verify this reading' },
+  }
+
+  it('hands the headline to CAMS instead of reporting thousands of µg/m³', () => {
+    // Arrange
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid(BEYOND_SCALE)
+    mockCams(camsReady({ current: 20, tier: 'good' }))
+
+    // Act
+    const { container } = render(<Today />)
+    const answer = container.querySelector('.today-answer')
+
+    // Assert — the CAMS reading carries the answer, and the impossible figure
+    // is nowhere in the sentence a reader acts on.
+    expect(answer?.textContent).toContain('20')
+    expect(answer?.textContent).not.toContain('15868')
+  })
+
+  it('still shows the real number, with the reason, in the WHY panel', () => {
+    // Arrange
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid(BEYOND_SCALE)
+    mockCams(camsReady({ current: 20, tier: 'good' }))
+
+    // Act
+    const { container } = render(<Today />)
+    const gridCell = container.querySelector('.today-cell[data-source="grid"]')
+
+    // Assert — suppressing the figure would erase the evidence that the model
+    // produced it. Both the number and the reason have to be present.
+    expect(gridCell?.textContent).toContain('15868')
+    expect(gridCell?.textContent).toContain('cannot verify')
+  })
+
+  it('stops claiming the sources agree or disagree', () => {
+    // Arrange — a 15,848 µg/m³ "disagreement" is not a comparison anyone can use.
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid(BEYOND_SCALE)
+    mockCams(camsReady({ current: 20, tier: 'good' }))
+
+    // Act
+    const { container } = render(<Today />)
+    const agreement = container.querySelector('[data-testid="today-evidence-agreement"]')
+
+    // Assert
+    expect(agreement?.textContent).toContain('Not enough sources to compare')
+    expect(agreement?.textContent).not.toContain('15848')
+  })
+
+  it('reaches no verdict at all when CAMS cannot stand in', () => {
+    // Arrange — nothing left to fall back to.
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid(BEYOND_SCALE)
+    mockCams({ status: 'missing' })
+
+    // Act
+    const { container } = render(<Today />)
+
+    // Assert — an honest blank beats a hazardous-tier verdict built on a
+    // number we just said we cannot verify.
+    expect(container.querySelector('.today-answer')?.textContent ?? '').not.toContain('15868')
+    expect(container.querySelector('[data-testid="trust-line"]')).toBeNull()
+  })
+
+  it('leaves a reportable GRID cell in charge — no regression for ordinary air', () => {
+    // Arrange
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid({ ...BEYOND_SCALE, pm25: 12, plausibility: { verdict: 'reportable', reason: '' } })
+    mockCams(camsReady({ current: 20, tier: 'good' }))
+
+    // Act
+    const { container } = render(<Today />)
+
+    // Assert — GRID is still preferred over CAMS when it is sound.
+    expect(container.querySelector('.today-answer')?.textContent).toContain('12')
+  })
+})

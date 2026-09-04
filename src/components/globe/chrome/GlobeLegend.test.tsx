@@ -59,6 +59,33 @@ describe('GlobeLegend', () => {
     expect(screen.getByText(/3\.2–71\.4/)).toBeTruthy()
   })
 
+  it('caveats a range max beyond the reportable scale without altering the printed number', () => {
+    // Arrange — the real max published on 2026-09-04 (Yakutia fire belt).
+    useGlobeStore.setState({
+      overlayType: 'pm25',
+      activeGridMeta: { overlayType: 'pm25', source: 'Test grid', timestamp: 1, min: 0.1, max: 15867.96 },
+    })
+    // Act
+    render(<GlobeLegend />)
+    // Assert — header keeps the real max (rendered to 1 decimal, same as every
+    // other range figure here — not a plausibility-driven rounding), caveat
+    // names the scale gap separately.
+    expect(screen.getByText(/0\.1–15868\.0/)).toBeTruthy()
+    expect(screen.getByText(/we cannot verify this reading/i)).toBeTruthy()
+  })
+
+  it('does not caveat a range whose max sits inside the reportable scale', () => {
+    // Arrange — SNAPSHOT-scale max (71.4) from the earlier case, well under 500.4.
+    useGlobeStore.setState({
+      overlayType: 'pm25',
+      activeGridMeta: { overlayType: 'pm25', source: 'Test grid', timestamp: 1, min: 3.2, max: 71.4 },
+    })
+    // Act
+    render(<GlobeLegend />)
+    // Assert
+    expect(screen.queryByText(/cannot verify this reading/i)).toBeNull()
+  })
+
   it('carries the single-member caveat on a resolved forecast frame', () => {
     // Arrange
     useGlobeStore.setState({

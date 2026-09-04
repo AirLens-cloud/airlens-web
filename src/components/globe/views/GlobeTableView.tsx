@@ -13,6 +13,12 @@
  * Glass-box: the grid artifact carries no p10/p90 band (`api/gridSnapshot.ts`
  * doc comment) — the column says so rather than inventing one. DQSS is only
  * ever what the artifact itself published per cell; absent stays absent.
+ *
+ * `pm25` sort stays PM2.5-descending even for cells `gridPlausibility.ts`
+ * cannot verify — a Yakutia fire-belt cell at 15,868 µg/m³ still ranks first
+ * and still renders its real number. What changes is the `BEYOND SCALE` flag
+ * beside it and the footer line naming the gap; the row itself is never
+ * dropped or reordered on account of the verdict.
  */
 import { useMemo } from 'react'
 import { useGlobeStore } from '../../../store/globeStore'
@@ -20,6 +26,7 @@ import { useGlobeGridSnapshot } from '../../../hooks/useGlobeData'
 import { useCountryFeatures } from '../../../hooks/useCountryData'
 import { nearestPlaceFor } from '../../../lib/globe/nearestPlace'
 import { dqssScoreToGrade } from '../../../lib/config/globeOntology'
+import { isReportable } from '../../../lib/config/gridPlausibility'
 import type { GlobalGridCell } from '../../../types/data'
 
 /** The table shows the most concentrated cells first — beyond this it's a data dump, not a reading surface. */
@@ -77,6 +84,7 @@ export default function GlobeTableView() {
           {rows.map(({ stationUid, cell }) => {
             const active = selectedStation?.station_uid === stationUid
             const place = nearestPlaceFor(cell.lat, cell.lon, countries)
+            const beyondScale = !isReportable(cell.plausibility)
             // BACKLOG (#46 review, 2026-09-03): same ungated-provenance pattern as
             // Globe.tsx:290 — cell.dqss is currently always absent so this is
             // dormant, but grade should gate on a provenance field the day a grid
@@ -113,7 +121,12 @@ export default function GlobeTableView() {
               >
                 <td className="gtv-cell-coord">{fmtCoord(cell.lat, cell.lon)}</td>
                 <td>{place ?? '—'}</td>
-                <td className="gtv-pm25"><strong>{cell.pm25.toFixed(1)}</strong> µg/m³</td>
+                <td className="gtv-pm25">
+                  <strong>{cell.pm25.toFixed(1)}</strong> µg/m³
+                  {beyondScale && (
+                    <span className="gtv-flag" title={cell.plausibility?.reason}>BEYOND SCALE</span>
+                  )}
+                </td>
                 <td className="gtv-dim">not published</td>
                 <td className="gtv-dim">interpolated</td>
                 <td>{grade ?? <span className="gtv-dim">not published</span>}</td>
@@ -123,6 +136,11 @@ export default function GlobeTableView() {
         </tbody>
       </table>
       <p className="gtv-footer m">ROWS = PUBLISHED GRID CELLS ONLY — NO INTERPOLATION BEYOND THE FEED</p>
+      {rows.some((r) => !isReportable(r.cell.plausibility)) && (
+        // Rows past the reportable scale stay in the table, in their own rank
+        // — this line only names what BEYOND SCALE already marks per row.
+        <p className="gtv-caveat">SOME CELLS ARE OUTSIDE THE REPORTABLE SCALE — FLAGGED ABOVE, NOT HIDDEN</p>
+      )}
     </div>
   )
 }
