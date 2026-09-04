@@ -559,7 +559,7 @@ export function blogListPageSeo(rows: BlogListRow[]): PageSeo {
 const TODAY_FAQS: Array<{ q: string; a: string }> = [
   {
     q: 'What does the Today page show?',
-    a: 'Real-time PM2.5 at your coordinates, fused from ground monitors and satellite aerosol data (AOD), with current weather, nearby pollutant levels (PM10, O₃, NO₂), and a 24-48h forecast. If you decline location access you can enter coordinates manually or pick a major city.',
+    a: 'Real-time PM2.5 at your coordinates, conditioned on nearby ground monitors and weather, with current conditions, nearby pollutant levels (PM10, O₃, NO₂), and a 24-48h forecast. The satellite aerosol (AOD) channel is built but carries no weight in the live grid today, so treat this as an observation-conditioned nowcast rather than a satellite retrieval. If you decline location access you can enter coordinates manually or pick a major city.',
   },
   {
     q: 'What is the p10-p90 range next to the PM2.5 number?',
@@ -579,7 +579,7 @@ export function todayPageSeo(): PageSeo {
   const canonicalUrl = `${CANONICAL_ORIGIN}/today`
   const pageTitle = clamp(`Today — real-time air quality at your location — ${SITE}`, 70)
   const description =
-    'Real-time PM2.5 for your coordinates with an honest p10-p90 uncertainty band, DQSS data-quality grade, weather, nearby pollutants and a 48h forecast — satellite and ground sources, always credited.'
+    'Real-time PM2.5 for your coordinates with an honest p10-p90 uncertainty band, DQSS data-quality grade, weather, nearby pollutants and a 48h forecast — every source credited, including what is not contributing.'
   const faqHtml = TODAY_FAQS.map((f) => `<h2>${escapeHtml(f.q)}</h2><p>${escapeHtml(f.a)}</p>`).join('')
   const h1 = 'Today — your sky, read as an instrument'
   return {
