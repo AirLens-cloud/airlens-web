@@ -104,15 +104,34 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     termId: 'interpolated',
     term: 'Interpolated',
     definition:
-      'A value estimated for a location that has no direct sensor, filled in from nearby measurements rather than measured on the spot.',
+      'A value estimated for a location that has no direct sensor, filled in from nearby measurements by weighting them by distance (e.g. inverse-distance weighting, IDW) rather than measured on the spot. AirLens’s published pollutant and weather grids are not interpolated in this sense — they are model analysis or forecast fields (see "analysis") sampled at the nearest grid point; this term describes the genuine client-side IDW fallback path used when no such grid is available, not the ordinary case.',
     definitionKo:
-      '주변 측정값으로부터 채워 넣은, 직접 센서가 없는 위치의 추정값입니다 — 그 자리에서 직접 측정한 값이 아닙니다.',
-    example: '"18.2 µg/m³ (interpolated)" — no station sits exactly here; the value is inferred from the surrounding grid.',
+      '주변 측정값을 거리에 따라 가중 평균(예: 역거리가중, IDW)해 채워 넣은, 직접 센서가 없는 위치의 추정값입니다 — 그 자리에서 직접 측정한 값이 아닙니다. AirLens가 발행하는 오염물질·기상 격자는 이런 의미의 보간이 아닙니다 — 가장 가까운 격자점에서 읽은 모델 분석("analysis") 또는 예보 값입니다. 이 용어는 그런 격자가 없을 때만 쓰는 클라이언트 측 IDW 폴백 경로를 가리키며, 일반적인 경우를 뜻하지 않습니다.',
+    example: '"18.2 µg/m³ (interpolated)" appears only on the IDW fallback path when no published grid covers this point; the ordinary grid reading is "analysis" or "forecast" instead.',
     methodRef: 'grid-vs-station',
     relations: [
       { type: 'isA', target: 'nature' },
       { type: 'contrastsWith', target: 'observed' },
+      { type: 'contrastsWith', target: 'analysis' },
       { type: 'seeAlso', target: 'coverage' },
+    ],
+    natureTag: 'nature',
+  },
+  {
+    termId: 'analysis',
+    term: 'Analysis',
+    definition:
+      'A value read from a numerical model’s analysis field — the model’s own best estimate of the current state of the atmosphere or ocean (e.g. a data-assimilated 0-hour/"f000" run), not a forward-looking forecast and not a ground sensor reading. Most of AirLens’s published pollutant and weather grids are analysis fields, not interpolated ones.',
+    definitionKo:
+      '수치모델의 분석장(analysis field)에서 읽은 값입니다 — 미래를 내다보는 예보가 아니라, 모델이 자료동화를 거쳐 산출한 대기·해양의 현재 상태에 대한 최선의 추정치(예: 0시간/"f000" 실행)입니다. 지상 센서로 직접 측정한 값도 아닙니다. AirLens가 발행하는 오염물질·기상 격자 대부분은 보간이 아니라 이 분석장입니다.',
+    example: '"PM2.5: 22.1 µg/m³ (analysis)" comes from NOAA GEFS-Aerosols’ f000/anl grid field, not a forecast run and not a ground station.',
+    methodRef: 'nature-analysis',
+    relations: [
+      { type: 'isA', target: 'nature' },
+      { type: 'contrastsWith', target: 'forecast' },
+      { type: 'contrastsWith', target: 'interpolated' },
+      { type: 'contrastsWith', target: 'observed' },
+      { type: 'seeAlso', target: 'pm25' },
     ],
     natureTag: 'nature',
   },
@@ -177,6 +196,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     methodRef: 'nature-overview',
     relations: [
       { type: 'seeAlso', target: 'observed' },
+      { type: 'seeAlso', target: 'analysis' },
       { type: 'seeAlso', target: 'interpolated' },
       { type: 'seeAlso', target: 'satellite-derived' },
       { type: 'seeAlso', target: 'forecast' },
@@ -184,12 +204,14 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
       { type: 'seeAlso', target: 'nature-policy' },
       { type: 'seeAlso', target: 'coverage' },
     ],
-    // These are the nature-tag values as authored in content (`methodologySections.ts`
-    // section titles, `src/content/legal.ts` DEPLOYED_MODELS `nature` field). Note one
-    // code-level synonym: `globeOntology.ts`'s `ProvenanceKind` enum spells the forecast
-    // value 'model-forecast', not 'forecast' — same concept, different string, recorded
-    // here rather than silently reconciled.
-    controlledValues: ['observed', 'interpolated', 'satellite-derived', 'forecast', 'inferred', 'policy'],
+    // The 7-value Evidence Contract v1 vocabulary (`nature` enum in
+    // `airlens-data/contracts/evidence-envelope.v1.schema.json`), verbatim.
+    // `globeOntology.ts`'s `ProvenanceKind` union now spells these identically
+    // ('observation', 'analysis', 'interpolated', 'forecast', 'satellite-derived',
+    // 'inferred', 'policy') — the 'observed'/'model-forecast' code-level synonym
+    // this comment used to record was reconciled on 2026-09-04 rather than left
+    // to drift permanently; see the ProvenanceKind doc comment for detail.
+    controlledValues: ['observation', 'analysis', 'interpolated', 'forecast', 'satellite-derived', 'inferred', 'policy'],
     natureTag: 'nature',
   },
   {

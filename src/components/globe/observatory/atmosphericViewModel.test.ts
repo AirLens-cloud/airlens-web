@@ -48,7 +48,7 @@ describe('atmosphericViewModel', () => {
 
     expect(view.mode).toBe('forecast')
     expect(view.motion).toBe('time-scrub')
-    expect(view.provenance).toContain('model-forecast')
+    expect(view.provenance).toContain('forecast')
     expect(view.range).toEqual([2, 91])
     expect(view.uncertainty).toBe('explicit-caveat')
     expect(view.status).toBe('ready')
@@ -78,7 +78,7 @@ describe('atmosphericViewModel', () => {
       selectedStation: { lat: 37.5, lon: 127, pm25: 18, name: 'Station without source' },
     })
 
-    expect(view.provenance).toEqual(['observed'])
+    expect(view.provenance).toEqual(['observation'])
     expect(view.source).toBeNull()
     expect(view.referenceTime).toBeNull()
     expect(view.validTime).toBeNull()

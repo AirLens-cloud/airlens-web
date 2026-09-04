@@ -217,7 +217,7 @@ export function buildAtmosphericViewModel(state: AtmosphericViewState): Atmosphe
   if (mode === 'forecast') {
     nature = 'forecast'
     ;({ motionKind: motion, uncertaintyKind: uncertainty } = GRAMMAR.forecast)
-    provenance = ['model-forecast']
+    provenance = ['forecast']
     label = PHENOMENA.pm25.hud?.label ?? 'PM2.5'
     unit = PHENOMENA.pm25.hud?.unit ?? 'µg/m³'
     source = gridFresh ? state.activeGridMeta?.source ?? null : PHENOMENA.pm25.forecastPipeline?.source ?? null
@@ -270,7 +270,7 @@ export function buildAtmosphericViewModel(state: AtmosphericViewState): Atmosphe
 
   if (focus?.kind === 'observation') {
     uncertainty = 'dqss-badge'
-    provenance = ['observed']
+    provenance = ['observation']
   }
   if (focus?.kind === 'model-estimate') {
     uncertainty = 'band-if-available'
