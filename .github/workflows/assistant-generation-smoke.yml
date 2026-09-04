@@ -62,6 +62,15 @@ permissions:
 jobs:
   live-gates:
     name: generation not empty + retrieval recall@3
+    # Fork PRs never receive these secrets, so without this guard the
+    # "fail loud, not skip-to-green" step below turns every outside
+    # contribution red for a reason the contributor cannot fix. Skipping is the
+    # honest outcome: the gate did not run, rather than ran and failed.
+    #
+    # This also removes the temptation to "fix" those reds by enabling
+    # "Send secrets to workflows from fork pull requests" — a fork PR can edit
+    # workflow files, so that setting would hand the AI token to anyone.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     defaults:
       run:

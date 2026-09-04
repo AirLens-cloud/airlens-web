@@ -43,6 +43,14 @@ export interface FeedRegistryEntry {
   provider: string
   tier: string
   license: string
+  /**
+   * A wording the upstream licence *obliges* us to reproduce, verbatim, wherever
+   * its data is shown. Distinct from `license` on purpose: `license` stays
+   * `LICENSE_NOT_PUBLISHED` because no source registry publishes it and guessing
+   * would be fabrication — but a mandated attribution sentence is not a guess,
+   * it is copied from the licence text. `null` where no such wording exists.
+   */
+  attribution: string | null
   cadence: string
   coverage: string
   status: FeedStatus
@@ -66,6 +74,8 @@ interface FeedDef {
   provider: string
   tier: string
   cadence: string
+  /** Licence-mandated wording, copied from the licence text. Omit when none. */
+  attribution?: string
   /** Age past which a fetched-but-old value reads as stale. `null` = no SLA known. */
   freshnessSlaH: number | null
   probe: () => Promise<ProbeResult>
@@ -160,6 +170,11 @@ const FEEDS: FeedDef[] = [
     id: 'forecast',
     label: 'PM2.5 24h forecast',
     provider: 'Open-Meteo CAMS',
+    // CC BY 4.0 specifies this sentence; it is not ours to paraphrase or
+    // shorten. Copernicus data reaches this surface, so the wording travels
+    // with it. See ATTRIBUTION.md.
+    attribution:
+      'Open-Meteo CAMS. Generated using Copernicus Atmosphere Monitoring Service information 2026.',
     tier: 'model forecast',
     cadence: '6h', // lib/today/forecastSource.ts header comment: cron refreshes this every 6h.
     freshnessSlaH: 12, // 2x cadence — same margin useDataHealth's pollStaleFactor applies.
@@ -184,6 +199,7 @@ async function pollFeed(def: FeedDef, nowMs: number): Promise<FeedRegistryEntry>
     provider: def.provider,
     tier: def.tier,
     license: LICENSE_NOT_PUBLISHED,
+    attribution: def.attribution ?? null,
     cadence: def.cadence,
   }
   try {

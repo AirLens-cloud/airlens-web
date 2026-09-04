@@ -229,7 +229,9 @@ function FeedRow({
               </div>
               <div>
                 <dt className="m">ATTRIBUTION</dt>
-                <dd>{feed.provider}</dd>
+                {/* Licence-mandated wording when the upstream specifies one
+                    (Copernicus/CAMS does); the provider name otherwise. */}
+                <dd>{feed.attribution ?? feed.provider}</dd>
               </div>
               {feed.note ? (
                 <div>
