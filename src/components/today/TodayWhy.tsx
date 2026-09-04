@@ -12,6 +12,7 @@ import WfDataState from '../wireframe/WfDataState'
 import { sectionDataState } from '../weather/sectionState'
 import { describeWind, describeHumidity, describeSixHourTrend } from '../../lib/today/observedConditions'
 import { formatUtcTime } from '../../lib/home/whyNow'
+import { isReportable } from '../../lib/config/gridPlausibility'
 import type { TodayGridState } from '../../hooks/useTodayGrid'
 import type { TodayCamsState } from '../../hooks/useTodayCams'
 import type { OpenMeteoWeatherHourly } from '../../types/forecast'
@@ -63,6 +64,15 @@ export default function TodayWhy({ grid, cams, weather, weatherStatus, weatherCo
               <span className="today-cell__sub t-micro">
                 {grid.stale ? 'stale · ' : ''}analysis · interpolated · valid {formatUtcTime(grid.updatedAt)}
               </span>
+              {/* The cell keeps its real number even when we can't stand
+                  behind it — hiding the figure would leave no trace that the
+                  model produced it. What it gets is the reason, and Today.tsx
+                  has already handed the headline to CAMS. */}
+              {!isReportable(grid.plausibility) && (
+                <span className="today-cell__void t-caption">
+                  Not used for today&apos;s judgment — {grid.plausibility?.reason}.
+                </span>
+              )}
             </>
           )}
         </div>

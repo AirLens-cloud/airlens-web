@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import { fetchGlobalGridSnapshot } from '../api/gridSnapshot'
+import type { Pm25Plausibility } from '../lib/config/gridPlausibility'
 
 export type TodayGridState =
   | { status: 'loading' }
@@ -24,6 +25,11 @@ export type TodayGridState =
        * before. Optional (not `| undefined`) so existing fixtures that omit
        * it stay valid. */
       dqss?: number
+      /** Whether `pm25` is a reading we can stand behind. The value is
+       * passed through untouched either way — callers decide whether to
+       * build a judgment on it, and the evidence panels show it regardless
+       * (see `lib/config/gridPlausibility.ts`). */
+      plausibility?: Pm25Plausibility
     }
   | { status: 'missing' }
 
@@ -49,6 +55,7 @@ export function useTodayGrid(lat: number, lon: number): TodayGridState {
           stale: snapshot.stale ?? false,
           distanceKm: snapshot.nearbyCells[0]?.distanceKm ?? 0,
           dqss: snapshot.dqss,
+          plausibility: snapshot.plausibility,
         })
       })
       .catch(() => {
