@@ -1,20 +1,20 @@
 /**
- * functions/api/geo.ts — IP-approximate location edge route (AAA).
+ * functions/edge-geo.ts — IP-approximate location edge route (AAA).
  *
  * `ctx.request.cf` is Cloudflare-injected at the real edge and absent (or
  * empty-stringed) on `wrangler pages dev`'s local mock — both are exercised
  * here as the expected `available:false` path, not an error case.
  */
 import { describe, it, expect } from 'vitest'
-import { onRequestGet } from './geo'
+import { onRequestGet } from './edge-geo'
 
 function requestWithCf(cf?: Record<string, string>): { request: Request & { cf?: Record<string, string> } } {
-  const request = new Request('https://example.test/api/geo') as Request & { cf?: Record<string, string> }
+  const request = new Request('https://example.test/edge-geo') as Request & { cf?: Record<string, string> }
   if (cf) request.cf = cf
   return { request }
 }
 
-describe('GET /api/geo', () => {
+describe('GET /edge-geo', () => {
   it('resolves available:true with the request-sourced lat/lon when cf carries a location', () => {
     // Arrange
     const ctx = requestWithCf({ latitude: '37.5665', longitude: '126.9780', city: 'Seoul', country: 'KR' })

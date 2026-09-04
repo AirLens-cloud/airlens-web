@@ -19,7 +19,7 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
 // is driven by this hook's own `choice`/`approx`, independently of the
 // mocked capsule data above — mocked here so each test controls it directly
 // instead of depending on the real (localStorage-backed) store + a real
-// `fetch('/api/geo')` call.
+// `fetch('/edge-geo')` call.
 vi.mock('../hooks/useLocationPersonalization', () => ({ useLocationPersonalization: vi.fn() }))
 
 // HomeStoriesResearch (below-the-fold, renders regardless of hero status) has

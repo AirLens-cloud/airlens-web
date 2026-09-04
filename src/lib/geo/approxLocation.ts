@@ -1,6 +1,6 @@
 /**
  * approxLocation — client fetch for the IP-approximate location the edge
- * resolves per-request (`functions/api/geo.ts`).
+ * resolves per-request (`functions/edge-geo.ts`).
  *
  * One network call per tab, deduped across concurrent callers (Home's hero
  * and `useGeolocation`/`useLocationPersonalization` can all mount around
@@ -10,7 +10,7 @@
  * persisting the result past this browsing session would go stale in a way
  * a fresh IP lookup never does.
  *
- * `vite dev` has no Pages Functions at all — `/api/geo` falls through to
+ * `vite dev` has no Pages Functions at all — `/edge-geo` falls through to
  * the SPA catch-all and comes back `text/html` (the same trap
  * `functions/data/[[path]].ts`'s header guard exists for on the data side).
  * That response is rejected here by content-type before any `.json()`
@@ -22,7 +22,7 @@
  * caller already has a real next fallback (Seoul / the feed's "thickest
  * air" pick), so a missed approximate location is never a hard error.
  */
-const GEO_ENDPOINT = '/api/geo'
+const GEO_ENDPOINT = '/edge-geo'
 const SESSION_CACHE_KEY = 'airlens-approx-location'
 
 export interface ApproxLocation {
