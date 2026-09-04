@@ -98,7 +98,10 @@ const FEEDS: FeedDef[] = [
     id: 'pm25-grid',
     label: 'PM2.5 current grid',
     provider: aqGrid.source,
-    tier: 'interpolated grid',
+    // `aqGrid` resolves to pm25's pipeline (GEFS-Aerosols f000/anl) — an
+    // analysis field, not an interpolated one. Stale since the GEFS-Aerosols
+    // correction (this repo's provenance drift fix, 2026-09-04).
+    tier: 'model analysis grid',
     cadence: aqGrid.cadence,
     freshnessSlaH: DEFAULT_MAX_AGE_HOURS, // same threshold gridSnapshot.ts's own `.stale` flag uses.
     async probe() {

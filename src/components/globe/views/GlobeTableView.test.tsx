@@ -66,11 +66,18 @@ describe('GlobeTableView', () => {
     expect(screen.getAllByText('not published').length).toBeGreaterThanOrEqual(2)
   })
 
-  it('labels the grid reading as interpolated, not a raw observation', () => {
-    // Arrange / Act
+  it('labels a grid cell as analysis — what the cell is, not what the phenomenon can be', () => {
+    // Arrange / Act — guards both directions of the pre-2026-09-04 bug.
+    // Under-claim: the column hardcoded "interpolated" for cells that are a
+    // GEFS-Aerosols f000/anl analysis field, which is not interpolation.
+    // Over-claim: printing PHENOMENA.pm25.provenance here would read
+    // "analysis · observation · forecast" beside a single grid cell that never
+    // touched a ground station or a forecast run.
     render(<GlobeTableView />)
     // Assert
-    expect(screen.getAllByText('interpolated').length).toBe(2)
+    expect(screen.getAllByText('analysis').length).toBe(2)
+    expect(screen.queryByText('interpolated')).toBeNull()
+    expect(screen.queryByText('analysis · observation · forecast')).toBeNull()
   })
 
   it('clicking a row writes the same SelectedStation shape a 3D mark click would', () => {

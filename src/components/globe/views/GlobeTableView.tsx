@@ -26,11 +26,36 @@ import { useGlobeGridSnapshot } from '../../../hooks/useGlobeData'
 import { useCountryFeatures } from '../../../hooks/useCountryData'
 import { nearestPlaceFor } from '../../../lib/globe/nearestPlace'
 import { dqssScoreToGrade } from '../../../lib/config/globeOntology'
+import type { ProvenanceKind } from '../../../lib/config/globeOntology'
 import { isReportable } from '../../../lib/config/gridPlausibility'
 import type { GlobalGridCell } from '../../../types/data'
 
 /** The table shows the most concentrated cells first — beyond this it's a data dump, not a reading surface. */
 const ROW_LIMIT = 200
+
+/**
+ * Nature of the rows in *this* table.
+ *
+ * Every row is a published `global_grid` cell — a NOAA GEFS-Aerosols f000/`anl`
+ * analysis field read at its own grid point. So the label is `analysis`, and
+ * only that.
+ *
+ * It is deliberately **not** `PHENOMENA.pm25.provenance`, even though that is
+ * the ontology's declared answer for the phenomenon. Those are two different
+ * questions. The phenomenon `pm25` can arrive by three routes
+ * (`analysis · observation · forecast`) because the Globe draws it from three
+ * feeds; a *grid cell in this table* arrived by exactly one of them. Printing
+ * the phenomenon-level union next to a single cell claims ground observation
+ * and a forecast run contributed to that number, and neither did.
+ *
+ * That over-claim is the same failure the pre-2026-09-04 hardcode made in the
+ * other direction: a Nature column disconnected from what is actually
+ * tabulated. Swapping one wrong label for a wider wrong label is not a fix.
+ *
+ * If this table ever renders a second phenomenon, this constant has to become
+ * per-row — derived from the cell's own feed, not from the registry.
+ */
+const GRID_CELL_NATURE: ProvenanceKind = 'analysis'
 
 interface TableRow {
   stationUid: string
@@ -128,7 +153,7 @@ export default function GlobeTableView() {
                   )}
                 </td>
                 <td className="gtv-dim">not published</td>
-                <td className="gtv-dim">interpolated</td>
+                <td className="gtv-dim">{GRID_CELL_NATURE}</td>
                 <td>{grade ?? <span className="gtv-dim">not published</span>}</td>
               </tr>
             )

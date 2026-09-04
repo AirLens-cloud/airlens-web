@@ -31,13 +31,26 @@ import { VIZ_ACCENT_HEX } from './viz';
 
 // ── 계층 3: 인식론 ───────────────────────────────────────────────────────────
 
-/** 이 현상이 가질 수 있는 인식론적 출처 (Glass-box 의 온톨로지화). */
+/**
+ * 이 현상이 가질 수 있는 인식론적 출처 (Glass-box 의 온톨로지화).
+ *
+ * **Evidence Contract v1 어휘 그대로다** — 값 7개, 순서, 철자 모두
+ * `airlens-data/contracts/evidence-envelope.v1.schema.json`(`nature` enum,
+ * `data-product-manifest.v1.schema.json` 동일)과 1:1 대응한다. 이 파일에
+ * 한쪽만 값을 추가/삭제하면 producer와 consumer가 다시 갈라진다 — 그것이
+ * 바로 이번 정정이 닫는 drift다 (직전엔 이 유니온이 5값짜리 변형본이라
+ * `analysis`가 없어 GEFS/GFS 분석장 23종이 전부 `interpolated`로 뭉뚱그려
+ * 발행되고 있었다). 값을 늘리거나 줄이려면 계약 스키마부터 갱신하고,
+ * 여기는 그 뒤를 따라온다 — 반대가 아니다.
+ */
 export type ProvenanceKind =
-  | 'observed' // 관측소 실측
+  | 'observation' // 관측소 실측
+  | 'analysis' // 수치모델 분석장 (재분석/동화 — 예측이 아니라 현재 상태 추정, 예: GEFS-Aerosols f000/anl)
   | 'interpolated' // 격자 보간 (IDW / 재분석 격자 샘플)
-  | 'model-forecast' // 수치모델 예보 (GFS / GEFS / CAMS)
+  | 'forecast' // 수치모델 예보 (GFS / GEFS / CAMS forecast run)
   | 'satellite-derived' // 위성 추정 (MAIAC AOD → PM2.5, FIRMS FRP)
-  | 'inferred'; // 인과·유도 추정 (SDID, 연기 이송)
+  | 'inferred' // 인과·유도 추정 (SDID, 연기 이송)
+  | 'policy'; // 정책 조치 자체에 대한 사실 (관보/규제 문서)
 
 export type TimeAxis = 'current' | 'forecast' | 'historical';
 
@@ -250,9 +263,17 @@ const pollenPipeline = (varKey: string): PhenomenonPipeline => ({
   coverage: '유럽 한정 (CAMS 도메인) — 도메인 밖은 격자가 비어 아무것도 안 그려진다',
 });
 
-/** 라벨만 있고 수집 경로가 없는 현상 — 피커 비노출. */
+/**
+ * 라벨만 있고 수집 경로가 없는 현상 — 피커 비노출.
+ *
+ * provenance = `[]`. `pipeline: null`은 "수집 경로가 아예 없다"는 뜻이고,
+ * 그런 현상에 `interpolated`(혹은 다른 어떤 값)를 claim 하는 것은 있지도
+ * 않은 근거를 지어내는 것이다 — `[]`("선언은 됐으나 출처 불명")이 유일하게
+ * 정직한 표현이다. 이 값을 쓰는 현상은 전부 피커에 노출되지 않으므로
+ * 사용자에게 보이는 화면에서는 관측되지 않는다.
+ */
 const declaredOnly = (hud: HudDef): PhenomenonDef => ({
-  provenance: ['interpolated'],
+  provenance: [],
   verticalLevels: SURFACE,
   timeAxes: NOW,
   pipeline: null,
@@ -268,7 +289,10 @@ const declaredOnly = (hud: HudDef): PhenomenonDef => ({
 export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
   // ── 오염물질 ──
   pm25: {
-    provenance: ['interpolated', 'observed', 'model-forecast'],
+    // analysis = GEFS-Aerosols f000/anl grid (collect_noaa_aq.py `PMTF:surface:anl:` —
+    // idx_match 자체가 anl 세그먼트). observation = 지상 관측소. forecast = 아래
+    // forecastPipeline(GEFS ±24h 타임라인) — 세 출처가 실제로 이 현상에 섞여 들어온다.
+    provenance: ['analysis', 'observation', 'forecast'],
     verticalLevels: SURFACE,
     timeAxes: ['current', 'forecast'],
     pipeline: aqPipeline('pm25', 'pm2_5'),
@@ -285,7 +309,9 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: PM25_COLOR_SCALE, ticks: AQ_MARKS },
   },
   pm10: {
-    provenance: ['interpolated', 'observed'],
+    // analysis = GEFS-Aerosols f000/anl grid (`PMTC:surface:anl:` idx_match). No
+    // forecastPipeline exists for pm10 (unlike pm25) — no 'forecast' claim here.
+    provenance: ['analysis', 'observation'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: aqPipeline('pm10', 'pm10'),
@@ -293,7 +319,9 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: PM10_COLOR_SCALE, ticks: PM10_MARKS },
   },
   o3: {
-    provenance: ['interpolated'],
+    // Open-Meteo `/v1/air-quality` — CAMS forecast-model output, not an analysis
+    // or ground reading (see AQ_PROVENANCE.gas comment above).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: aqPipeline('o3', 'ozone'),
@@ -301,7 +329,8 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: O3_COLOR_SCALE, ticks: ['0', '30', '60', '90', '120', '200'] },
   },
   no2: {
-    provenance: ['interpolated'],
+    // Open-Meteo `/v1/air-quality` — CAMS forecast-model output (same as o3/co).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: aqPipeline('no2', 'nitrogen_dioxide'),
@@ -309,7 +338,8 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: NO2_COLOR_SCALE, ticks: ['0', '5', '15', '30', '50', '80', '120'] },
   },
   co: {
-    provenance: ['interpolated'],
+    // Open-Meteo `/v1/air-quality` — CAMS forecast-model output (same as o3/no2).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: aqPipeline('co', 'carbon_monoxide'),
@@ -320,7 +350,10 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
 
   // ── 기상 ──
   wind: {
-    provenance: ['model-forecast'],
+    // NOAA/NCEP GFS f000 = anl (analysis, not a forecast run) —
+    // `collect_gfs_wind.py` `idx_match()` docstring: "f000 세그먼트는 anl".
+    // The prior 'model-forecast' label was wrong, not just a spelling drift.
+    provenance: ['analysis'],
     verticalLevels: ['surface', '850hPa'],
     timeAxes: NOW,
     pipeline: {
@@ -334,7 +367,9 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: WIND_SPEED_RAMP, ticks: ['0', '5', '10', '20', '30', '40'] },
   },
   temp: {
-    provenance: ['interpolated'],
+    // Open-Meteo `/v1/forecast?...&current=` — the "current" value is read from a
+    // forecast model run, not a ground station or a reanalysis field.
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: weatherPipeline('temp'),
@@ -342,7 +377,8 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: TEMP_COLOR_SCALE, ticks: ['-40', '-20', '0', '10', '20', '30', '40'] },
   },
   rh: {
-    provenance: ['interpolated'],
+    // Open-Meteo `/v1/forecast` (same endpoint/mechanism as temp — see comment there).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: weatherPipeline('rh'),
@@ -351,29 +387,35 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
   },
   // 아래 4종 — 피드는 있으나 색 스케일이 없다 → 격자 렌더 불가 (피커 비노출).
   precip: {
-    provenance: ['interpolated'], verticalLevels: SURFACE, timeAxes: NOW,
+    // Open-Meteo `/v1/forecast` (same endpoint/mechanism as temp/rh).
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW,
     pipeline: weatherPipeline('precip'),
     hud: { label: 'Precipitation', unit: 'mm', color: '#2563eb' },
   },
   cloud: {
-    provenance: ['interpolated'], verticalLevels: SURFACE, timeAxes: NOW,
+    // Open-Meteo `/v1/forecast` (same endpoint/mechanism as temp/rh).
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW,
     pipeline: weatherPipeline('cloud'),
     hud: { label: 'Cloud Cover', unit: '%', color: '#cbd5e1' },
   },
   uvi: {
-    provenance: ['interpolated'], verticalLevels: SURFACE, timeAxes: NOW,
+    // Open-Meteo `/v1/forecast` (same endpoint/mechanism as temp/rh).
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW,
     pipeline: weatherPipeline('uvi'),
     hud: { label: 'UV Index', unit: '', color: '#eab308' },
   },
   mslp: {
-    provenance: ['interpolated'], verticalLevels: SURFACE, timeAxes: NOW,
+    // Open-Meteo `/v1/forecast` (same endpoint/mechanism as temp/rh).
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW,
     pipeline: weatherPipeline('mslp'),
     hud: { label: 'Pressure', unit: 'hPa', color: '#a3a3a3' },
   },
 
   // ── 해양 ──
   sst: {
-    provenance: ['interpolated'],
+    // marine-api.open-meteo.com `/v1/marine?...&current=` — forecast-model feed
+    // (same mechanism family as the weather endpoint, marine variant).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: marinePipeline('sst'),
@@ -381,7 +423,10 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: SST_COLOR_SCALE, ticks: ['0', '8', '16', '24', '32'] },
   },
   ssta: {
-    provenance: ['interpolated'],
+    // Same marine forecast feed as sst — but the *value itself* is SST minus a
+    // climatology baseline (see pipeline comment below), so the anomaly is
+    // additionally 'inferred' on top of the forecast SST it's computed from.
+    provenance: ['forecast', 'inferred'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: marinePipeline('sst'), // SSTA = SST − 기후평년값
@@ -389,7 +434,8 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: SSTA_COLOR_SCALE, ticks: ['-3', '-1', '0', '+1', '+3'] },
   },
   waves: {
-    provenance: ['interpolated'],
+    // marine-api.open-meteo.com `/v1/marine` forecast feed (same as sst).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: marinePipeline('waves'),
@@ -397,7 +443,8 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     legend: { colorScale: WAVES_COLOR_SCALE, ticks: ['0', '1', '2', '4', '6', '10'] },
   },
   currents: {
-    provenance: ['interpolated'],
+    // marine-api.open-meteo.com `/v1/marine` forecast feed (same as sst/waves).
+    provenance: ['forecast'],
     verticalLevels: SURFACE,
     timeAxes: NOW,
     pipeline: marinePipeline('current_vel'),
@@ -407,37 +454,37 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
 
   // ── 꽃가루 (CAMS, 유럽 한정) ──
   pollen_grass: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('grass'),
     hud: { label: 'Grass Pollen', unit: 'grains/m³', color: '#b8d230' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
   },
   pollen_birch: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('birch'),
     hud: { label: 'Birch Pollen', unit: 'grains/m³', color: '#a3c920' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
   },
   pollen_alder: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('alder'),
     hud: { label: 'Alder Pollen', unit: 'grains/m³', color: '#8db820' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
   },
   pollen_mugwort: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('mugwort'),
     hud: { label: 'Mugwort Pollen', unit: 'grains/m³', color: '#c4a030' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
   },
   pollen_olive: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('olive'),
     hud: { label: 'Olive Pollen', unit: 'grains/m³', color: '#7da030' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
   },
   pollen_ragweed: {
-    provenance: ['model-forecast'], verticalLevels: SURFACE, timeAxes: NOW,
+    provenance: ['forecast'], verticalLevels: SURFACE, timeAxes: NOW, // CAMS pollen forecast — mechanical rename, same source as before
     pipeline: pollenPipeline('ragweed'),
     hud: { label: 'Ragweed Pollen', unit: 'grains/m³', color: '#d4c020' },
     legend: { colorScale: POLLEN_COLOR_SCALE, ticks: POLLEN_MARKS },
@@ -483,7 +530,10 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
     hud: { label: 'Transport Lens', unit: '—', color: VIZ_ACCENT_HEX },
   },
   'policy-standard': {
-    provenance: ['observed'], // 각국 관보·규제 문서에 적힌 사실
+    // Evidence Contract 'policy' — a fact about a policy/regulatory instrument
+    // itself, not a measured pollutant (contrasts with 'observation' — see the
+    // ProvenanceKind doc comment above).
+    provenance: ['policy'], // 각국 관보·규제 문서에 적힌 사실
     verticalLevels: SURFACE,
     timeAxes: ['historical'],
     pipeline: {
@@ -530,7 +580,9 @@ export const PHENOMENA: Readonly<Record<PhenomenonId, PhenomenonDef>> = {
   wpd: declaredOnly({ label: 'Wind Power', unit: 'kW/m²', color: '#22d3ee' }),
   mi: {
     // HUD 이름조차 없던 유일한 오버레이 — 이름이 없으므로 사용자 노출 불가 (현행 유지).
-    provenance: ['interpolated'], verticalLevels: SURFACE, timeAxes: NOW, pipeline: null,
+    // pipeline: null 이므로 provenance 도 declaredOnly() 와 같은 이유로 빈 배열 —
+    // 없는 수집 경로에 근거를 지어내지 않는다.
+    provenance: [], verticalLevels: SURFACE, timeAxes: NOW, pipeline: null,
   },
 };
 
