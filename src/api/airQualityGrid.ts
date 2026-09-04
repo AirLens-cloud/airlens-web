@@ -82,7 +82,18 @@ interface AQGridResponse {
   lonMin: number;
   dLat: number;
   dLon: number;
-  points: Array<{ lat: number; lon: number; value: number }>;
+  /**
+   * `value` is nullable by contract — `airlens-data/contracts/current-aq-grid.v1.schema.json`
+   * declares `"value": {"type": ["number", "null"]}`. A null is the producer saying
+   * *this cell was not measurable*, not that it measured zero: `collect_noaa_aq.py`
+   * nulls physically impossible negative mass concentrations rather than clamping
+   * them to 0 or to a neighbourhood mean.
+   *
+   * The type said `number` until 2026-09-04, so `values[i] = p.value` type-checked
+   * and `ToNumber(null) === 0` silently turned "unmeasured" into "0 µg/m³" — which
+   * the scalar field renders as the cleanest air on the globe.
+   */
+  points: Array<{ lat: number; lon: number; value: number | null }>;
   source?: string;
 }
 
@@ -96,6 +107,13 @@ function parseGridResponse(
   values.fill(NaN);
 
   for (const p of points) {
+    // A null (or otherwise non-numeric) cell is left at the pre-filled NaN. That
+    // is the whole fix: `Float32Array` coerces `null` to 0, and every consumer
+    // downstream — `scalarField.ts` colouring, its min/max scan, the hover
+    // readout — treats a finite 0 as a real reading. NaN is the value they all
+    // already agree means "no data", so absence stays absence.
+    // Same test `api/gridSnapshot.ts` applies to the table view's cells.
+    if (typeof p.value !== 'number') continue;
     const latIdx = Math.round((p.lat - latMin) / dLat);
     const lonIdx = Math.round((p.lon - lonMin) / dLon);
     if (latIdx >= 0 && latIdx < nLat && lonIdx >= 0 && lonIdx < nLon) {

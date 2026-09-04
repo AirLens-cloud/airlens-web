@@ -251,3 +251,61 @@ describe('fetchAQGrid — weather/marine/pollen fallback timestamp', () => {
     expect(result!.timestamp).toBe(Date.parse('2026-08-18T23:00:00Z'))
   });
 });
+
+describe('fetchAQGrid — unmeasured cells stay unmeasured', () => {
+  /**
+   * The contract (`current-aq-grid.v1`) publishes `value: ["number", "null"]`, and
+   * the producer nulls physically impossible negative mass concentrations rather
+   * than clamping them. A `Float32Array` write coerces `null` to 0, so without a
+   * guard the emptiest possible cell renders as the cleanest air on the globe.
+   */
+  const GRID_WITH_NULL_CELL = {
+    ...CDN_GRID,
+    points: [
+      { lat: -90, lon: -180, value: 5 },
+      { lat: -90, lon: 0, value: null },   // producer said "not measurable here"
+      { lat: 0, lon: -180, value: 7 },
+      { lat: 0, lon: 0, value: 8 },
+    ],
+  }
+
+  async function loadGrid(payload: unknown) {
+    fetchMock.mockImplementation(async (url: string) => (
+      String(url).includes('huggingface.co/datasets/Robeedau/airlens-live')
+        ? okResponse(payload)
+        : notFoundResponse()
+    ))
+    const { fetchAQGrid } = await import('./airQualityGrid')
+    return fetchAQGrid('pm25')
+  }
+
+  it('leaves a null cell as NaN rather than degrading it to 0 µg/m³', async () => {
+    // Arrange / Act
+    const result = await loadGrid(GRID_WITH_NULL_CELL)
+
+    // Assert — index (latIdx 0, lonIdx 1) is the null cell.
+    expect(result).not.toBeNull()
+    const nullCell = result!.values[0 * result!.nLon + 1]
+    expect(Number.isNaN(nullCell)).toBe(true)
+    expect(nullCell).not.toBe(0) // the exact regression: NaN !== 0
+  });
+
+  it('keeps every measured neighbour of a null cell intact', async () => {
+    // Arrange / Act — a guard that skipped too much would show up here.
+    const result = await loadGrid(GRID_WITH_NULL_CELL)
+
+    // Assert
+    const { values, nLon } = result!
+    expect(values[0 * nLon + 0]).toBe(5)
+    expect(values[1 * nLon + 0]).toBe(7)
+    expect(values[1 * nLon + 1]).toBe(8)
+  });
+
+  it('still writes every cell when the payload has no nulls', async () => {
+    // Arrange / Act — pins that the guard is null-specific, not a blanket skip.
+    const result = await loadGrid(CDN_GRID)
+
+    // Assert
+    expect(Array.from(result!.values)).toEqual([5, 6, 7, 8])
+  });
+});
