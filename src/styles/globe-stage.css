@@ -47,7 +47,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px;
+  /* 24px viewport-edge inset (design audit V4) — the panel sits flush
+     against the stage's left edge, so this padding IS the edge gap. */
+  padding: var(--obs-inset);
   overflow-y: auto;
   border-right: 1px solid var(--obs-void-line);
   background: var(--obs-void-2);
@@ -135,7 +137,10 @@
 }
 
 .obs-surface .lg-head .name { color: var(--obs-ink); }
-.obs-surface .lg-head .unit { color: var(--obs-hud); }
+/* text-transform: none — `.lg-head`'s uppercase transform turns the unit's µ
+   (µg/m³) into Greek capital Mu, which renders as an unlabelled "MG/M³"
+   (design-audit 2026-09-05). */
+.obs-surface .lg-head .unit { color: var(--obs-hud); text-transform: none; }
 .obs-surface .lg-head .range { margin-left: auto; color: var(--obs-cyan); font-variant-numeric: tabular-nums; }
 
 /* Collapse toggle (P2 design-audit item #4) — a chevron button, same

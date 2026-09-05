@@ -47,6 +47,13 @@ export default function PolicyMap({
 }: PolicyMapProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
   const [hovered, setHovered] = useState<MarkerCluster | null>(null)
+  // Click pins the tooltip open at the clicked marker; clicking the same
+  // marker again unpins it. DottedMap already wires `onMarkerClick` through
+  // its own hit-test — PolicyMap simply never passed the prop, so clicks were
+  // silently absorbed (design-audit 2026-09-05). Pinned takes precedence over
+  // hover so a stray pointer move elsewhere on the map does not steal the
+  // tooltip the user asked to keep open.
+  const [pinned, setPinned] = useState<MarkerCluster | null>(null)
 
   const years = useMemo(() => panelYears(panels), [panels])
 
@@ -71,14 +78,19 @@ export default function PolicyMap({
     return [{ id: selectedCode, latitude: center[0], longitude: center[1] }]
   }, [selectedCode])
 
-  const hoveredReadout = useMemo(() => {
-    if (!hovered || year === null) return null
-    // The pointer can still hold the previous country's marker when the
-    // selection changes (no mousemove fires, so no leave event). Suppress
-    // rather than relabel — the held screen position belongs to the old anchor.
-    if (hovered.markers[0]?.id?.toUpperCase() !== selectedCode) return null
+  // Pinned wins over hovered — the tooltip stays where the user clicked it
+  // until they unpin or the pin goes stale (below).
+  const activeCluster = pinned ?? hovered
+
+  const activeReadout = useMemo(() => {
+    if (!activeCluster || year === null) return null
+    // The pointer/pin can still hold the previous country's marker when the
+    // selection changes (no mousemove/click fires, so nothing clears it).
+    // Suppress rather than relabel — the held screen position belongs to the
+    // old anchor.
+    if (activeCluster.markers[0]?.id?.toUpperCase() !== selectedCode) return null
     return { pm25: findPanelObservation(panels, selectedCode, year), year }
-  }, [hovered, year, panels, selectedCode])
+  }, [activeCluster, year, panels, selectedCode])
 
   const noCoverage = yearStations !== null && yearStations.stations.length === 0
 
@@ -124,22 +136,28 @@ export default function PolicyMap({
           darkMode
           autoRotate={false}
           className="ins-map-canvas"
-          ariaLabel="Regional PM2.5 map — arrow keys pan, plus and minus zoom, 0 resets"
+          ariaLabel="Regional PM2.5 map — arrow keys pan, plus and minus zoom, 0 resets, click a marker to pin its readout"
           onHoverMarker={setHovered}
+          onMarkerClick={(cluster) =>
+            setPinned((prev) =>
+              prev && prev.markers[0]?.id === cluster.markers[0]?.id ? null : cluster,
+            )
+          }
         />
 
-        {hovered && hoveredReadout ? (
+        {activeCluster && activeReadout ? (
           <div
-            className="ins-map-tooltip"
+            className={`ins-map-tooltip${pinned ? ' ins-map-tooltip--pinned' : ''}`}
             role="status"
-            style={{ left: hovered.x, top: hovered.y - hovered.radius }}
+            style={{ left: activeCluster.x, top: activeCluster.y - activeCluster.radius }}
           >
             <span className="ins-map-tooltip-name">{selectedName}</span>
             <span className="ins-map-tooltip-val num">
-              {hoveredReadout.pm25 === null
-                ? `${hoveredReadout.year} — not observed`
-                : `${hoveredReadout.year} annual mean ${hoveredReadout.pm25.toFixed(1)} ${unit}`}
+              {activeReadout.pm25 === null
+                ? `${activeReadout.year} — not observed`
+                : `${activeReadout.year} annual mean ${activeReadout.pm25.toFixed(1)} ${unit}`}
             </span>
+            {pinned ? <span className="ins-map-tooltip-hint m">CLICK TO UNPIN</span> : null}
           </div>
         ) : null}
 

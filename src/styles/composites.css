@@ -80,12 +80,15 @@
 .wf-chart-frame {
   margin: 0;
   padding: 14px 16px 12px;
-  border: 1px dashed var(--rule);
+  border: 1px solid var(--rule);
   background: var(--bg-1);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+/* Dashed is reserved for the empty/pending state (matches `.ins-card--pending`
+   /`.ins-empty` elsewhere) — a populated frame gets the plain hairline. */
+.wf-chart-frame--empty { border-style: dashed; opacity: 0.85; }
 .wf-chart-frame-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .wf-chart-frame-title { font-family: var(--mono); font-size: var(--fs-tag); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 .wf-chart-frame-band {
@@ -141,15 +144,38 @@
 }
 .wf-chart-frame-placeholder-stats { display: flex; gap: var(--sp-3); font-weight: 700; color: var(--ink-2); text-transform: uppercase; }
 .wf-chart-frame-placeholder-msg { max-width: 32ch; letter-spacing: 0.04em; text-transform: none; color: var(--ink-3); }
-.wf-chart-frame-legend { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: 0.04em; color: var(--ink-2); } /* design-lint-ok: spacing — pre-existing gap value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
+
+/* Meta/caption hierarchy below the chart slot, three tiers by how much
+   attention each earns (heaviest to lightest): legend (what the colours
+   mean) > CI stat (the one number worth reading twice) > footer (a
+   methodology aside, read only if the reader wants the fine print). */
+.wf-chart-frame-legend { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-tag); letter-spacing: 0.04em; color: var(--ink-2); } /* design-lint-ok: spacing — pre-existing gap value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend-swatch { display: inline-block; width: 12px; height: 2px; }
 .legend-swatch--baseline { background: var(--ink-3); border-top: 1px dashed var(--ink-3); height: 0; }
 .legend-swatch--treated { background: var(--ink-0); }
-.wf-chart-frame-ci { display: flex; justify-content: space-between; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: 0.06em; color: var(--ink-3); }
-.ci-label { text-transform: uppercase; }
-.wf-chart-frame-footer { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--rule); font-family: var(--mono); font-size: var(--fs-micro); color: var(--ink-3); line-height: 1.5; }
-.wf-chart-frame--empty { opacity: 0.85; }
+.wf-chart-frame-ci {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule);
+  font-family: var(--mono);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-1);
+}
+.ci-label { text-transform: uppercase; font-weight: 400; color: var(--ink-2); }
+.wf-chart-frame-footer {
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule);
+  font-family: var(--mono);
+  font-size: var(--fs-micro);
+  font-style: italic;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
 
 /* ---- Notification panel ---- */
 .np-panel {
@@ -385,7 +411,9 @@ canvas.cursor-trail { z-index: 2; }
 .obs-surface .gobs-hud .strong { color: var(--obs-ink); }
 .obs-surface .gobs-hud .tick { color: var(--obs-cyan); }
 .obs-surface .gobs-hud .dim { color: var(--obs-hud-dim); }
-.obs-surface .gobs-hud .warn { color: var(--orange); }
+/* Unit text (µg/m³) must not inherit the strip's `.m` uppercase transform —
+   it turns µ into Greek capital Mu, which reads as an unlabelled "MG/M³". */
+.obs-surface .gobs-hud .gobs-unit { text-transform: none; }
 .obs-surface .gobs-live-dot {
   display: inline-block; width: 5px; height: 5px; border-radius: 50%;
   background: var(--orange); margin-right: 6px; vertical-align: 1px;

@@ -105,6 +105,7 @@ export default function PolicyLimitBars({
             const y = PAD_T + i * ROW_H
             const barW = Math.max(2, toW(r.pm25AnnualStandard))
             const ratio = r.pm25AnnualStandard / WHO_PM25_ANNUAL_GUIDELINE
+            const active = r.countryCode === selectedCode
             return (
               <g key={r.countryCode}>
                 <text
@@ -113,8 +114,9 @@ export default function PolicyLimitBars({
                   textAnchor="end"
                   dominantBaseline="middle"
                   fontSize={12}
+                  fontWeight={active ? 700 : 400}
                   fill="currentColor"
-                  className="ins-bar-label"
+                  className={`ins-bar-label${active ? ' ins-bar-label--active' : ''}`}
                 >
                   {r.flag ? `${r.flag} ` : ''}
                   {r.name}
@@ -124,15 +126,17 @@ export default function PolicyLimitBars({
                   y={y + 8}
                   width={barW}
                   height={ROW_H - 18}
-                  className={`ins-bar${r.countryCode === selectedCode ? ' ins-bar--active' : ''}`}
+                  className={`ins-bar ins-bar-grow${active ? ' ins-bar--active' : ''}`}
+                  style={{ animationDelay: `${i * 60}ms` }}
                 />
                 <text
                   x={PAD_L + barW + 6}
                   y={y + ROW_H / 2}
                   dominantBaseline="middle"
                   fontSize={11}
+                  fontWeight={active ? 700 : 400}
                   fill="currentColor"
-                  className="ins-bar-value num"
+                  className={`ins-bar-value num${active ? ' ins-bar-value--active' : ''}`}
                 >
                   {r.pm25AnnualStandard} {unit} · {ratio.toFixed(1)}× WHO
                 </text>
