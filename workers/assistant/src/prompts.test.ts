@@ -86,4 +86,25 @@ describe('buildMessages', () => {
     expect(system.content).toContain('<causal_reasoning>');
     expect(system.content).toContain('Measured vs. estimated');
   });
+
+  it('omits the data_interpretation section by default (general intents pay no reference-table tokens)', () => {
+    // Act
+    const messages = buildMessages('hello there', [], 10, GROUNDED);
+    const system = messages[0] as { content: string };
+    // Assert
+    expect(system.content).not.toContain('<data_interpretation>');
+  });
+
+  it('includes the data_interpretation section when the caller gates it in (any data-flavored intent)', () => {
+    // Act — causal off, interpretation on: the two gates are independent.
+    const messages = buildMessages('what is pm2.5 in seoul', [], 10, GROUNDED, false, true);
+    const system = messages[0] as { content: string };
+    // Assert
+    expect(system.content).toContain('<data_interpretation>');
+    expect(system.content).not.toContain('<causal_reasoning>');
+    // The framing rule and both anchors of the two-axis rule are present.
+    expect(system.content).toContain('two axes');
+    expect(system.content).toContain('WHO 2021 24h guideline');
+    expect(system.content).toContain('reference distribution');
+  });
 });

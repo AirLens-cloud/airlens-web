@@ -162,6 +162,12 @@ const CAUSAL_REASONING_SECTION = `<causal_reasoning>
      mask. Never transfer PM2.5 mitigation advice to O3 or vice versa.
    - **Seasonal pattern**: mention only if the retrieved context or general
      knowledge supports a recurring seasonal effect for the pollutant/region.
+   - **Stagnation magnitude (Korea reference)**: in AirLens's own Korea
+     observations (2021-2025), hours in the TOP quartile of the stagnation
+     index (low PBLH × low wind) show a median PM2.5 of ~22 µg/m³ vs ~14
+     elsewhere — stagnation alone plausibly explains a "somewhat worse than
+     usual" day, but NOT an extreme episode on its own. If the observed
+     value far exceeds that shift, say other factors are likely involved.
 
 3. **Measured vs. estimated — always distinguish explicitly.** Label each
    number as either 실측/measured (a station or co-located observation) or
@@ -186,6 +192,45 @@ const CAUSAL_REASONING_SECTION = `<causal_reasoning>
    that was not provided.
 </causal_reasoning>`;
 
+/**
+ * Data-grounded interpretation reference — included for data-flavored
+ * intents (data_lookup/causal/policy) alongside live data, so the model
+ * frames a number instead of just repeating it. Every figure below was
+ * computed offline from AirLens's own Korea feature table (26,972
+ * station-hour observations, 2021-01 ~ 2025-03; analysis 2026-09-05) —
+ * they are reference distributions, not live values, and the section says
+ * so. Non-Korean locations get the two-axis *rule* but not these numbers.
+ */
+const DATA_INTERPRETATION_SECTION = `<data_interpretation>
+## Framing a PM2.5 number — two axes, not one
+
+When you state a PM2.5 value, frame it on BOTH axes where you can:
+1. **Absolute axis**: WHO 2021 24h guideline = 15 µg/m³; Korean CAI "나쁨"
+   (bad) begins at 36 µg/m³ (daily).
+2. **Relative axis**: where the value sits in that region's and season's own
+   distribution. For South Korea, use this reference table (AirLens Korea
+   observations, 2021-2025 — reference distribution, not today's data):
+
+| season | median (p50) | high (p90) |
+|---|---|---|
+| winter (12-2월) | 14 | 36 |
+| spring (3-5월) | 20 | 43 |
+| summer (6-8월) | 16 | 31 |
+| fall (9-11월) | 15 | 28 |
+
+Example framing: "서울 45 µg/m³는 '나쁨' 구간이고, 겨울 기준으로도 상위
+10%에 드는 높은 수준입니다" — the percentile clause is what makes the
+number meaningful. For non-Korean locations, apply axis 1 and say plainly
+that you don't have a regional reference distribution.
+
+## Change language
+
+Day-over-day PM2.5 noise in the same Korea table: median |Δ24h| = 5 µg/m³,
+p75 = 10 µg/m³. Only call a change "뚜렷이 나빠졌다/좋아졌다" (clearly
+worse/better) when the swing is ≥10 µg/m³; below that, describe it as
+"비슷한 수준" (about the same). Do not dramatize sub-noise changes.
+</data_interpretation>`;
+
 /** Fallback used when `maxTurns` fails to parse to a positive finite number
  *  (env.MAX_HISTORY_TURNS misconfigured/absent) — mirrors MAX_HISTORY_TURNS's
  *  own wrangler.toml default. Without this guard, `history.slice(-NaN)`
@@ -201,6 +246,9 @@ const DEFAULT_MAX_HISTORY_TURNS = 10;
  * expects. `includeCausalReasoning` is intent-gated by the caller
  * (chat-stream.ts, via guardrails.ts classifyIntent) — true only for
  * causal/policy intents, matching the retired worker's token-budget policy.
+ * `includeDataInterpretation` rides the same gate one notch wider (any
+ * non-general intent): a data-flavored answer should frame its numbers,
+ * a small-talk turn shouldn't pay ~250 tokens for a reference table.
  */
 export function buildMessages(
   userMessage: string,
@@ -208,12 +256,14 @@ export function buildMessages(
   maxTurns: number,
   groundedContext: string,
   includeCausalReasoning = false,
+  includeDataInterpretation = false,
 ): Array<{ role: string; content: string }> {
   const safeMaxTurns = Number.isFinite(maxTurns) && maxTurns > 0 ? maxTurns : DEFAULT_MAX_HISTORY_TURNS;
   const trimmedHistory = history.slice(-safeMaxTurns * 2);
 
   const sections = [SYSTEM_PROMPT];
   if (includeCausalReasoning) sections.push(CAUSAL_REASONING_SECTION);
+  if (includeDataInterpretation) sections.push(DATA_INTERPRETATION_SECTION);
   if (groundedContext) sections.push(groundedContext);
   const systemContent = sections.join('\n\n');
 

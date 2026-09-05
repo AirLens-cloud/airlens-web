@@ -261,12 +261,14 @@ describe('formatPolicyImpactForUser', () => {
 
 describe('buildStructuredContext', () => {
   it('returns an empty string when the context has no prediction and no policy (no "we looked but found nothing" noise)', () => {
-    expect(buildStructuredContext({ prediction: null, policy: null })).toBe('');
+    expect(buildStructuredContext({ prediction: null, gridSummary: null, bandCoverage: null, policy: null })).toBe('');
   });
 
   it('wraps a prediction block in the <structured_context> boundary tag', () => {
     const text = buildStructuredContext({
       prediction: { row: SEOUL, generatedAt: new Date().toISOString() },
+      gridSummary: null,
+      bandCoverage: null,
       policy: null,
     });
     expect(text.startsWith('<structured_context>')).toBe(true);
@@ -277,6 +279,8 @@ describe('buildStructuredContext', () => {
   it('wraps a policy block in the <structured_context> boundary tag', () => {
     const text = buildStructuredContext({
       prediction: null,
+      gridSummary: null,
+      bandCoverage: null,
       policy: {
         country: 'KR',
         method: 'sdid',
@@ -312,7 +316,7 @@ describe('buildStructuredContext — delimiter neutralization (S1 regression)', 
       },
     };
     // Act
-    const built = buildStructuredContext({ prediction: null, policy: fixture });
+    const built = buildStructuredContext({ prediction: null, gridSummary: null, bandCoverage: null, policy: fixture });
     // Assert — the only real closing tag is the one the builder itself
     // appends; a smuggled duplicate would let the model believe the evidence
     // section ended early and the following text is trusted system content.
@@ -411,5 +415,89 @@ describe('fetchLiveDataContext', () => {
     const ctx = await fetchLiveDataContext(env, 'seoul air quality', undefined);
     expect(ctx.prediction).toBeNull();
     expect(ctx.policy).toBeNull();
+  });
+
+  // Pinned path literal (regression net): the publisher writes
+  // aq-data/predictions/grid_latest.json — the previous ml-data/ prefix
+  // never existed on the live dataset, so every fetch 404'd silently under
+  // the fail-open contract and the prediction block never attached.
+  it('fetches the grid from aq-data/predictions/grid_latest.json (not the dead ml-data/ prefix)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ generated_at: new Date().toISOString(), predictions: [SEOUL] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const env = makeEnv({ HF_LIVE_BASE: 'https://example.invalid/live' });
+    await fetchLiveDataContext(env, 'how is seoul today', undefined);
+    const calledUrl = String(fetchMock.mock.calls[0][0]);
+    expect(calledUrl).toBe('https://example.invalid/live/aq-data/predictions/grid_latest.json');
+  });
+
+  it('falls back to a grid summary when the grid loads but no station name matches (station-ID-keyed grid)', async () => {
+    const generatedAt = new Date().toISOString();
+    const rows = [
+      { ...SEOUL, name: 'openaq-2622558', predicted_p50: 10 },
+      { ...SEOUL, name: 'openaq-9999999', predicted_p50: 30 },
+      { ...SEOUL, name: 'sc-12345678', predicted_p50: 20 },
+    ];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ generated_at: generatedAt, predictions: rows }),
+    }));
+    const env = makeEnv({ HF_LIVE_BASE: 'https://example.invalid/live' });
+    const ctx = await fetchLiveDataContext(env, 'how is the air in seoul', undefined);
+    expect(ctx.prediction).toBeNull();
+    expect(ctx.gridSummary).toEqual({ count: 3, generatedAt, medianP50: 20 });
+  });
+
+  it('surfaces snapshot-delivered picp80 as bandCoverage, and rejects out-of-range or non-numeric values', async () => {
+    const makeGrid = (picp80: unknown) => ({
+      ok: true,
+      json: async () => ({
+        generated_at: new Date().toISOString(),
+        predictions: [{ ...SEOUL, name: 'openaq-1111111' }],
+        metadata: { picp80 },
+      }),
+    });
+    const env = makeEnv({ HF_LIVE_BASE: 'https://example.invalid/live' });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeGrid(0.798)));
+    expect((await fetchLiveDataContext(env, 'air today', undefined)).bandCoverage).toEqual({ picp80: 0.798 });
+
+    clearSnapshotMemo();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeGrid('0.798')));
+    expect((await fetchLiveDataContext(env, 'air today', undefined)).bandCoverage).toBeNull();
+
+    clearSnapshotMemo();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeGrid(1.7)));
+    expect((await fetchLiveDataContext(env, 'air today', undefined)).bandCoverage).toBeNull();
+  });
+});
+
+describe('buildStructuredContext — gridSummary fallback and band coverage', () => {
+  it('renders the grid summary with the no-per-city-attribution guard when there is no matched prediction', () => {
+    const text = buildStructuredContext({
+      prediction: null,
+      gridSummary: { count: 499, generatedAt: new Date().toISOString(), medianP50: 12.5 },
+      bandCoverage: null,
+      policy: null,
+    });
+    expect(text.startsWith('<structured_context>')).toBe(true);
+    expect(text).toContain('499 station-level rows');
+    expect(text).toContain('median p50 across the grid: 12.5');
+    expect(text).toContain('Do NOT present any single number');
+  });
+
+  it('appends the provenance-labeled coverage line only when bandCoverage is present', () => {
+    const base = {
+      prediction: { row: SEOUL, generatedAt: new Date().toISOString() },
+      gridSummary: null,
+      policy: null,
+    };
+    const withCoverage = buildStructuredContext({ ...base, bandCoverage: { picp80: 0.798 } });
+    expect(withCoverage).toContain('PICP80=0.798');
+    expect(withCoverage).toContain('from snapshot metadata');
+    const without = buildStructuredContext({ ...base, bandCoverage: null });
+    expect(without).not.toContain('PICP80');
   });
 });
