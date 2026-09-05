@@ -44,6 +44,15 @@ interface GridLatestSnapshot {
   generated_at: string;
   model_version: string;
   predictions: CityPredictionRow[];
+  /** Publisher-side snapshot metadata (predict_grid). `picp80` is the
+   *  pipeline's own measured empirical coverage of the 80% band — cited
+   *  ONLY when the snapshot itself delivers it (the honesty rule behind
+   *  BAND_DISCLOSURE: this worker never hardcodes a coverage figure that
+   *  wasn't measured for the artifact that produced these rows). */
+  metadata?: {
+    band_calibration_applied?: unknown;
+    picp80?: unknown;
+  };
 }
 
 interface RawPolicyImpactData {
@@ -79,6 +88,7 @@ const BOUNDARY_TAG_NAMES = [
   'platform_context',
   'response_format',
   'causal_reasoning',
+  'data_interpretation',
   'retrieved_context',
   'structured_context',
   'user_query',
@@ -255,6 +265,24 @@ export function formatPrediction(row: CityPredictionRow, generatedAt: string): s
   ].join('\n');
 }
 
+/** Grid-level fallback renderer — see LiveDataContext.gridSummary. Tells
+ *  the model the grid exists and how fresh it is, while explicitly barring
+ *  a per-city attribution the data cannot support. */
+export function formatGridSummary(summary: NonNullable<LiveDataContext['gridSummary']>): string {
+  const ageH = obsAgeHours(summary.generatedAt);
+  const staleness = ageH === null ? 'snapshot age: unknown' : `snapshot generated ${ageH}h ago`;
+  const median =
+    summary.medianP50 !== null
+      ? `median p50 across the grid: ${summary.medianP50} µg/m³`
+      : 'median p50 across the grid: unavailable';
+  return [
+    `[P] own-ML PM2.5 prediction grid — ${summary.count} station-level rows | ${staleness}`,
+    `ESTIMATED, station-level: ${median}`,
+    'No station in this grid matched the user\'s message (the grid is keyed by station IDs, not city names).',
+    'Do NOT present any single number above as "the value for the user\'s city" — offer the grid-level context qualitatively and point the user to /globe or /today for their location.',
+  ].join('\n');
+}
+
 /** Exported for eval/cases.ts parity (C4) — see formatPrediction. */
 export function formatPolicyImpact(snapshot: RawPolicyImpactData): string {
   const ageH = obsAgeHours(snapshot.generated_at);
@@ -344,6 +372,21 @@ export function formatPolicyImpactForUser(snapshot: RawPolicyImpactData): string
 
 export interface LiveDataContext {
   prediction: { row: CityPredictionRow; generatedAt: string } | null;
+  /** Grid-level fallback when the snapshot loaded but no station name
+   *  matched the message — the current grid publishes station IDs
+   *  ("openaq-2622558"), not city names, so an exact-name match is the
+   *  exception, not the rule. A summary keeps the model honestly grounded
+   *  ("the grid exists, N rows, this fresh") without inventing a per-city
+   *  value it doesn't have. */
+  gridSummary: {
+    count: number;
+    generatedAt: string;
+    medianP50: number | null;
+  } | null;
+  /** Snapshot-level band metadata — non-null only when the publisher put a
+   *  finite picp80 figure in grid_latest.json metadata (see
+   *  GridLatestSnapshot.metadata). */
+  bandCoverage: { picp80: number } | null;
   policy: RawPolicyImpactData | null;
 }
 
@@ -358,24 +401,44 @@ export interface LiveDataContext {
  */
 export async function fetchLiveDataContext(env: Env, message: string, page: string | undefined): Promise<LiveDataContext> {
   const base = env.HF_LIVE_BASE;
-  if (!base || !isSafeSnapshotBase(base)) return { prediction: null, policy: null };
+  if (!base || !isSafeSnapshotBase(base)) return { prediction: null, gridSummary: null, bandCoverage: null, policy: null };
 
   const countryCode = countryCodeFromPage(page);
 
   const [grid, policy] = await Promise.all([
-    fetchSnapshot<GridLatestSnapshot>(`${base}/ml-data/predictions/grid_latest.json`),
+    // aq-data/ is the path the publisher actually writes (verified against
+    // the live dataset tree 2026-09-05); the previous ml-data/ prefix has
+    // never existed on Robeedau/airlens-live, so every prediction fetch
+    // 404'd silently under the fail-open contract.
+    fetchSnapshot<GridLatestSnapshot>(`${base}/aq-data/predictions/grid_latest.json`),
     countryCode
       ? fetchSnapshot<RawPolicyImpactData>(`${base}/insights-data/policy-impact/${countryCode}.json`)
       : Promise.resolve<RawPolicyImpactData | null>(null),
   ]);
 
   let prediction: LiveDataContext['prediction'] = null;
+  let gridSummary: LiveDataContext['gridSummary'] = null;
+  let bandCoverage: LiveDataContext['bandCoverage'] = null;
   if (grid && Array.isArray(grid.predictions) && grid.predictions.length > 0) {
+    const picp80 = safeNum(grid.metadata?.picp80);
+    if (picp80 !== null && picp80 > 0 && picp80 <= 1) bandCoverage = { picp80 };
     const mentioned = cityMentionedInMessage(grid.predictions, message);
-    if (mentioned) prediction = { row: mentioned, generatedAt: grid.generated_at };
+    if (mentioned) {
+      prediction = { row: mentioned, generatedAt: grid.generated_at };
+    } else {
+      const p50s = grid.predictions
+        .map((r) => safeNum(r.predicted_p50))
+        .filter((n): n is number => n !== null)
+        .sort((a, b) => a - b);
+      gridSummary = {
+        count: grid.predictions.length,
+        generatedAt: grid.generated_at,
+        medianP50: p50s.length > 0 ? p50s[Math.floor(p50s.length / 2)] : null,
+      };
+    }
   }
 
-  return { prediction, policy: policy && typeof policy.country === 'string' ? policy : null };
+  return { prediction, gridSummary, bandCoverage, policy: policy && typeof policy.country === 'string' ? policy : null };
 }
 
 /**
@@ -388,6 +451,15 @@ export async function fetchLiveDataContext(env: Env, message: string, page: stri
 export function buildStructuredContext(ctx: LiveDataContext): string {
   const blocks: string[] = [];
   if (ctx.prediction) blocks.push(formatPrediction(ctx.prediction.row, ctx.prediction.generatedAt));
+  else if (ctx.gridSummary) blocks.push(formatGridSummary(ctx.gridSummary));
+  if (ctx.bandCoverage && (ctx.prediction || ctx.gridSummary)) {
+    // Snapshot-delivered figure only (GridLatestSnapshot.metadata contract) —
+    // this line is the ONE sanctioned way a coverage percentage reaches the
+    // model, and it always names its provenance.
+    blocks.push(
+      `band coverage (from snapshot metadata): the 80% band's measured empirical coverage for this pipeline is PICP80=${ctx.bandCoverage.picp80}. You may phrase this as "약 ${Math.round(ctx.bandCoverage.picp80 * 100)}% 적중이 실측된 범위" — never round it up to a guarantee.`,
+    );
+  }
   if (ctx.policy) blocks.push(formatPolicyImpact(ctx.policy));
   if (blocks.length === 0) return '';
 

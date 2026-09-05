@@ -12,7 +12,7 @@ import { classifyIntent } from './guardrails';
 import { createOutputGate, LEAK_NOTICE } from './output-filter';
 import { buildStructuredContext, buildUserFacingSummary, fetchLiveDataContext, type LiveDataContext } from './liveData';
 
-const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, policy: null };
+const EMPTY_LIVE_DATA: LiveDataContext = { prediction: null, gridSummary: null, bandCoverage: null, policy: null };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -157,7 +157,9 @@ export async function buildRagStream(
     .join('\n\n');
 
   const maxTurns = parseInt(env.MAX_HISTORY_TURNS, 10);
-  const messages = buildMessages(userMessage, history, maxTurns, groundedContext, includeCausalReasoning);
+  // Data-flavored intents get the interpretation reference (framing rules +
+  // Korea reference distribution) — same gate as wantsLiveData.
+  const messages = buildMessages(userMessage, history, maxTurns, groundedContext, includeCausalReasoning, wantsLiveData);
 
   const maxTokens = parseInt(env.MAX_TOKENS, 10);
   const temperature = parseFloat(env.TEMPERATURE);
