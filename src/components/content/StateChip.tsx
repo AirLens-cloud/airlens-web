@@ -30,6 +30,11 @@ const VARIANT_ICON: Partial<Record<StateChipVariant, string>> = {
 
 export interface StateChipProps {
   variant: StateChipVariant
+  /** Override the variant's default label text — for a merged chip carrying
+   * two states at once (e.g. "Forecast · Stale" on the home hero, where the
+   * mono-caps label budget allows one chip, DESIGN.md §2). Styling and icon
+   * still follow `variant`. */
+  label?: string
   /** Extra detail appended after the label, e.g. "19h" for stale or a
    * withheld reason. Omit for a bare label chip (e.g. "Forecast"). */
   detail?: string | null
@@ -39,7 +44,7 @@ export interface StateChipProps {
   className?: string
 }
 
-export default function StateChip({ variant, detail, index = 0, className }: StateChipProps) {
+export default function StateChip({ variant, label, detail, index = 0, className }: StateChipProps) {
   const classes = ['state-chip', `state-chip--${variant}`]
   if (className) classes.push(className)
   const icon = VARIANT_ICON[variant]
@@ -51,7 +56,7 @@ export default function StateChip({ variant, detail, index = 0, className }: Sta
       style={{ '--chip-i': index } as CSSProperties}
     >
       {icon ? <span aria-hidden="true">{icon} </span> : null}
-      {VARIANT_LABEL[variant]}
+      {label ?? VARIANT_LABEL[variant]}
       {detail ? ` ${detail}` : ''}
     </span>
   )

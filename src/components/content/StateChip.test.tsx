@@ -39,6 +39,17 @@ describe('StateChip', () => {
     expect(withoutDetail.container.textContent?.trim()).toBe('Forecast')
   })
 
+  it('lets a label override merge two states into one chip without losing either fact', () => {
+    // Arrange / Act — the home-hero merged chip: stale styling, both states
+    // in the text, elapsed time as detail (label budget: one chip, not two).
+    const { container } = render(<StateChip variant="stale" label="Forecast · Stale" detail="3h" />)
+
+    // Assert — exactly one chip, stale variant styling, all three facts present.
+    expect(container.querySelectorAll('.state-chip')).toHaveLength(1)
+    expect(container.querySelector('.state-chip--stale')).not.toBeNull()
+    expect(container.textContent).toMatch(/Forecast · Stale 3h/)
+  })
+
   it('exposes the stagger index as a CSS custom property for the entrance animation', () => {
     // Arrange / Act
     const { container } = render(<StateChip variant="withheld" index={2} />)
