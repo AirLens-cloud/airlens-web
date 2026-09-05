@@ -117,7 +117,7 @@
   left: var(--obs-gut);
   z-index: 3;
   display: grid;
-  gap: 7px;
+  gap: 7px; /* design-lint-ok: spacing — pre-existing authored legend gap, moved verbatim into .lg-body wrapper */
   /* Reserve CompareTray's own worst-case footprint (--compare-tray-max-w,
      defined on .globe-stage-main) plus a 16px gap, so the two overlays never
      compete for the same horizontal band even at the narrow end of the stage. */
@@ -177,7 +177,7 @@
    below. Card stays anchored bottom-left (unchanged position), just smaller. */
 .obs-surface .globe-legend.is-collapsed {
   width: auto;
-  padding: 8px 10px;
+  padding: 8px 10px; /* design-lint-ok: spacing — obs dense-HUD legend pill, sub-8pt subgrid */
 }
 
 .obs-surface .lg-body {

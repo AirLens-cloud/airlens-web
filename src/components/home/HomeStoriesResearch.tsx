@@ -85,7 +85,7 @@ export default function HomeStoriesResearch() {
           </ul>
         )}
 
-        <a className="home-stories__more" href="/blog">
+        <a className="home-stories__more t-caption" href="/blog">
           All Field Notes →
         </a>
       </div>
@@ -97,7 +97,7 @@ export default function HomeStoriesResearch() {
           A reviewed, reproducible-only publication record of analyses built in the Lab — not a results gallery.
           No receipts are published yet.
         </p>
-        <a className="home-research__more" href="/research">
+        <a className="home-research__more t-caption" href="/research">
           What a receipt is →
         </a>
       </div>

@@ -400,13 +400,12 @@
 /* design-audit 2026-09-05 §4/§7 "라벨 예산" — was mono-uppercase (matched
    the section kickers above); softened to a plain sentence-style link since
    it carries no state/value, just a "see more" affordance. */
+/* 크기·색·패밀리는 마크업의 .t-caption 이 담당 — 여기는 배치·장식만
+   (design-lint typography 축: literal font-size 금지). */
 .home-stories__more,
 .home-research__more {
   display: inline-block;
   margin-top: var(--sp-3);
-  font-family: var(--sans);
-  font-size: 13px;
-  color: var(--ink-2);
   text-decoration: none;
 }
 .home-stories__more:hover,
