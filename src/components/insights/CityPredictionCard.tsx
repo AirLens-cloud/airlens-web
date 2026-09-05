@@ -12,17 +12,11 @@
  * Glass-box §5: p10–p90 and the confidence grade travel with the number, and
  * the grade is never invented when the model did not produce one.
  */
-import DqssBadge, { type DqssGrade } from '../wireframe/DqssBadge'
+import DqssBadge from '../wireframe/DqssBadge'
 import WfPlaceholder from '../wireframe/WfPlaceholder'
 import { useCityPrediction } from '../../hooks/useCityPrediction'
 import { GLOBE_CONFIG } from '../../lib/config/globe'
-
-const VALID_GRADES: ReadonlySet<string> = new Set(['A', 'B', 'C', 'D', 'F'])
-
-/** null / missing / unknown string → 'unknown' ('—'). No grade is invented. */
-function toDqssGrade(raw: string | null | undefined): DqssGrade {
-  return raw != null && VALID_GRADES.has(raw) ? (raw as DqssGrade) : 'unknown'
-}
+import { toDqssGrade } from '../../lib/dqss'
 
 const COVERAGE = GLOBE_CONFIG.ML_PREDICTIONS.COVERAGE
 

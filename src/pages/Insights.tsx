@@ -26,6 +26,7 @@ import SdidChart from '../components/insights/SdidChart'
 import PolicyTrendLines from '../components/insights/PolicyTrendLines'
 import CityPredictionCard from '../components/insights/CityPredictionCard'
 import NewsSentimentCard from '../components/insights/NewsSentimentCard'
+import ForecastBandCard from '../components/insights/ForecastBandCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import { COUNTRY_CENTERS } from '../lib/config/countryCenters'
@@ -247,6 +248,14 @@ export default function Insights() {
         <div className="ins-duo fluid-enter" style={{ '--enter-i': 5 } as CSSProperties}>
           <CityPredictionCard lat={mapAnchor?.[0]} lon={mapAnchor?.[1]} />
           <NewsSentimentCard countryName={selected.name} />
+        </div>
+
+        {/* 7 — TimesFM forecast band (experimental). City-scoped, not
+            country-scoped like the rest of this page — see ForecastBandCard's
+            header for why it carries its own picker instead of following
+            `selected`. */}
+        <div className="fluid-enter" style={{ '--enter-i': 6 } as CSSProperties}>
+          <ForecastBandCard />
         </div>
 
         <footer className="ins-foot">

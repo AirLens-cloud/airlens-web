@@ -572,6 +572,44 @@
 .ins-card-note { color: var(--ink-2); font-size: 13px; margin: 0; }
 .ins-card-lede { color: var(--ink-0); font-size: 16px; margin: 0; }
 
+/* ── band 7: TimesFM forecast band (experimental) ──
+   A city picker, not the page's selected country — see ForecastBandCard's
+   header comment for why. Reuses `.ins-card`/`.ins-year-select`/`.ins-empty`/
+   `.ins-caveat`/`.ins-card-status`/`.ins-card-note`/`.ins-card-unit` for the
+   shared card chrome; only the per-horizon rows below are new furniture. */
+.ins-forecast-band__city { margin-top: var(--sp-1); }
+
+.ins-forecast-band__meta {
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  margin: 0;
+}
+
+.ins-forecast-band__stale { color: var(--orange-ink); }
+
+.ins-forecast-band__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.ins-forecast-band__row {
+  display: grid;
+  grid-template-columns: 3rem 6rem 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.ins-forecast-band__row-label { color: var(--ink-2); }
+
+.ins-forecast-band__row-p50 {
+  font-family: var(--mono);
+  font-size: var(--fs-data);
+  color: var(--ink-0);
+}
+
+.ins-forecast-band__coverage { color: var(--ink-3); white-space: nowrap; }
+
 /* ── footer ── */
 .ins-foot { border-top: 1px solid var(--rule); padding-top: var(--sp-4); color: var(--ink-2); }
 
@@ -580,6 +618,10 @@
   .ins-headline-stats { gap: var(--sp-4); }
   .ins-map-frame { height: clamp(280px, 46vh, 380px); }
   .ins-lane { grid-template-columns: 1fr auto; }
+  .ins-forecast-band__row {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

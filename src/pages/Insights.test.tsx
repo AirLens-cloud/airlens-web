@@ -46,6 +46,15 @@ vi.mock('../components/insights/PolicyMap', async () => {
 vi.mock('../components/insights/CityPredictionCard', () => ({
   default: () => <div data-testid="band-prediction" />,
 }))
+// Stubbed for the same reason as PolicyMap/CityPredictionCard above: it has
+// its own feed and its own coverage (`ForecastBandCard.test.tsx`), and its
+// honest "could not be read" text would otherwise collide with this file's
+// own failure-state assertions below (both fetch the same globally-stubbed
+// `fetch`, and this file's country feed is deliberately incomplete in most
+// of these tests).
+vi.mock('../components/insights/ForecastBandCard', () => ({
+  default: () => <div data-testid="band-forecast" />,
+}))
 
 const summaryRow = (countryCode: string, att: number | null, significant: boolean | null) => ({
   countryCode,
@@ -231,14 +240,14 @@ describe('Insights — country selection', () => {
 })
 
 describe('Insights — band order', () => {
-  it('renders the six bands in the approved order', async () => {
+  it('renders the seven bands in the approved order', async () => {
     // Arrange
     mockFetch(FULL_FEED)
     // Act
     const { container } = await renderPage()
     // Assert
     await waitFor(() => expect(screen.getByTestId('band-map')).toBeTruthy())
-    const order = [...container.querySelectorAll('.ins-headline, .ins-lanes, [data-testid="band-map"], .ins-sdid, .ins-trend, [data-testid="band-prediction"]')]
+    const order = [...container.querySelectorAll('.ins-headline, .ins-lanes, [data-testid="band-map"], .ins-sdid, .ins-trend, [data-testid="band-prediction"], [data-testid="band-forecast"]')]
       .map((n) => n.className || n.getAttribute('data-testid'))
     expect(order).toEqual([
       'ins-headline',
@@ -247,6 +256,7 @@ describe('Insights — band order', () => {
       'ins-sdid',
       'ins-trend',
       'band-prediction',
+      'band-forecast',
     ])
   })
 
