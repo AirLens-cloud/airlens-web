@@ -3,7 +3,7 @@ import { track } from '../lib/analytics';
 import type { QualityTier, QualityPreset } from '../lib/adaptiveQuality';
 import { detectQualityTier, getQualityPreset, persistQualityTier } from '../lib/adaptiveQuality';
 import { GLOBE_SCENES } from '../lib/config/globeScenes';
-import type { SensorType, StationAttribution, HoveredStation, SelectedCountry, DQSSProvenance, DataMode, OverlayType, ProjectionType, VisualizationType, ViewMode, VisualizationMode, ActivePanel, HUDStyle, NullschoolThemePreset, EarthStyle, AQDataSource, GridHoverInfo, FlyToTarget, WindLevel, WindFieldStatus, WindFieldMeta, SelectedPrediction, HoveredPrediction, FireCoverage, AtmosphericMode } from '../types/globe';
+import type { SensorType, StationAttribution, HoveredStation, SelectedCountry, DQSSProvenance, DQSSPartialDetail, DataMode, OverlayType, ProjectionType, VisualizationType, ViewMode, VisualizationMode, ActivePanel, HUDStyle, NullschoolThemePreset, EarthStyle, AQDataSource, GridHoverInfo, FlyToTarget, WindLevel, WindFieldStatus, WindFieldMeta, SelectedPrediction, HoveredPrediction, FireCoverage, AtmosphericMode } from '../types/globe';
 import type { TimelineFrameMeta } from '../api/timeline';
 import type { PM25Grade } from '../types/data';
 
@@ -43,6 +43,7 @@ export interface SelectedStation {
   p90?: number;       // model p90 (upper uncertainty bound)
   dqss?: number;      // DQSS score 0–100
   dqss_provenance?: DQSSProvenance;  // 그 점수의 출처 (seed = 데모값, §5 Glass-box)
+  dqss_partial_detail?: DQSSPartialDetail;  // dqss_provenance === 'partial' 일 때만 존재
   source?: string;    // data source label
   // DQSS sub-scores (Glass-box AI decomposition)
   dqss_freshness?: number;

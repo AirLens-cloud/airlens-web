@@ -19,7 +19,7 @@ import { wrapDeltaLon } from '../lib/earth/geo';
 import type { CityPrediction } from '../types/ml';
 import type { GlobalGridSnapshot } from '../types/data';
 import type {
-  DQSSStation, DQSSScoreMap, DQSSCache,
+  DQSSStation, DQSSScoreMap, DQSSCache, DQSSPartialDetail,
   DataQualityMeta, DataQualityResponse, DQSSProvenance,
 } from '../types/globe';
 
@@ -89,8 +89,33 @@ function dqssGridKey(lat: number, lon: number): string {
  * 라벨을 추측해 붙이지 않는다 (§5 Glass-box: 모르는 건 모른다고).
  */
 function readProvenance(meta: DataQualityMeta | undefined): DQSSProvenance | null {
-  if (meta?.source === 'seed' || meta?.source === 'measured') return meta.source;
+  if (meta?.source === 'seed' || meta?.source === 'measured' || meta?.source === 'partial') return meta.source;
   return null;
+}
+
+/**
+ * `'partial'` 소스일 때만 상세를 파생한다. `meta.inputs` 의 값이 정확히 `"measured"`
+ * 인 키 개수 / 전체 키 개수, 그리고 `meta.measured_weight_range` 의 최댓값을 읽는다.
+ * 어느 필드든 없거나 형식이 안 맞으면 null — 문구를 지어내지 않는다(배지는 PARTIAL
+ * 태그만 붙이고 상세는 생략하는 쪽으로 degrade).
+ */
+function derivePartialDetail(meta: DataQualityMeta | undefined): DQSSPartialDetail | null {
+  if (meta?.source !== 'partial') return null;
+
+  const inputs = meta.inputs;
+  if (!inputs) return null;
+  const componentKeys = Object.keys(inputs);
+  const total = componentKeys.length;
+  if (total === 0) return null;
+  const measured = componentKeys.filter((k) => inputs[k] === 'measured').length;
+
+  const weightRange = meta.measured_weight_range;
+  if (!Array.isArray(weightRange) || weightRange.length === 0 || !weightRange.every((n) => typeof n === 'number' && isFinite(n))) {
+    return null;
+  }
+  const measuredWeightMax = Math.round(Math.max(...weightRange));
+
+  return { measured, total, measuredWeightMax };
 }
 
 /**
@@ -98,11 +123,13 @@ function readProvenance(meta: DataQualityMeta | undefined): DQSSProvenance | nul
  * monorepo's DQSS pipeline (`aq-data/data_quality.json`, W1 honest-publishing
  * — verified 2026-09-03, superseding the 2026-08-26 "no publisher yet" note).
  * HF is the primary source; the bundled static copy is a fallback for when the
- * live fetch fails. A `meta.source` value outside `'seed' | 'measured'`
- * (`'partial'`, `'withheld'`, …) is not an error — `readProvenance` already
- * treats it as "not measured" (honest-empty), so `lookupDQSSScore` and
- * `dqssToOpacity(null)` degrade the same way whether the file is absent or
- * merely not yet fully measured. Nothing here invents a score.
+ * live fetch fails. `'partial'` (some DQSS components measured, some not —
+ * `meta.inputs` + `meta.measured_weight_range` say which) is its own honest
+ * provenance, distinct from both `'measured'` (all components) and the
+ * honest-empty null (undeclared or unrecognized `meta.source`, e.g.
+ * `'withheld'`). `lookupDQSSScore` and `dqssToOpacity(null)` only degrade for
+ * the null case — a `'partial'` score is still real data, just partially
+ * measured. Nothing here invents a score.
  */
 async function readDQSSManifest(url: string): Promise<Partial<DataQualityResponse> | null> {
   try {
@@ -134,7 +161,7 @@ async function fetchDQSSData(): Promise<DQSSCache> {
   for (const s of stations) {
     map.set(dqssGridKey(s.lat, s.lon), s.final_score);
   }
-  return { map, stations, provenance: readProvenance(json.meta) };
+  return { map, stations, provenance: readProvenance(json.meta), partialDetail: derivePartialDetail(json.meta) };
 }
 
 export function lookupDQSSScore(

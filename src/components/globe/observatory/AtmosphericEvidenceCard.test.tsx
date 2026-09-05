@@ -150,6 +150,53 @@ describe('AtmosphericEvidenceCard — Layer 1 (always visible)', () => {
     expect(qualityLine?.querySelector('b')).toBeNull()
     expect(screen.queryByText('A')).toBeNull()
   })
+
+  it('shows the grade and numeric score, tagged PARTIAL, when only some DQSS components are measured', () => {
+    // Arrange — Globe.tsx gates dqssGrade the same as 'measured' for 'partial'
+    // (both are real scores, just resting on fewer inputs); the card adds a
+    // PARTIAL tag next to the grade so the distinction is not lost.
+    const props = baseProps()
+    props.focus = {
+      ...props.focus!,
+      dqss: 67,
+      dqssProvenance: 'partial',
+      dqssPartialDetail: { measured: 4, total: 5, measuredWeightMax: 80 },
+    }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('67/100')).toBeTruthy()
+    expect(screen.queryByText('DQSS —')).toBeNull()
+    expect(screen.getByText('PARTIAL')).toBeTruthy()
+    expect(screen.getByText(/4\/5 components measured/)).toBeTruthy()
+    expect(screen.getByText(/measured weight ≤80%/)).toBeTruthy()
+  })
+
+  it('shows the PARTIAL tag alone, with no detail line, when the component breakdown was not published', () => {
+    // Arrange — honest degrade: a 'partial' tag without dqssPartialDetail
+    // must never fabricate a components/weight sentence.
+    const props = baseProps()
+    props.focus = { ...props.focus!, dqss: 67, dqssProvenance: 'partial', dqssPartialDetail: null }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('67/100')).toBeTruthy()
+    expect(screen.getByText('PARTIAL')).toBeTruthy()
+    expect(screen.queryByText(/components measured/)).toBeNull()
+  })
+
+  it('still withholds the numeric score for a "seed" demo value — PARTIAL treatment does not leak to seed', () => {
+    // Arrange — 'seed' remains hidden exactly as before; only 'measured' and
+    // 'partial' are allowed to show a number.
+    const props = baseProps({ dqssGrade: null })
+    props.focus = { ...props.focus!, dqss: 82, dqssProvenance: 'seed', qualityGrade: null }
+    // Act
+    render(<AtmosphericEvidenceCard {...props} />)
+    // Assert
+    expect(screen.getByText('DQSS —')).toBeTruthy()
+    expect(screen.queryByText('82/100')).toBeNull()
+    expect(screen.queryByText('PARTIAL')).toBeNull()
+  })
 })
 
 describe('AtmosphericEvidenceCard — Layer 2 (conditional caveat)', () => {

@@ -123,14 +123,27 @@ describe('useDQSSData — HF-live-primary, bundled-fallback cascade', () => {
     expect(result.current?.provenance).toBeNull()
   })
 
-  it('does not confuse an unmeasured meta.source (e.g. "partial") with a measured one', async () => {
-    // Arrange — the live pipeline currently publishes meta.source:"partial"
-    // (W1 honest-publishing, pre-W2 shadow aggregator republish); this must
-    // read as "not measured", never silently promoted to a trusted score.
+  it('carries "partial" as its own honest provenance — not conflated with "measured" or dropped to null', async () => {
+    // Arrange — the live pipeline publishes meta.source:"partial" when some
+    // DQSS components (freshness/completeness/stability/residual) are
+    // measured but others (e.g. consistency, no cross-source pair) are not.
+    // 2026-09-05 policy: this reads as its own provenance, distinct from a
+    // full 'measured' score and from the honest-empty null case — the badge
+    // still shows a grade, tagged PARTIAL, rather than hiding it entirely.
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        meta: { source: 'partial' },
+        meta: {
+          source: 'partial',
+          inputs: {
+            freshness: 'measured',
+            completeness: 'measured',
+            consistency: 'unavailable-no-cross-source-pair',
+            stability: 'measured',
+            residual: 'measured',
+          },
+          measured_weight_range: [80.0, 80.0],
+        },
         stations: [{ station_id: 's3', lat: 1, lon: 1, final_score: 66.7 }],
       }),
     })
@@ -142,6 +155,52 @@ describe('useDQSSData — HF-live-primary, bundled-fallback cascade', () => {
     await waitFor(() => expect(result.current?.stations.length).toBe(1))
 
     // Assert
+    expect(result.current?.provenance).toBe('partial')
+    expect(result.current?.partialDetail).toEqual({ measured: 4, total: 5, measuredWeightMax: 80 })
+  })
+
+  it('still degrades to null provenance for an unrecognized meta.source (e.g. "withheld")', async () => {
+    // Arrange — only 'seed' | 'measured' | 'partial' are known provenance
+    // values; anything else must not be promoted to a trusted or partial score.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        meta: { source: 'withheld' },
+        stations: [{ station_id: 's4', lat: 2, lon: 2, final_score: 40 }],
+      }),
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
+    const { useDQSSData } = await import('./useGlobeData')
+
+    // Act
+    const { result } = renderHook(() => useDQSSData())
+    await waitFor(() => expect(result.current?.stations.length).toBe(1))
+
+    // Assert
     expect(result.current?.provenance).toBeNull()
+    expect(result.current?.partialDetail).toBeNull()
+  })
+
+  it('omits partialDetail when "partial" is declared but meta.inputs/measured_weight_range are missing — no fabricated numbers', async () => {
+    // Arrange — a producer could declare source:"partial" without yet
+    // publishing the component breakdown. The tag alone must still be safe
+    // to render (card falls back to PARTIAL-tag-only, no detail line).
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        meta: { source: 'partial' },
+        stations: [{ station_id: 's5', lat: 3, lon: 3, final_score: 55 }],
+      }),
+    })
+    global.fetch = fetchMock as unknown as typeof fetch
+    const { useDQSSData } = await import('./useGlobeData')
+
+    // Act
+    const { result } = renderHook(() => useDQSSData())
+    await waitFor(() => expect(result.current?.stations.length).toBe(1))
+
+    // Assert
+    expect(result.current?.provenance).toBe('partial')
+    expect(result.current?.partialDetail).toBeNull()
   })
 })
