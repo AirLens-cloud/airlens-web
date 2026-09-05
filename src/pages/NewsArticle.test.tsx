@@ -1,8 +1,8 @@
 // NewsArticle page — slug-prop rendering, not-found vs unavailable distinction,
 // honest missing-summary state, and DQSS-class absence (acceptance tests
 // #1/#3/#5/#6 of dispatch-article-signal-desk.md §11).
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, cleanup, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, cleanup, screen, within } from '@testing-library/react'
 
 vi.mock('../api/news', () => ({ fetchArticleBySlug: vi.fn() }))
 // Evidence block does its own network calls (countrySeries/policy) — stubbed
@@ -10,8 +10,12 @@ vi.mock('../api/news', () => ({ fetchArticleBySlug: vi.fn() }))
 vi.mock('../components/content/ArticleEvidenceBlock', () => ({
   default: () => <div data-testid="evidence-stub" />,
 }))
+// ArticleStoryLinks (mockup gate G2) reads the same index — stubbed to an
+// empty index so its own coverage lives in ArticleStoryLinks.test.tsx.
+vi.mock('../api/policy', () => ({ fetchPolicyIndex: vi.fn().mockResolvedValue([]) }))
 
 import { fetchArticleBySlug } from '../api/news'
+import { fetchPolicyIndex } from '../api/policy'
 import NewsArticle from './NewsArticle'
 import type { NewsArticle as NewsArticleType } from '../types/news'
 
@@ -24,6 +28,12 @@ function article(overrides: Partial<NewsArticleType> = {}): NewsArticleType {
     ...overrides,
   }
 }
+
+beforeEach(() => {
+  // resetAllMocks (below) clears the factory-level mockResolvedValue too, so
+  // it's re-armed per test rather than relying on it surviving a reset.
+  vi.mocked(fetchPolicyIndex).mockResolvedValue([])
+})
 
 afterEach(() => {
   cleanup()
@@ -74,14 +84,43 @@ describe('NewsArticle page', () => {
   })
 
   // UI Tier-1 P2-B — country/evidence cross-link chips on the detail page.
+  // Scoped to `.news-chips`: the mockup-gate-G2 band (ArticleStoryLinks,
+  // below) also renders a "South Korea" link on this page, so an unscoped
+  // query would match both.
   it('renders country and evidence cross-link chips backed by the real article fields', async () => {
     vi.mocked(fetchArticleBySlug).mockResolvedValue({
       status: 'found',
       article: article({ countryCode: 'KR', sourceName: 'Reuters' }),
     })
-    render(<NewsArticle slug="a" />)
+    const { container } = render(<NewsArticle slug="a" />)
     await screen.findByRole('heading', { name: 'Article A' })
-    expect(screen.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
-    expect(screen.getByText(/evidence: reuters/i)).toBeTruthy()
+    const chips = within(container.querySelector('.news-chips') as HTMLElement)
+    expect(chips.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
+    expect(chips.getByText(/evidence: reuters/i)).toBeTruthy()
+  })
+
+  // Mockup gate G2 — approved 2026-09-05.
+  it('renders the ArticleStoryLinks country column, gated to one column when the policy index has no match', async () => {
+    vi.mocked(fetchArticleBySlug).mockResolvedValue({
+      status: 'found',
+      article: article({ countryCode: 'KR' }),
+    })
+    vi.mocked(fetchPolicyIndex).mockResolvedValue([])
+    const { container } = render(<NewsArticle slug="a" />)
+    await screen.findByRole('heading', { name: 'Article A' })
+    const band = within(container.querySelector('.article-story-links') as HTMLElement)
+    expect(band.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(band.queryByText(/evidence dataset/i)).toBeNull()
+  })
+
+  it('does not render the ArticleStoryLinks band when the article has no country code', async () => {
+    vi.mocked(fetchArticleBySlug).mockResolvedValue({
+      status: 'found',
+      article: article({ countryCode: null }),
+    })
+    const { container } = render(<NewsArticle slug="a" />)
+    await screen.findByRole('heading', { name: 'Article A' })
+    expect(container.querySelector('.article-story-links')).toBeNull()
   })
 })
