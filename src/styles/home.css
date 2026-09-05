@@ -180,8 +180,12 @@
   background: var(--glass-card-ink, var(--tint-ink-dark));
   border: 1px solid var(--glass-card-ink, var(--tint-ink-dark));
 }
+/* Label rides the SAME AQI-tint axis as the fill (`--glass-card-ink-contrast`,
+   surfaces.css). `--bg-0` here was the bug: fill follows the tint axis, but
+   `--bg-0` follows the site theme — dark site + light tint = dark-on-dark
+   (measured 1.06:1). Fallback pairs with the fill's `--tint-ink-dark` fallback. */
 .home-hero__cta--primary.t-caption {
-  color: var(--bg-0);
+  color: var(--glass-card-ink-contrast, #ffffff);
 }
 .home-hero__cta--secondary {
   background: transparent;

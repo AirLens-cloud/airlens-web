@@ -30,11 +30,23 @@ export interface PhenomenonPipeline {
   readonly resolution: string
 }
 
-/** data-collect-hourly.yml cron cadence — all 4 grid feeds share it. */
+/** data-collect-hourly.yml cron cadence (weather/marine, and the GEFS pm25/pm10 grids). */
 const CADENCE_3H = '3h'
+
+/** Open-Meteo AQ-host feeds (gas o3/no2/co + pollen) run behind a daily budget
+ *  gate since 2026-09-05 — the free tier meters by coordinate count and the 3h
+ *  cadence blew the daily quota by mid-morning (all-day 429). Collected on the
+ *  00Z/12Z runs only. */
+const CADENCE_12H = '12h'
 
 /** GEFS-chem mac publish only covers pm25/pm10 (no gas species). */
 const CDN_COVERED_AQ_IDS: readonly string[] = ['pm25', 'pm10']
+
+/** Gas species come from the Open-Meteo AQ host (budget-gated, 12h) — pm25/pm10
+ *  come from GEFS-Aerosols (3h). Same pair as CDN_COVERED_AQ_IDS today, but a
+ *  separate list on purpose: "has a CDN path" and "collected 3-hourly" are
+ *  different claims (see globeOntology's GEFS_AEROSOL_AQ_IDS note). */
+const AQ_HOST_GATED_IDS: readonly string[] = ['o3', 'no2', 'co']
 
 type AqId = 'pm25' | 'pm10' | 'o3' | 'no2' | 'co'
 
@@ -45,7 +57,7 @@ const aqPipeline = (id: AqId, varKey: string): PhenomenonPipeline => ({
   cdnPath: CDN_COVERED_AQ_IDS.includes(id) ? `current-${id}-grid.json` : undefined,
   staticPath: `/data/current-${id}-grid.json`,
   source: 'Open-Meteo Air Quality',
-  cadence: CADENCE_3H,
+  cadence: AQ_HOST_GATED_IDS.includes(id) ? CADENCE_12H : CADENCE_3H,
   resolution: '5°',
 })
 
@@ -99,7 +111,7 @@ const POLLEN_FEED: PhenomenonPipeline = {
   storagePath: 'aq-data/pollen-grid.json',
   staticPath: '/data/pollen-grid.json',
   source: 'Open-Meteo CAMS pollen',
-  cadence: CADENCE_3H,
+  cadence: CADENCE_12H,
   resolution: '2°',
 }
 
