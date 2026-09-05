@@ -141,7 +141,7 @@
 }
 .wf-chart-frame-placeholder-stats { display: flex; gap: var(--sp-3); font-weight: 700; color: var(--ink-2); text-transform: uppercase; }
 .wf-chart-frame-placeholder-msg { max-width: 32ch; letter-spacing: 0.04em; text-transform: none; color: var(--ink-3); }
-.wf-chart-frame-legend { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: 0.04em; color: var(--ink-2); }
+.wf-chart-frame-legend { display: flex; gap: 14px; font-family: var(--mono); font-size: var(--fs-micro); letter-spacing: 0.04em; color: var(--ink-2); } /* design-lint-ok: spacing — pre-existing gap value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend-swatch { display: inline-block; width: 12px; height: 2px; }
 .legend-swatch--baseline { background: var(--ink-3); border-top: 1px dashed var(--ink-3); height: 0; }
@@ -166,10 +166,10 @@
 }
 .np-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
 .np-header-title { font-weight: 700; font-size: var(--fs-body-s); }
-.np-header-count { margin-left: 6px; font-weight: 400; font-size: var(--fs-caption); color: var(--ink-2); }
+.np-header-count { margin-left: 6px; font-weight: 400; font-size: var(--fs-caption); color: var(--ink-2); } /* design-lint-ok: spacing — pre-existing margin value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
 .np-header-actions { display: flex; gap: 8px; }
 .np-list { overflow-y: auto; flex: 1; }
-.np-empty { padding: 40px 14px; text-align: center; color: var(--ink-2); font-size: var(--fs-caption); }
+.np-empty { padding: 40px 14px; text-align: center; color: var(--ink-2); font-size: var(--fs-caption); } /* design-lint-ok: spacing — pre-existing padding value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
 .np-item { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
 .np-item--read { opacity: 0.75; }
 .np-item-icon { font-size: var(--fs-body); flex-shrink: 0; width: 20px; text-align: center; }

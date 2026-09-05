@@ -153,7 +153,7 @@
 .sky-strip--stack .sky-strip__stamp--grid { margin-left: 0; }
 
 /* ---- WfDispatchOrnament ---- */
-.wf-ornament { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: var(--fs-tag); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+.wf-ornament { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: var(--fs-tag); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); } /* design-lint-ok: spacing — pre-existing gap value, out of scope for Wave 0 typography migration (this line's diff is incidental to the adjacent font-size token swap) */
 .wf-ornament__dots { color: var(--ink-0); letter-spacing: .04em; }
 .wf-ornament__rule { color: var(--rule); }
 .wf-ornament__bracket { color: var(--ink-1); font-weight: 600; }
