@@ -27,6 +27,7 @@ import Lab from './pages/Lab'
 import Research from './pages/Research'
 import NotFound from './pages/NotFound'
 import SiteChrome, { type ChromeVariant } from './app/SiteChrome'
+import LoadingVeil from './components/LoadingVeil'
 
 /**
  * RedirectShim — renders nothing and bounces to `to`. Used for every path in
@@ -134,7 +135,7 @@ export const routes: Array<Route<RouteRender>> = [
     render: () => ({
       element: (
         <FluidChrome capsuleVariant="day">
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingVeil label="INSIGHTS" />}>
             <Insights />
           </Suspense>
         </FluidChrome>

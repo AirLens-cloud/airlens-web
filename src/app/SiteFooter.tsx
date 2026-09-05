@@ -1,4 +1,4 @@
-import BrandMark from '../components/icons/BrandMark'
+import AirLensMark from '../components/AirLensMark'
 import { LEGAL_DOCS } from '../content/legal'
 import { NAV_GROUPS, navGroupItems } from './nav'
 
@@ -27,7 +27,7 @@ export default function SiteFooter() {
       <div className="chrome-footer__grid">
         <div className="chrome-footer__col chrome-footer__col--brand">
           <a className="chrome-footer__logo" href="/" aria-label="AirLens home">
-            <BrandMark size={22} />
+            <AirLensMark size={22} />
             <span className="chrome-footer__wordmark">AirLens</span>
           </a>
           <p className="chrome-footer__tagline">
@@ -44,10 +44,16 @@ export default function SiteFooter() {
             // Zero-item group (Map): its single destination is the group's
             // own href, so the column header doubles as the only link
             // instead of repeating a redundant "Overview" row underneath.
+            // A heading-only column reads as broken next to five populated
+            // ones (mostly blank below the heading), so a short descriptive
+            // line fills that space — real copy, not a placeholder link.
             <div key={group.key} className="chrome-footer__col">
               <h4 className="chrome-footer__heading">
                 <a href={group.href}>{group.label}</a>
               </h4>
+              <p className="chrome-footer__tagline">
+                Station and satellite PM2.5 readings on an interactive globe.
+              </p>
             </div>
           ) : (
             <div key={group.key} className="chrome-footer__col">

@@ -44,54 +44,6 @@
   :root { --dur-ambient: 0s; }
 }
 
-/* ── BrandMark liquid-band ambient motion ──
- * Scene spec: nav mark = spring pop on mount (.8→1, 1×) + 6s ambient breathe
- * + 1.6s breathe on hover. Ported from
- * docs/design-reports/2026-09-05-design-audit/pages/airlens-liquid-lens.html
- * (`.band-mid`/`.band-outer`/`.core`/`.rim` group classes on the mark's own
- * layers). transform/opacity/filter only, all looping motion gated behind
- * prefers-reduced-motion, one-shot pop plays via a finite CSS animation
- * (auto-runs once on mount — no WAAPI/JS needed). */
-.brandmark {
-  animation: bm-pop var(--dur-spring-slow) var(--ease-spring) both;
-}
-.brandmark .band-mid,
-.brandmark .band-outer,
-.brandmark .core {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-.brandmark .rim {
-  transform-box: view-box;
-  transform-origin: 128px 128px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .brandmark { animation: none; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .brandmark .band-mid { animation: bm-breathe var(--dur-ambient) var(--ease-ios) infinite; }
-  .brandmark .band-outer { animation: bm-breathe var(--dur-ambient) var(--ease-ios) infinite; animation-delay: -.9s; }
-  .brandmark .core { animation: bm-corepulse var(--dur-ambient) var(--ease-ios) infinite; }
-  .brandmark .rim { animation: bm-rimspin 24s linear infinite; }
-  .brandmark:hover .band-mid,
-  .brandmark:hover .band-outer { animation-duration: 1.6s; }
-}
-@keyframes bm-pop {
-  from { opacity: 0; transform: scale(.8); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes bm-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.045); }
-}
-@keyframes bm-corepulse {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(.93); filter: brightness(1.18); }
-}
-@keyframes bm-rimspin {
-  to { transform: rotate(360deg); }
-}
-
 /* AirLensMark wordmark glyph — 7-bar EQ breathing animation. Lives here
  * (not an inline <style> inside the SVG) so the SVG's textContent stays
  * clean for accessible-name computation and any host that reads it. */
@@ -121,6 +73,22 @@
   .alm-bar,
   .alm-dot {
     animation: none !important;
+  }
+}
+
+/* LoadingVeil pulse — the AirLensMark wrapper inside the fullscreen entry
+ * veil (components/LoadingVeil.tsx) breathes while the veil is up. reduced-
+ * motion is handled at the call site (component swaps `animation: none`
+ * in), not here — this keyframe has no query guard of its own. */
+@keyframes lv-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
   }
 }
 

@@ -34,7 +34,7 @@ import WfGlassCard from '../components/wireframe/WfGlassCard'
 import WfCodeBlock from '../components/wireframe/composites/WfCodeBlock'
 import WfTimelineScrubber from '../components/wireframe/composites/WfTimelineScrubber'
 import WfChartFrame from '../components/wireframe/composites/WfChartFrame'
-import BrandMark from '../components/icons/BrandMark'
+import AirLensMark from '../components/AirLensMark'
 import GlobeFallback from '../components/globe/GlobeFallback'
 import GlobeObsHud from '../components/globe/observatory/GlobeObsHud'
 import AtmosphericModeRail from '../components/globe/observatory/AtmosphericModeRail'
@@ -65,7 +65,7 @@ function Section({ title, note, children }: { title: string; note?: string; chil
 // (not during render, per react-hooks/purity) rather than as live clock reads.
 const SAMPLE_NOW = Date.now()
 
-const SAMPLE_NOTIFICATIONS: AppNotification[] = [
+const INITIAL_SAMPLE_NOTIFICATIONS: AppNotification[] = [
   { id: '1', type: 'alert', title: 'PM2.5 spike detected', body: 'Sample data — 78 µg/m³ in the demo grid cell.', timestamp: new Date(SAMPLE_NOW - 5 * 60_000).toISOString(), read: false },
   { id: '2', type: 'info', title: 'Weekly digest ready', body: 'Sample notification body text.', timestamp: new Date(SAMPLE_NOW - 3 * 3_600_000).toISOString(), read: true },
   { id: '3', type: 'update', title: 'Forecast model updated', body: 'Sample notification body text.', timestamp: new Date(SAMPLE_NOW - 26 * 3_600_000).toISOString(), read: true },
@@ -94,6 +94,12 @@ export default function DesignGallery() {
   const [notifOpen, setNotifOpen] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
   const [page, setPage] = useState(1)
+  // Catalog-demo local state (no backend — this is a component gallery, not
+  // a live feature): each wired callback below just mutates one of these so
+  // the demo isn't a set of dead buttons.
+  const [notifications, setNotifications] = useState(INITIAL_SAMPLE_NOTIFICATIONS)
+  const [dataStateRetryCount, setDataStateRetryCount] = useState(0)
+  const [railActiveId, setRailActiveId] = useState('live')
 
   return (
     <div data-theme={theme} className="design-gallery">
@@ -122,8 +128,8 @@ export default function DesignGallery() {
         <p className="t-micro">t-micro — labels/eyebrows</p>
       </Section>
 
-      <Section title="BrandMark">
-        <BrandMark size={48} />
+      <Section title="AirLensMark">
+        <AirLensMark size={48} />
       </Section>
 
       <Section title="AqiDot (K4 6-tier)" note="Repainted per decision #4 — never rendered without a text label alongside it.">
@@ -200,7 +206,11 @@ export default function DesignGallery() {
           <WfSkeleton width={40} height={40} variant="circle" />
         </div>
         <WfDataState state={dataState('partial', { affectedFields: ['pm25', 'dqss'], source: 'sample-feed' })} />
-        <WfDataState state={dataState('unavailable', { source: 'sample-feed' })} onRetry={() => {}} />
+        <WfDataState
+          state={dataState('unavailable', { source: 'sample-feed' })}
+          onRetry={() => setDataStateRetryCount((n) => n + 1)}
+        />
+        <p className="t-caption gallery-note">Retry attempts: {dataStateRetryCount}</p>
       </Section>
 
       <Section title="ScopeChipGroup">
@@ -303,13 +313,13 @@ export default function DesignGallery() {
         <Section title="AtmosphericModeRail">
           <AtmosphericModeRail
             items={[
-              { id: 'live', number: '01', label: 'Live', detail: 'Current observations', glyph: '●', active: true },
-              { id: 'forecast', number: '02', label: 'Forecast', detail: '+48H GEFS', glyph: '▲', active: false },
-              { id: 'transport', number: '03', label: 'Transport', detail: 'Wind × concentration', glyph: '→', active: false },
-              { id: 'events', number: '04', label: 'Events', detail: 'Fire detections', glyph: '✦', active: false },
-              { id: 'field', number: '05', label: 'Field', detail: 'Rendered field range', glyph: '▦', active: false, disabled: true },
+              { id: 'live', number: '01', label: 'Live', detail: 'Current observations', glyph: '●', active: railActiveId === 'live' },
+              { id: 'forecast', number: '02', label: 'Forecast', detail: '+48H GEFS', glyph: '▲', active: railActiveId === 'forecast' },
+              { id: 'transport', number: '03', label: 'Transport', detail: 'Wind × concentration', glyph: '→', active: railActiveId === 'transport' },
+              { id: 'events', number: '04', label: 'Events', detail: 'Fire detections', glyph: '✦', active: railActiveId === 'events' },
+              { id: 'field', number: '05', label: 'Field', detail: 'Rendered field range', glyph: '▦', active: railActiveId === 'field', disabled: true },
             ]}
-            onSelect={() => {}}
+            onSelect={setRailActiveId}
           />
         </Section>
 
@@ -353,10 +363,10 @@ export default function DesignGallery() {
         </div>
         <NotificationPanel
           isOpen={notifOpen}
-          notifications={SAMPLE_NOTIFICATIONS}
-          unreadCount={SAMPLE_NOTIFICATIONS.filter((n) => !n.read).length}
-          onMarkAllRead={() => {}}
-          onClearAll={() => {}}
+          notifications={notifications}
+          unreadCount={notifications.filter((n) => !n.read).length}
+          onMarkAllRead={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+          onClearAll={() => setNotifications([])}
           onClose={() => setNotifOpen(false)}
         />
       </Section>
