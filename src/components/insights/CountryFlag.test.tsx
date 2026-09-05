@@ -1,7 +1,7 @@
 /**
- * CountryFlag — same-origin PNG with an ISO-code fallback (AAA).
+ * CountryFlag — same-origin SVG with an ISO-code fallback (AAA).
  *
- * jsdom never actually fetches the `<img>` src, so "the PNG is missing" is
+ * jsdom never actually fetches the `<img>` src, so "the SVG is missing" is
  * simulated by firing the `error` event the browser would fire on a real
  * 404 — the same signal `onError` reacts to in production.
  */
@@ -12,24 +12,24 @@ import CountryFlag from './CountryFlag'
 afterEach(cleanup)
 
 describe('CountryFlag — a 2-letter code', () => {
-  it('renders the self-hosted PNG with an accessible alt text', () => {
+  it('renders the self-hosted SVG with an accessible alt text', () => {
     // Arrange / Act
     render(<CountryFlag countryCode="KR" countryName="South Korea" />)
     // Assert
     const img = screen.getByAltText('South Korea flag')
     expect(img).toBeTruthy()
-    expect(img.getAttribute('src')).toBe('/flags/kr.png')
+    expect(img.getAttribute('src')).toBe('/flags/4x3/kr.svg')
   })
 
-  it('falls back to the ISO code badge when the PNG fails to load', () => {
-    // Arrange
-    render(<CountryFlag countryCode="KR" countryName="South Korea" />)
-    const img = screen.getByAltText('South Korea flag')
-    // Act — the 404 a country with no shipped PNG produces today.
+  it('falls back to the ISO code badge when the SVG fails to load', () => {
+    // Arrange — a code the catalogue has not shipped a flag for.
+    render(<CountryFlag countryCode="ZZ" countryName="Testland" />)
+    const img = screen.getByAltText('Testland flag')
+    // Act — the 404 a country with no shipped SVG produces today.
     fireEvent.error(img)
     // Assert
-    expect(screen.queryByAltText('South Korea flag')).toBeNull()
-    expect(screen.getByText('KR')).toBeTruthy()
+    expect(screen.queryByAltText('Testland flag')).toBeNull()
+    expect(screen.getByText('ZZ')).toBeTruthy()
   })
 
   it('resets a prior failure when the country changes, given the caller keys it by code', () => {
@@ -50,7 +50,7 @@ describe('CountryFlag — a 2-letter code', () => {
 
 describe('CountryFlag — no usable ISO-2 code', () => {
   it('shows the code badge directly, without ever requesting an image', () => {
-    // Arrange / Act — a 3-letter or unknown code has no `/flags/*.png` entry.
+    // Arrange / Act — a 3-letter or unknown code has no `/flags/4x3/*.svg` entry.
     render(<CountryFlag countryCode="XKX" countryName="Kosovo" />)
     // Assert
     expect(screen.queryByRole('img')).toBeNull()

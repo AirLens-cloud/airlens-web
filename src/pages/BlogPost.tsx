@@ -85,8 +85,14 @@ export default function BlogPost({ slug }: BlogPostProps) {
           {date ? <span className="content-tag">{date}</span> : null}
           {post.readingMin ? <span className="content-tag">{post.readingMin} min read</span> : null}
         </div>
-        <h1 className="blogpost-title h-2">{post.title}</h1>
-        {post.dek ? <p className="blogpost-dek t-lede">{post.dek}</p> : null}
+        <h1 className="blogpost-title h-2" lang={post.bodyLang ?? undefined}>
+          {post.title}
+        </h1>
+        {post.dek ? (
+          <p className="blogpost-dek t-lede" lang={post.bodyLang ?? undefined}>
+            {post.dek}
+          </p>
+        ) : null}
       </header>
 
       {/* Media is fully optional (Wave 4) — no back-filled posts carry it,
@@ -105,7 +111,7 @@ export default function BlogPost({ slug }: BlogPostProps) {
       ) : null}
 
       {body ? (
-        <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
+        <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties} lang={post.bodyLang ?? undefined}>
           <MarkdownBody body={body} />
         </div>
       ) : (

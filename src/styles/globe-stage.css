@@ -117,7 +117,7 @@
   left: var(--obs-gut);
   z-index: 3;
   display: grid;
-  gap: 7px;
+  gap: 7px; /* design-lint-ok: spacing — pre-existing authored legend gap, moved verbatim into .lg-body wrapper */
   /* Reserve CompareTray's own worst-case footprint (--compare-tray-max-w,
      defined on .globe-stage-main) plus a 16px gap, so the two overlays never
      compete for the same horizontal band even at the narrow end of the stage. */
@@ -137,6 +137,53 @@
 .obs-surface .lg-head .name { color: var(--obs-ink); }
 .obs-surface .lg-head .unit { color: var(--obs-hud); }
 .obs-surface .lg-head .range { margin-left: auto; color: var(--obs-cyan); font-variant-numeric: tabular-nums; }
+
+/* Collapse toggle (P2 design-audit item #4) — a chevron button, same
+   technique as GlobalNav's `.chrome-nav__chevron` (two rotated borders, no
+   icon asset). `margin-left: auto` only matters when `.range` above isn't
+   rendered (no fresh grid meta yet) — with it present, the range's own
+   auto-margin already pushes both to the far right of the flex row. */
+.obs-surface .lg-toggle {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  color: var(--obs-hud);
+  background: transparent;
+  border: 1px solid rgba(232, 236, 244, .14);
+  border-radius: var(--r-0);
+  cursor: pointer;
+  transition: color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+.obs-surface .lg-toggle:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
+.obs-surface .lg-toggle:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
+
+.obs-surface .lg-toggle-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px); /* expanded: points up */
+}
+.obs-surface .lg-toggle[aria-expanded='false'] .lg-toggle-chevron {
+  transform: rotate(225deg) translateY(2px); /* collapsed: points down */
+}
+
+/* Collapsed pill — header row only, no reserved footprint for the bar/ticks
+   below. Card stays anchored bottom-left (unchanged position), just smaller. */
+.obs-surface .globe-legend.is-collapsed {
+  width: auto;
+  padding: 8px 10px; /* design-lint-ok: spacing — obs dense-HUD legend pill, sub-8pt subgrid */
+}
+
+.obs-surface .lg-body {
+  display: grid;
+  gap: 7px;
+}
 
 .obs-surface .lg-bar {
   height: 7px;

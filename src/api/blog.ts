@@ -156,6 +156,7 @@ function mapPost(row: RawBlogRow): BlogPost | null {
   const bodyKo = str(row.body_ko)
   const bodyEn = str(row.body_en)
   const dekSource = bodyKo ?? bodyEn
+  const bodyLang: 'ko' | 'en' | null = bodyKo ? 'ko' : bodyEn ? 'en' : null
   const sourceRefs = mapSourceRefs(row.source_refs)
   return {
     slug,
@@ -166,6 +167,7 @@ function mapPost(row: RawBlogRow): BlogPost | null {
     readingMin: deriveReadingMinutes(dekSource),
     sourceRefsCount: sourceRefs.length,
     heroImage: mapHeroImage(row.hero_image),
+    bodyLang,
     bodyKo,
     bodyEn,
     writtenBy: str(row.written_by),

@@ -232,6 +232,42 @@
   letter-spacing: 0.04em;
 }
 
+/* ---- Theme toggle (design audit P2 §7 row 4) — always visible, unlike the
+   mobile hamburger below (that one only appears under NAV_DESKTOP). Sized
+   to --control-h-md like .chrome-nav__trigger, not --control-h-lg like the
+   hamburger, since it carries a single icon with no label text next to it. */
+.chrome-nav__theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--control-h-md);
+  height: var(--control-h-md);
+  border: 0;
+  border-radius: var(--r-0);
+  background: transparent;
+  color: var(--ink-0);
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.chrome-nav__theme-toggle:hover {
+  background: var(--tint-hover);
+}
+
+.chrome-nav__theme-toggle:active {
+  transform: scale(0.96);
+}
+
+/* Globe's overlay chrome is night-fixed (design-taxonomy's sky-glass
+   catalog — it never follows the light/dark theme), so this icon needs the
+   same white-on-transparent override as .chrome-nav__trigger/__wordmark
+   (above, near the top of this file), even though the toggle itself keeps
+   working site-wide. */
+.chrome-nav--overlay .chrome-nav__theme-toggle {
+  color: #ffffff;
+}
+
 /* ---- Mobile toggle (hamburger) ---- */
 .chrome-nav__mobile-toggle {
   display: none;

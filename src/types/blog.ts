@@ -66,6 +66,14 @@ export interface BlogPostSummary {
    * value the same as an explicit `null` (`post.heroImage?.url ?? null`).
    */
   heroImage?: BlogHeroImage | null
+  /**
+   * Which body field `dek`/`readingMin` were derived from — `mapPost`'s
+   * `bodyKo ?? bodyEn` choice (design-audit 2026-09-05 §4 "한·영 혼재": lets
+   * title/dek carry an honest `lang` attribute without hardcoding a
+   * Korean-character detector). Optional so pre-existing fixtures without
+   * it still type-check; a missing value renders no `lang` override.
+   */
+  bodyLang?: 'ko' | 'en' | null
 }
 
 export interface BlogPost extends BlogPostSummary {

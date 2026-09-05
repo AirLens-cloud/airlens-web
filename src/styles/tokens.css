@@ -111,7 +111,7 @@
   --viz-bad: #ef4444;
 
   /* ---- Fonts ---- */
-  --serif: "Plus Jakarta Sans", "Inter", sans-serif;
+  --serif: "Inter", sans-serif; /* Plus Jakarta Sans removed 2026-09-05 design audit P2 font diet — h-hero/h-2/h-3 render Inter 800/700 */
   --sans: "Inter", sans-serif;
   --crimson: "Crimson Pro", Georgia, serif; /* self-hosted, Wave 4 Block 2 — see typography.css @font-face */
   --mono: "JetBrains Mono", ui-monospace, monospace;

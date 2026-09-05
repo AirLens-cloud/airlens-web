@@ -9,6 +9,29 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0c1015" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Theme FOUC guard (design audit P2 §7 row 4). Plain, synchronous JS —
+         runs before any stylesheet paints and before the module script below
+         is even fetched — so an explicit light/dark pick from a prior visit
+         applies before first paint instead of flashing the OS-default theme
+         first. Duplicates just the read+apply half of
+         src/store/themeStore.ts's contract (same 'airlens-theme' key, same
+         fallback-to-'system' rule) because a plain <script> here can't
+         import that module; keep the two in sync if either changes. -->
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('airlens-theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored);
+          }
+        } catch (e) {
+          // Storage denied/unavailable — falls through to tokens.css's
+          // prefers-color-scheme default, same as themeStore.ts's own
+          // try/catch fallback.
+        }
+      })();
+    </script>
     <title>AirLens — The Story of Our Atmosphere</title>
     <meta name="description" content="AirLens — Glass-box air quality intelligence with PM2.5, AOD, and policy impact analysis across global cities." />
     <meta name="robots" content="index, follow" />
@@ -67,8 +90,8 @@
          @font-face, Wave 4 Block 2, resolving porting-brief decision #2).
          Inter's ital axis stays loaded for non-Crimson italic usages elsewhere
          (content/static/insights pending-summary copy, landing chapters). -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
   </head>
   <body>
     <div id="root"></div>

@@ -49,3 +49,8 @@ coverage/
 /public/data/current-pm25-grid.json
 /public/data/predictions/
 /public/data/weather/
+
+# 2026-09-05 디자인 감사 패키지 — 스펙 md 5개만 추적, 자산(스크린샷·zip·생성 킷 202파일)은 로컬 보존
+docs/design-reports/2026-09-05-design-audit/*
+!docs/design-reports/2026-09-05-design-audit/README.md
+!docs/design-reports/2026-09-05-design-audit/0[1-4]-*.md

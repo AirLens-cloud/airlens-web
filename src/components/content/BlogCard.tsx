@@ -31,8 +31,14 @@ export default function BlogCard({ post, index, onOpen }: BlogCardProps) {
             <span className="content-tag">{post.topic}</span>
             {date ? <span className="content-tag">{date}</span> : null}
           </div>
-          <h3 className="blog-card__title t-body">{post.title}</h3>
-          {post.dek ? <p className="blog-card__dek t-caption">{post.dek}</p> : null}
+          <h3 className="blog-card__title t-body" lang={post.bodyLang ?? undefined}>
+            {post.title}
+          </h3>
+          {post.dek ? (
+            <p className="blog-card__dek t-caption" lang={post.bodyLang ?? undefined}>
+              {post.dek}
+            </p>
+          ) : null}
           <p className="blog-card__footer t-micro">
             {post.readingMin ? `${post.readingMin} min read · ` : ''}
             SRC ×{post.sourceRefsCount}
