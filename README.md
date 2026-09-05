@@ -1,16 +1,32 @@
 # airlens-web
 
-Ground-up rebuild of the AirLens web product. The original monorepo
-(`AirLens-platform`) now runs the data pipeline only; this repo is a
-separate, read-only consumer of its output — the public Hugging Face
-dataset [`Robeedau/airlens-live`](https://huggingface.co/datasets/Robeedau/airlens-live),
+AirLens's web product, serving [airlens.cloud](https://airlens.cloud) via
+Cloudflare Pages. The original monorepo (`AirLens-platform`, now
+`AirLens-cloud/AirLens`, private) runs the data + ML pipeline only — its
+`apps/web` retired 2026-09-02 (tag `web-retired-2026-09`), and this repo has
+been the sole web product since. It remains a separate, read-only consumer
+of the pipeline's output: the public Hugging Face dataset
+[`Robeedau/airlens-live`](https://huggingface.co/datasets/Robeedau/airlens-live),
 with a small CDN/static fallback chain for when that dataset is unreachable.
-No backend of its own, no Supabase — data flows one way: collectors in
-AirLens-platform publish, this app fetches and reads.
+No backend of its own beyond two Cloudflare Workers (a keyless community-API
+proxy and the Field Assistant chat worker, `workers/assistant/`) — data
+flows one way: collectors in AirLens-platform publish, this app fetches and
+reads.
 
-This is an M0 bootstrap: the data layer is ported and tested, but the UI is
-intentionally unstyled (`src/pages/DataProbe.tsx`) — a real design system
-lands in a later milestone.
+The public surface runs on the Instrument Panel design system (typography
+scale, 7-bar brand mark, gauge-style hero, chart grammar — see
+`docs/design-reports/`) across Home, Globe, Today, Insights (24h PM2.5
+forecast band), Dispatch/News, Blog, country profiles, Datasets/Data
+sources, Trust, Legal/About/FAQ, Methodology/Glossary/Learn, a cinematic
+`/landing` flight, and a floating Field Assistant chat widget site-wide.
+Two pages are deliberately inert pre-launch surfaces with honest empty/
+feasibility states rather than placeholder content: Research (Research
+Commons index — zero published receipts, by design) and Lab (Local
+Research Studio — feasibility review not yet passed). `/design` and
+`/probe` are internal/dev-only routes, not part of the public product.
+
+ML/forecast surfaces follow the Glass-box principle — uncertainty ranges
+and DQSS quality badges (`DqssBadge`), never a bare point estimate.
 
 ## Stack
 
@@ -42,19 +58,39 @@ both base URLs (override via `.env.local`, see `.env.example`):
 - `VITE_HF_LIVE_BASE` — the HF dataset repo resolve URL (`Robeedau/airlens-live`).
   Primary source for every feed: AQ/weather/marine/pollen grids, wind fields,
   the PM2.5 timeline, the 24h forecast, and the global grid snapshot.
-- `VITE_SNAPSHOT_CDN_BASE` — a free-tier GitHub Pages mirror, PM2.5/PM10 grid
-  fallback only (published hourly by AirLens-platform's `mac-data-publish.yml`).
+- `VITE_SNAPSHOT_CDN_BASE` — the PM2.5/PM10 grid fallback path. Defaults to a
+  path on the same HF dataset repo (`mac-data/data/web/v1/`, published by
+  AirLens-platform's `mac-data-publish.yml`) — the earlier free-tier GitHub
+  Pages mirror (`joymin5655.github.io`) was retired in the 2026-09 org
+  transfer and now 404s; only set this to point somewhere else.
 
 Every fetch module in `src/api/` and `src/lib/today/` follows the same honesty
 rule ported from the source repo: never fabricate a "now" timestamp when the
 source payload doesn't carry one, and return `null`/throw rather than
 substitute fake data when every source in a fallback chain fails.
 
+Two more base URLs (also `.env.example`, both optional) cover the two
+Cloudflare Workers this app talks to:
+
+- `VITE_COMMUNITY_API_BASE` — a keyless, 30-minute-cache API Worker the
+  Weather page proxies through (`/api/proxy/open-meteo-weather`,
+  `/api/proxy/open-meteo-aq`). Empty/unset renders an honest "not
+  configured" state instead of attempting a request against nothing.
+- `VITE_ASSISTANT_API_BASE` — the Field Assistant Worker (`workers/assistant/`,
+  session issuance + SSE chat, RAG + intent classification). Set to empty
+  (not unset) to force the chat widget's disabled "coming back soon" state —
+  no scripted/fake conversation is ever rendered, same Glass-box rule.
+
 ## Docs
 
 - [`docs/FLUID.md`](docs/FLUID.md) — fluid interface spec (springs, glass tiers, `Materialize`, capsule, orb) for porting into Today/Globe/Insights.
 
 ## Ported modules
+
+The data layer below was the initial M0 port from AirLens-platform's
+(now-retired) `apps/web`; the UI has since been built out on top of it
+through several design waves (`docs/design-reports/`). Kept here as a record
+of provenance for the fetch/health modules, which are largely unchanged.
 
 | Module | Source (AirLens-platform apps/web) | Notes |
 |---|---|---|
@@ -64,31 +100,26 @@ substitute fake data when every source in a fallback chain fails.
 | `api/timeline.ts` | `src/api/timeline.ts` | 1:1 port |
 | `lib/today/forecastSource.ts` | `src/lib/today/forecastSource.ts` | 1:1 port |
 | `hooks/useDataHealth.ts` | `src/hooks/useDataHealth.ts` | 1:1 port, plus `lib/dataHealth.ts` / `lib/config/dataHealth.ts` / `store/dataHealthStore.ts` |
-| `lib/config/feeds.ts` | `src/lib/config/globeOntology.ts` | Pipeline-only subset (feed paths/varKeys) — the source module's visual grammar (color scales, legends, layer contracts) has no Globe renderer to serve here yet |
+| `lib/config/feeds.ts` | `src/lib/config/globeOntology.ts` | Started as a pipeline-only subset (feed paths/varKeys); now the derived SOT for the Globe renderer's color scales, legends, and layer contracts too |
 
-## Staying mergeable back into AirLens-platform
+## Relationship to AirLens-platform
 
-This repo is expected to end up as `apps/web` inside the AirLens-platform npm
-workspace. That move is not scheduled, and nothing here should be shaped around
-it — but three cheap conventions keep it from becoming expensive. They cost
-nothing today and are easy to violate by accident.
+This repo started as an eventual `apps/web` candidate for the AirLens-platform
+npm workspace. That merge-back never happened: `apps/web` there retired
+2026-09-02 (tag `web-retired-2026-09`) and AirLens-platform (now
+`AirLens-cloud/AirLens`, private) is the data + ML pipeline only — this repo
+is the permanent, standalone web product, with its own independent
+TypeScript/Vite/plugin versions and lockfile (already diverged — this repo
+runs Vite 8, the monorepo pinned Vite 7). It still imports nothing from
+`packages/shared-types` or `packages/design-tokens`; the two codebases share
+no build-time dependency, only the one-way HF dataset feed described above.
 
-- **No `@/*` import alias.** Every import in `src/` is relative today
-  (`grep -r "from '@/'" src` returns nothing). Relative imports survive being
-  moved wholesale into another tree; an alias has to be reconciled against the
-  one `apps/web` already defines.
-- **No Vite 8-only APIs in `vite.config.ts`.** The monorepo root pins
-  `"vite": "7.3.6"` as an npm `overrides` entry, which applies to every
-  workspace. Joining that workspace would force this app onto Vite 7. The
-  config here is plugins + dev proxy + test config, all of which are version-
-  agnostic; keeping it that way makes the version question a one-line decision
-  later instead of a migration.
-- **Keep `public/_headers` and `public/_redirects` in the build output.** A
-  Cloudflare Pages deploy replaces the target project's files wholesale, so
-  these are what carry the security headers and SPA fallback across a project
-  switch. See the comments in each file.
+One convention survives from that earlier plan and is still worth keeping:
+every import in `src/` stays relative, no `@/*` alias
+(`grep -r "from '@/'" src` returns nothing) — it costs nothing and keeps
+any future file move (within this repo or elsewhere) a plain cut-and-paste.
 
-Things deliberately *not* pre-aligned, because doing so now would cost more
-than doing it at move time: the package name (`airlens-web` vs `airlens`),
-TypeScript/Vite/plugin versions, the lockfile, and whether to consume
-`packages/shared-types` and `packages/design-tokens`.
+**Keep `public/_headers` and `public/_redirects` in the build output.** A
+Cloudflare Pages deploy replaces the target project's files wholesale, so
+these are what carry the security headers and SPA fallback on every deploy.
+See the comments in each file.
