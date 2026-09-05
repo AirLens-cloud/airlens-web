@@ -240,14 +240,14 @@ describe('Insights — country selection', () => {
 })
 
 describe('Insights — band order', () => {
-  it('renders the six bands in the approved order', async () => {
+  it('renders the seven bands in the approved order', async () => {
     // Arrange
     mockFetch(FULL_FEED)
     // Act
     const { container } = await renderPage()
     // Assert
     await waitFor(() => expect(screen.getByTestId('band-map')).toBeTruthy())
-    const order = [...container.querySelectorAll('.ins-headline, .ins-lanes, [data-testid="band-map"], .ins-sdid, .ins-trend, [data-testid="band-prediction"]')]
+    const order = [...container.querySelectorAll('.ins-headline, .ins-lanes, [data-testid="band-map"], .ins-sdid, .ins-trend, [data-testid="band-prediction"], [data-testid="band-forecast"]')]
       .map((n) => n.className || n.getAttribute('data-testid'))
     expect(order).toEqual([
       'ins-headline',
@@ -256,6 +256,7 @@ describe('Insights — band order', () => {
       'ins-sdid',
       'ins-trend',
       'band-prediction',
+      'band-forecast',
     ])
   })
 

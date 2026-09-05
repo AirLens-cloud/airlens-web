@@ -17,21 +17,16 @@
  * guarantee. Both are Glass-box §5 obligations, not decoration.
  */
 import { useState } from 'react'
-import DqssBadge, { type DqssGrade } from '../wireframe/DqssBadge'
+import DqssBadge from '../wireframe/DqssBadge'
 import WfPlaceholder from '../wireframe/WfPlaceholder'
 import BandSlot from '../content/BandSlot'
 import { useForecastBand } from '../../hooks/useForecastBand'
 import { formatEstimatedTimestamp } from '../../lib/insights/format'
+import { toDqssGrade } from '../../lib/dqss'
 import type { ForecastBandCity } from '../../types/forecastBand'
 
-const VALID_GRADES: ReadonlySet<string> = new Set(['A', 'B', 'C', 'D', 'F'])
 const STALE_AFTER_MS = 12 * 60 * 60 * 1000
 const PREFERRED_DEFAULT_CITY = 'Seoul'
-
-/** null / missing / unknown string → 'unknown'. No grade is invented. */
-function toDqssGrade(raw: string | null | undefined): DqssGrade {
-  return raw != null && VALID_GRADES.has(raw) ? (raw as DqssGrade) : 'unknown'
-}
 
 function formatValue(v: number | null): string {
   return v === null || !Number.isFinite(v) ? '—' : v.toFixed(1)
@@ -47,6 +42,10 @@ export default function ForecastBandCard() {
   const [selectedCity, setSelectedCity] = useState<string | null>(null)
   // Read once, in a lazy initializer — same purity-lint escape hatch
   // `Today.tsx`/`Home.tsx` use for a one-time non-deterministic read.
+  // ponytail: fixed at mount, so a card left open past the 12h stale
+  // threshold won't flip to STALE without a remount — upgrade: re-derive
+  // from a ticking clock (e.g. `setInterval` + state) if this card is ever
+  // expected to stay mounted for hours.
   const [nowMs] = useState(() => Date.now())
 
   return (

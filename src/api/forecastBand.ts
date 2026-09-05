@@ -76,7 +76,7 @@ function parseCity(raw: unknown): ForecastBandCity | null {
   const horizons = c.horizons
     .map(parseHorizon)
     .filter((h): h is ForecastBandHorizon => h !== null)
-  return { name: c.name, horizons }
+  return { name: c.name.trim(), horizons }
 }
 
 function parsePicpClaim(raw: unknown): ForecastBandPicpClaim | null {
