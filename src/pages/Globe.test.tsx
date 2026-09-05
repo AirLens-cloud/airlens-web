@@ -160,28 +160,67 @@ describe('Globe — G0 stage layout', () => {
     expect(container.querySelector('.compare-tray')).toBeNull()
   })
 
-  it('renders the evidence card in the top chrome row, not a right-hand rail', () => {
-    // Arrange / Act — T1: the evidence rail was removed in favour of a
-    // horizontal strip docked under the HUD, alongside ViewModeSwitch.
-    const { container } = render(<Globe />)
-    // Assert
-    const row = container.querySelector('.globe-evidence-row')
-    expect(row?.querySelector('[aria-label="Data evidence and uncertainty"]')).toBeTruthy()
-    expect(row?.querySelector('.view-mode-switch')).toBeTruthy()
-    expect(container.querySelector('.globe-stage-rail')).toBeNull()
-  })
-
-  it('renders the mode selector as a horizontal HUD strip, not inside the left instrument column', async () => {
-    // Arrange / Act — T3: AtmosphericModeRail moved out of .globe-stage-left
-    // (which now holds only Layers/Timeline) into its own row above the
-    // evidence strip, reflowed via orientation="horizontal".
+  it('renders the mode selector, HUD strip and view switch in one row, not three stacked bars', async () => {
+    // Arrange / Act — P1: the mode rail, GlobeObsHud and ViewModeSwitch used
+    // to be three stacked full-width bars (the old .globe-mode-row +
+    // .gobs-hud + .globe-evidence-row's docked switch). They're siblings in
+    // one .globe-hud-row now — same components, same store wiring, same
+    // 1-5 keyboard path, just laid out side by side.
     const { container } = render(<Globe />)
     await waitFor(() => expect(modeButton('LIVE')).toBeTruthy())
     // Assert
-    const modeRow = container.querySelector('.globe-mode-row')
-    expect(modeRow?.querySelector('.atmos-mode-rail--horizontal')).toBeTruthy()
-    expect(modeRow?.querySelector('[aria-label="Atmospheric data mode"]')).toBeTruthy()
+    const hudRow = container.querySelector('.globe-hud-row')
+    expect(hudRow?.querySelector('.atmos-mode-rail--horizontal')).toBeTruthy()
+    expect(hudRow?.querySelector('[aria-label="Atmospheric data mode"]')).toBeTruthy()
+    expect(hudRow?.querySelector('.gobs-hud')).toBeTruthy()
+    expect(hudRow?.querySelector('.view-mode-switch')).toBeTruthy()
     expect(container.querySelector('.globe-stage-left .atmos-mode-rail')).toBeNull()
+    expect(container.querySelector('.globe-mode-row')).toBeNull()
+    expect(container.querySelector('.globe-evidence-row')).toBeNull()
+  })
+})
+
+describe('Globe — evidence card slide-in', () => {
+  // P1 (01-ux-audit.md §2 #2, §6): the evidence card used to run as a
+  // permanent strip under the HUD. It now mounts only once there's a
+  // focused reading to show evidence for, sliding in over the stage's right
+  // edge instead of reflowing the layout.
+  it('stays hidden by default, with nothing selected', () => {
+    // Arrange / Act
+    const { container } = render(<Globe />)
+    // Assert
+    expect(container.querySelector('.globe-evidence-panel')).toBeNull()
+    expect(screen.queryByLabelText('Data evidence and uncertainty')).toBeNull()
+  })
+
+  it('slides in once a station is selected, and the close button clears the selection', () => {
+    // Arrange — same SelectedStation shape Table/Map/3D all write.
+    useGlobeStore.setState({
+      selectedStation: { lat: 37.5, lon: 127.0, pm25: 18.4, name: 'Seoul', station_uid: 'grid-1' },
+    })
+    // Act
+    const { container } = render(<Globe />)
+    // Assert
+    expect(container.querySelector('.globe-evidence-panel')).toBeTruthy()
+    expect(screen.getByLabelText('Data evidence and uncertainty')).toBeTruthy()
+    // Act — close
+    fireEvent.click(screen.getByRole('button', { name: /close evidence card/i }))
+    // Assert
+    expect(useGlobeStore.getState().selectedStation).toBeNull()
+    expect(container.querySelector('.globe-evidence-panel')).toBeNull()
+  })
+
+  it('closes on Escape while the panel has focus', () => {
+    // Arrange
+    useGlobeStore.setState({
+      selectedStation: { lat: 37.5, lon: 127.0, pm25: 18.4, name: 'Seoul', station_uid: 'grid-1' },
+    })
+    const { container } = render(<Globe />)
+    const panel = container.querySelector('.globe-evidence-panel') as HTMLElement
+    // Act
+    fireEvent.keyDown(panel, { key: 'Escape' })
+    // Assert
+    expect(useGlobeStore.getState().selectedStation).toBeNull()
   })
 })
 

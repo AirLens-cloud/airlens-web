@@ -14,7 +14,7 @@
  *     The store setter is already a strict no-op in that case; disabling the
  *     control says so instead of swallowing the click.
  */
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { useGlobeStore, type CompareSlot, type GlobeViewMode } from '../store/globeStore'
@@ -191,6 +191,8 @@ export default function Globe() {
 
   const setAtmosphericMode = useGlobeStore((s) => s.setAtmosphericMode)
   const setSelectedCountry = useGlobeStore((s) => s.setSelectedCountry)
+  const setSelectedStation = useGlobeStore((s) => s.setSelectedStation)
+  const setSelectedPrediction = useGlobeStore((s) => s.setSelectedPrediction)
   const setFlyToTarget = useGlobeStore((s) => s.setFlyToTarget)
   const setTimeline = useGlobeStore((s) => s.setTimeline)
   const { timelineFrames, timelineStale } = useGlobeStore(
@@ -308,6 +310,8 @@ export default function Globe() {
       }
       if (key === 'Escape') {
         e.preventDefault()
+        setSelectedStation(null)
+        setSelectedPrediction(null)
         setSelectedCountry(null)
         setFlyToTarget(null)
         return
@@ -344,7 +348,7 @@ export default function Globe() {
         // Chunk-load failure disables keyboard nav — it must not fail silently.
         .catch((err) => { logger.warn('Globe3DScene dynamic import failed — keyboard nav disabled:', err) })
     },
-    [forecastReady, setAtmosphericMode, setSelectedCountry, setFlyToTarget],
+    [forecastReady, setAtmosphericMode, setSelectedStation, setSelectedPrediction, setSelectedCountry, setFlyToTarget],
   )
 
   const focus = view.focus
@@ -378,13 +382,58 @@ export default function Globe() {
     if (currentCompareSlot) pinCompareSlot(currentCompareSlot)
   }, [currentCompareSlot, pinCompareSlot])
 
+  // P1 (01-ux-audit.md §2 #2, §6): the evidence card only earns screen space
+  // once there's something to show evidence *for* — a station, a prediction
+  // marker, or a country. `view.focus` is exactly that condition (it's built
+  // from the same three selection fields in atmosphericViewModel.ts). An
+  // engine-chunk failure is the one carve-out: that's a real problem the user
+  // needs to see even with nothing selected, not a "select something first"
+  // gate.
+  const showEvidencePanel = !!focus || chromeStatus === 'unavailable'
+
+  const handleCloseEvidence = useCallback(() => {
+    setSelectedStation(null)
+    setSelectedPrediction(null)
+    setSelectedCountry(null)
+    setFlyToTarget(null)
+  }, [setSelectedStation, setSelectedPrediction, setSelectedCountry, setFlyToTarget])
+
+  // Focus moves into the panel on open (04-motion-system.md "증거 카드" scene
+  // treats this as a slide-in surface, not a passive readout) — the close
+  // button is the one interactive element, so it's the natural landing spot.
+  const evidenceCloseRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (showEvidencePanel) evidenceCloseRef.current?.focus()
+  }, [showEvidencePanel])
+
+  const handleEvidencePanelKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCloseEvidence()
+      }
+    },
+    [handleCloseEvidence],
+  )
+
   return (
     <main
       className="obs-surface globe-page"
       data-platform={platform.kind}
       data-touch={platform.isTouch ? 'on' : 'off'}
     >
-      <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+      {/* P1 (01-ux-audit.md §2 #2, §6): the mode rail, the HUD strip and the
+          view switcher used to be three stacked full-width bars (~128px, 17%
+          of the viewport). They're siblings in one flex row here instead —
+          each component and its store wiring is unchanged (same
+          AtmosphericModeRail 1-5 keyboard path via handleStageKeyDown, same
+          GlobeObsHud props, same ViewModeSwitch radiogroup); only who's next
+          to whom changed. Wraps to a second line on narrow viewports rather
+          than forcing a horizontal scrollbar (globe-stage.css mobile query).
+          The evidence card is no longer here — see the conditional slide-in
+          panel inside .globe-stage-main below. */}
+      <div className="fluid-enter globe-hud-row" style={{ '--enter-i': 0 } as CSSProperties}>
+        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
         <GlobeObsHud
           status={chromeStatus}
           label={hudLabel}
@@ -397,42 +446,6 @@ export default function Globe() {
           validTime={view.validTime}
           mode={view.mode}
           cursor={selectedStation ? { lat: selectedStation.lat, lon: selectedStation.lon, label: selectedStation.name } : null}
-        />
-      </div>
-
-      {/* T3: mode selection moved out of the left instrument rail into a HUD
-          tab strip — same AtmosphericModeRail component (`orientation`
-          controls the reflow), same store wiring, same 1-5 keyboard path
-          (handleStageKeyDown below is unchanged). This is a pure position
-          change: LAYERS/TIMELINE stay in `.globe-stage-left` since they're
-          overlay controls, not the mode cursor. */}
-      <div className="globe-mode-row">
-        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
-      </div>
-
-      {/* Evidence row (T1): Layer 1 of the evidence card runs as one horizontal
-          strip here instead of a vertical right-hand rail, with ViewModeSwitch
-          docked to its right — see globe-stage.css ".globe-evidence-row". */}
-      <div className="globe-evidence-row">
-        <AtmosphericEvidenceCard
-          status={chromeStatus}
-          statusLabel={evidenceStatusLabel}
-          label={view.label}
-          unit={view.unit || null}
-          indexLabel={modeNumber}
-          focus={focus}
-          range={view.range ? [view.range[0], view.range[1]] : null}
-          band={band ? { low: band.low, center: band.center, high: band.high } : null}
-          dqssGrade={focus?.dqssProvenance === 'measured' ? dqssScoreToGrade(focus.dqss) : null}
-          mode={view.mode}
-          uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
-          eventCoverage={view.eventCoverage}
-          source={view.source}
-          referenceTimeLabel={utcLabel(view.referenceTime)}
-          validTimeLabel={utcLabel(view.validTime)}
-          freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
-          provenance={[...view.provenance]}
-          coverage={view.coverage}
         />
         <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
       </div>
@@ -489,6 +502,55 @@ export default function Globe() {
                 onRemove={removeCompareSlot}
               />
             </>
+          )}
+
+          {/* P1 slide-in (01-ux-audit.md §2 #2, 04-motion-system.md "증거
+              카드"): a stage-level overlay (sibling of the Globe/Map/Table
+              alternation above, not nested inside the Globe-only branch) so a
+              station picked in Table or Map also earns the same detail panel.
+              Mounts only once there's a focused reading to show evidence for
+              — showEvidencePanel above. `@starting-style` in globe-stage.css
+              drives the out-expo translateX+scale entrance on mount; there's
+              no exit animation on unmount (closing removes the selection
+              immediately), which is the honest state — nothing left to show
+              evidence for. */}
+          {showEvidencePanel && (
+            <div
+              className="globe-evidence-panel"
+              role="region"
+              aria-label="Selected reading detail"
+              onKeyDown={handleEvidencePanelKeyDown}
+            >
+              <button
+                ref={evidenceCloseRef}
+                type="button"
+                className="globe-evidence-close"
+                onClick={handleCloseEvidence}
+                aria-label="Close evidence card"
+              >
+                ✕
+              </button>
+              <AtmosphericEvidenceCard
+                status={chromeStatus}
+                statusLabel={evidenceStatusLabel}
+                label={view.label}
+                unit={view.unit || null}
+                indexLabel={modeNumber}
+                focus={focus}
+                range={view.range ? [view.range[0], view.range[1]] : null}
+                band={band ? { low: band.low, center: band.center, high: band.high } : null}
+                dqssGrade={focus?.dqssProvenance === 'measured' ? dqssScoreToGrade(focus.dqss) : null}
+                mode={view.mode}
+                uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
+                eventCoverage={view.eventCoverage}
+                source={view.source}
+                referenceTimeLabel={utcLabel(view.referenceTime)}
+                validTimeLabel={utcLabel(view.validTime)}
+                freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
+                provenance={[...view.provenance]}
+                coverage={view.coverage}
+              />
+            </div>
           )}
         </div>
       </section>
