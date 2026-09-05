@@ -73,6 +73,8 @@ export default function PolicyTrendLines({
         path: p.points
           .map((pt, j) => `${j === 0 ? 'M' : 'L'} ${toX(pt.year).toFixed(1)} ${toY(pt.pm25).toFixed(1)}`)
           .join(' '),
+        lastX: toX(last.year),
+        lastValue: last.pm25,
         labelY: toY(last.pm25),
       }
     })
@@ -168,8 +170,18 @@ export default function PolicyTrendLines({
 
           {lines.map((ln) => (
             <g key={ln.countryCode}>
-              <path d={ln.path} fill="none" className={`ins-trend-line ins-trend-line-${ln.idx}`} />
-              <text x={VB_W - PAD_R + 6} y={ln.labelY + 3} fontSize={10} className={`ins-trend-label ins-trend-line-${ln.idx}`}>
+              <path
+                d={ln.path}
+                fill="none"
+                pathLength={1}
+                className={`ins-trend-line ins-trend-line-draw ins-trend-line-${ln.idx}`}
+                style={{ animationDelay: `${ln.idx * 120}ms` }}
+              />
+              <circle cx={ln.lastX} cy={ln.labelY} r={3} className={`ins-trend-dot ins-trend-line-${ln.idx}`} />
+              <text x={VB_W - PAD_R + 6} y={ln.labelY - 5} fontSize={10} fontWeight={700} className="ins-trend-value num">
+                {ln.lastValue.toFixed(1)}
+              </text>
+              <text x={VB_W - PAD_R + 6} y={ln.labelY + 8} fontSize={10} className={`ins-trend-label ins-trend-line-${ln.idx}`}>
                 {ln.flag ?? ln.countryCode}
               </text>
             </g>

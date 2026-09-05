@@ -39,6 +39,10 @@
   --obs-mono: var(--mono);
   --obs-ez: cubic-bezier(0.22, 1, 0.36, 1);
   --obs-gut: 32px;
+  /* Viewport-edge inset for chrome that hugs the stage boundary (instrument
+     rail, HUD strip padding) — distinct from --obs-gut, which is the wider
+     gap already used by the legend/evidence card float. */
+  --obs-inset: 24px;
 }
 
 /* mono micro-labels */

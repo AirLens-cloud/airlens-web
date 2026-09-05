@@ -29,6 +29,7 @@ function baseProps() {
     status: 'loading' as const,
     configured: true,
     weather: null,
+    aq: null,
     onRetry: vi.fn(),
   }
 }

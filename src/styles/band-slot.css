@@ -33,7 +33,7 @@
 .band-slot__label {
   margin: 0;
   font-family: var(--mono);
-  font-size: 10px; /* design-lint-ok: typography — micro range readout, not prose (matches trust-line.css's t-tag scale) */
+  font-size: var(--fs-micro);
   color: var(--ink-1);
   white-space: nowrap;
 }
@@ -46,7 +46,7 @@
 .band-slot__empty {
   margin: 0;
   font-family: var(--mono);
-  font-size: 10px; /* design-lint-ok: typography — micro range readout, not prose (matches trust-line.css's t-tag scale) */
+  font-size: var(--fs-micro);
   font-style: italic;
   color: var(--ink-2);
   white-space: normal;

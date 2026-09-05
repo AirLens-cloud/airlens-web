@@ -285,6 +285,17 @@
 
 .ins-headline-foot .m { max-width: 60ch; }
 
+/* Demoted from `.m` (10px mono uppercase) — a full explanatory sentence in
+   shouting caps wrapped to three lines beside the fit badge, not a short
+   micro-label. Sentence-case, same content, at the caption scale used
+   elsewhere for prose next to a chart (`.ins-note`/`.ins-caveat`). */
+.ins-headline-fit-note {
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
 /* ── shared band furniture ── */
 .ins-band-title {
   font-family: var(--obs-display, var(--serif));
@@ -369,7 +380,26 @@
 .ins-bar { fill: var(--ink-1); }
 .ins-bar--active { fill: var(--orange); }
 .ins-bar-label { fill: var(--ink-0); }
+/* Axis-label emphasis (chart-grammar item, bar-chart reading of "thick
+   stroke" — a bar has no stroke to thicken, so the equivalent weight bump
+   lands on the row's own type instead) + accent budget: only the selected
+   country's row gets it, matching `.ins-bar--active`'s existing orange fill. */
+.ins-bar-label--active { fill: var(--ink-0); }
 .ins-bar-value { fill: var(--ink-2); font-family: var(--mono); }
+.ins-bar-value--active { fill: var(--orange-ink); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ins-bar-grow {
+    transform-box: fill-box;
+    transform-origin: left;
+    animation: ins-bar-grow var(--dur-slow) var(--ease-out) forwards;
+  }
+}
+
+@keyframes ins-bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
 
 /* ── band 3: the map, the page's one wide surface ── */
 .ins-map-band { width: 100%; }
@@ -429,6 +459,14 @@
 .ins-map-tooltip-name { font-size: 12px; }
 .ins-map-tooltip-val { font-family: var(--mono); font-size: 11px; color: var(--obs-hud); }
 
+/* Stays `pointer-events: none` like the base tooltip — the click that unpins
+   it lands on the marker underneath, not on the tooltip itself. The
+   accent-ink border is the only change: a pinned readout should read as
+   deliberately kept open, not as a hover that has not yet cleared. */
+.ins-map-tooltip--pinned { border-color: var(--orange); }
+
+.ins-map-tooltip-hint { color: var(--orange-ink); margin-top: var(--sp-1); }
+
 .ins-map-overlay-empty {
   position: absolute;
   inset: auto var(--sp-4) var(--sp-4);
@@ -441,14 +479,35 @@
   max-width: 60ch;
 }
 
-/* ── band 4: synthetic control ── */
-.ins-sdid-line { stroke-width: 2; }
+/* ── band 4: synthetic control ──
+   Chart-grammar accent budget: observed (solid, heavy ink) is this chart's
+   one protagonist line; synthetic (dashed, --ink-2) recedes. Orange stays
+   reserved for the treatment needle/effect — this chart already uses orange
+   to mean "the estimated effect", so recolouring the observed line orange
+   too would blur a signal that already has a job. */
+.ins-sdid-line { stroke-width: 2.75; stroke-linecap: round; }
 .ins-sdid-line--observed { stroke: var(--ink-0); }
 .ins-sdid-line--synthetic { stroke: var(--ink-2); stroke-dasharray: 5 4; }
-.ins-sdid-effect { fill: var(--orange); fill-opacity: 0.18; stroke: none; }
+.ins-sdid-effect { fill: url(#ins-sdid-effect-grad); stroke: none; }
+.ins-sdid-effect-stop-a { stop-color: var(--orange); stop-opacity: 0.28; }
+.ins-sdid-effect-stop-b { stop-color: var(--orange); stop-opacity: 0.08; }
 .ins-sdid-fitband { fill: var(--ink-2); fill-opacity: 0.06; }
 .ins-sdid-needle { stroke: var(--orange); stroke-width: 1; stroke-dasharray: 3 3; }
 .ins-sdid-needle-label { fill: var(--orange-ink); font-family: var(--mono); letter-spacing: 0.08em; }
+.ins-sdid-dot { fill: var(--ink-0); stroke: var(--bg-0); stroke-width: 1.5; }
+.ins-sdid-dot-label { fill: var(--ink-0); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ins-sdid-line--draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ins-line-draw var(--dur-slow) var(--ease-out) forwards;
+  }
+}
+
+@keyframes ins-line-draw {
+  to { stroke-dashoffset: 0; }
+}
 
 .ins-swatch--observed { background: var(--ink-0); }
 .ins-swatch--synthetic { background: var(--ink-2); }
@@ -456,19 +515,43 @@
 .ins-swatch--fit { background: var(--ink-3); height: 8px; opacity: 0.4; }
 .ins-swatch--spread { background: var(--ink-1); height: 8px; opacity: 0.3; }
 
-/* ── band 5: observed trend ── */
-.ins-trend-line { stroke-width: 2; fill: none; }
-.ins-trend-line-0 { stroke: var(--ink-0); }
-.ins-trend-line-1 { stroke: var(--aqi-mod); }
-.ins-trend-line-2 { stroke: var(--aqi-usg); }
-.ins-trend-line-3 { stroke: var(--aqi-good); }
+/* ── band 5: observed trend ──
+   Chart-grammar accent budget: the selected country (idx 0) is this chart's
+   one protagonist and is the only line to carry the accent orange; peers
+   step down through the ink scale instead of borrowing AQI-grade hues, which
+   named a severity bucket these lines never claimed to encode (a peer's line
+   used to render in --aqi-usg red with no relation to that country's actual
+   AQI grade — an accidental, misleading signal from reusing AQI tokens as a
+   plain categorical palette). Bands 2b/6a still use --aqi-* to mean AQI
+   grade proper; that is unrelated to this local decision. */
+.ins-trend-line { stroke-width: 2.75; stroke-linecap: round; fill: none; }
+.ins-trend-line-0 { stroke: var(--orange); }
+.ins-trend-line-1 { stroke: var(--ink-1); }
+.ins-trend-line-2 { stroke: var(--ink-2); }
+.ins-trend-line-3 { stroke: var(--ink-3); }
+.ins-trend-dot { fill: var(--bg-0); stroke-width: 2; }
+.ins-trend-dot.ins-trend-line-0 { stroke: var(--orange); }
+.ins-trend-dot.ins-trend-line-1 { stroke: var(--ink-1); }
+.ins-trend-dot.ins-trend-line-2 { stroke: var(--ink-2); }
+.ins-trend-dot.ins-trend-line-3 { stroke: var(--ink-3); }
+.ins-trend-value { fill: var(--ink-0); font-family: var(--mono); }
 .ins-trend-label { fill: currentColor; font-family: var(--mono); }
 .ins-trend-line-0.ins-trend-label { fill: var(--ink-0); }
 .ins-trend-band { fill: var(--ink-1); fill-opacity: 0.16; stroke: none; }
-.ins-legend .ins-swatch.ins-trend-line-0 { background: var(--ink-0); }
-.ins-legend .ins-swatch.ins-trend-line-1 { background: var(--aqi-mod); }
-.ins-legend .ins-swatch.ins-trend-line-2 { background: var(--aqi-usg); }
-.ins-legend .ins-swatch.ins-trend-line-3 { background: var(--aqi-good); }
+.ins-legend .ins-swatch.ins-trend-line-0 { background: var(--orange); }
+.ins-legend .ins-swatch.ins-trend-line-1 { background: var(--ink-1); }
+.ins-legend .ins-swatch.ins-trend-line-2 { background: var(--ink-2); }
+.ins-legend .ins-swatch.ins-trend-line-3 { background: var(--ink-3); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* animation-delay comes from each path's own inline style (staggered by
+     line index) — the class only supplies the shared duration/easing. */
+  .ins-trend-line-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ins-line-draw var(--dur-slow) var(--ease-out) forwards;
+  }
+}
 
 /* ── band 6: the two cards ── */
 .ins-card {

@@ -99,7 +99,7 @@
   color: var(--orange-ink);
   text-decoration: none;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-tag);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -122,7 +122,7 @@
 .lab-header__badge {
   display: inline-block;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

@@ -27,6 +27,7 @@ import Lab from './pages/Lab'
 import Research from './pages/Research'
 import NotFound from './pages/NotFound'
 import SiteChrome, { type ChromeVariant } from './app/SiteChrome'
+import LoadingVeil from './components/LoadingVeil'
 
 /**
  * RedirectShim — renders nothing and bounces to `to`. Used for every path in
@@ -117,12 +118,14 @@ export const routes: Array<Route<RouteRender>> = [
   // readout — its former always-visible PM2.5 HUD+Answer content moved into
   // the Insight tab (Weather Storyboard v3, Wave 2A), so wrapping in
   // FluidChrome no longer doubles up a floating AqiCapsule. Same
-  // capsuleVariant="day" pattern as /insights, below.
+  // capsuleVariant="day" pattern as /insights, below. `capsuleLocationDisplay
+  //="minimal"` (UI G4, 2026-09-05 audit): WeatherHero already shows the
+  // visitor's location up top, so the capsule drops its own duplicate row.
   {
     path: '/today',
     render: () => ({
       element: (
-        <FluidChrome capsuleVariant="day">
+        <FluidChrome capsuleVariant="day" capsuleLocationDisplay="minimal">
           <Today />
         </FluidChrome>
       ),
@@ -134,7 +137,7 @@ export const routes: Array<Route<RouteRender>> = [
     render: () => ({
       element: (
         <FluidChrome capsuleVariant="day">
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingVeil label="INSIGHTS" />}>
             <Insights />
           </Suspense>
         </FluidChrome>

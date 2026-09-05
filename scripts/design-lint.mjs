@@ -312,8 +312,14 @@ export function lintLine(line, isCss, isTsx, tokens, tsOnly = false) {
     if (/box-shadow\s*:/.test(line) && /rgba\(\s*0\s*,\s*0\s*,\s*0/.test(line)) {
       out.push('pure-black box-shadow rgba(0,0,0,..) → ink-tint rgba(17,20,24,..) or var(--shadow-pop)');
     }
-    if (/font-size\s*:\s*[\d.]+px/i.test(line) && !/\.(h|t)-[\w-]+/.test(line)) {
-      out.push('literal font-size → prefer .h-*/.t-* semantic class');
+    // Wave 0 type scale (tokens.css `--fs-*`) is allowed vocabulary here — only a
+    // bare literal (`font-size: 15px;`) is flagged, never `var(--fs-*)`.
+    if (
+      /font-size\s*:\s*[\d.]+px/i.test(line) &&
+      !/var\(\s*--fs-/.test(line) &&
+      !/\.(h|t)-[\w-]+/.test(line)
+    ) {
+      out.push('literal font-size → prefer var(--fs-*) type-scale token or .h-*/.t-* semantic class');
     }
     const sm = line.match(/\b(padding|margin|gap)(?:-\w+)?\s*:\s*([^;{}]+)/i);
     if (sm) {

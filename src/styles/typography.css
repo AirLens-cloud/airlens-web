@@ -44,7 +44,7 @@
 .h-2 {
   font-family: var(--serif);
   font-weight: 800;
-  font-size: clamp(24px, 6vw, 32px);
+  font-size: var(--fs-h2);
   letter-spacing: -0.04em;
   line-height: 1.1;
   color: var(--ink-0);
@@ -52,35 +52,35 @@
 .h-3 {
   font-family: var(--serif);
   font-weight: 700;
-  font-size: clamp(20px, 5vw, 24px);
+  font-size: var(--fs-h3);
   letter-spacing: -0.025em;
   line-height: 1.2;
   color: var(--ink-0);
 }
 .t-body {
   font-family: var(--sans);
-  font-size: 15px;
+  font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--ink-1);
 }
 .t-lede {
   font-family: var(--crimson);
   font-weight: 400;
-  font-size: 18px;
+  font-size: var(--fs-lede);
   line-height: 1.6;
   color: var(--ink-1);
 }
 .t-quote {
   font-family: var(--crimson);
   font-style: italic;
-  font-size: clamp(20px, 2.4vw, 28px);
+  font-size: var(--fs-h2);
   line-height: 1.55;
   color: var(--ink-0);
 }
 .t-caveat {
   font-family: var(--crimson);
   font-style: italic;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   line-height: 1.55;
   color: var(--ink-1);
   border-left: 2px solid var(--ink-0);
@@ -88,7 +88,7 @@
 }
 .t-data {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: var(--fs-data);
   line-height: 1.4;
   color: var(--ink-0);
   font-variant-numeric: tabular-nums;
@@ -104,7 +104,7 @@
 }
 .t-micro {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -112,7 +112,7 @@
 }
 .t-tag {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-tag);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -120,20 +120,20 @@
 }
 .t-caption {
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: var(--fs-caption);
   line-height: 1.4;
   color: var(--ink-2);
 }
 .t-bi-ko {
   font-family: var(--sans);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--fs-caption);
   letter-spacing: -0.02em;
   color: var(--ink-0);
 }
 .t-bi-en {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

@@ -72,9 +72,13 @@ export default function SdidChart({ series, treatmentYear, unit = 'µg/m³' }: S
     )
   }
 
-  const { scale, boundary, observed, synthetic, effect, fitBand, ticks } = data
+  const { scale, boundary, observed, synthetic, effect, fitBand, ticks, pts } = data
   const boundaryX = boundary !== null ? scale.toX(boundary) : null
   const flipLabel = boundaryX !== null && boundaryX > VB_W - PAD_R - LABEL_W
+  const last = pts[pts.length - 1]
+  const lastX = scale.toX(last.year)
+  const lastY = scale.toY(last.observed)
+  const flipLastLabel = lastX > VB_W - PAD_R - LABEL_W
 
   return (
     <section className="ins-sdid" aria-labelledby="ins-sdid-title">
@@ -82,6 +86,21 @@ export default function SdidChart({ series, treatmentYear, unit = 'µg/m³' }: S
 
       <div className="ins-chart">
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} role="img" aria-label="Observed PM2.5 against the synthetic counterfactual, by year">
+          {effect ? (
+            <defs>
+              {/* Grammar rule 2 (area fill) applied to the one area this chart
+                  already draws for an honest reason — the post-treatment
+                  effect — rather than adding a new area under either line.
+                  This chart's own docstring rejects shading anything down to
+                  a baseline that was not measured; a gradient on a
+                  fabricated area would repeat that mistake with a nicer
+                  fade. */}
+              <linearGradient id="ins-sdid-effect-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" className="ins-sdid-effect-stop-a" />
+                <stop offset="100%" className="ins-sdid-effect-stop-b" />
+              </linearGradient>
+            </defs>
+          ) : null}
           {[0, 0.25, 0.5, 0.75, 1].map((f) => {
             const v = scale.yMin + (scale.yMax - scale.yMin) * f
             return (
@@ -114,8 +133,29 @@ export default function SdidChart({ series, treatmentYear, unit = 'µg/m³' }: S
 
           {effect ? <path d={effect} className="ins-sdid-effect" /> : null}
 
+          {/* Synthetic keeps its dash pattern rather than joining the draw-on
+              reveal below — pathLength normalization (the no-JS technique
+              used on `observed`) would rescale that pattern's 5/4 unit dashes
+              against the path's full length instead, shrinking them to slivers. */}
           <path d={synthetic} fill="none" className="ins-sdid-line ins-sdid-line--synthetic" />
-          <path d={observed} fill="none" className="ins-sdid-line ins-sdid-line--observed" />
+          <path
+            d={observed}
+            fill="none"
+            pathLength={1}
+            className="ins-sdid-line ins-sdid-line--observed ins-sdid-line--draw"
+          />
+
+          <circle cx={lastX} cy={lastY} r={3.5} className="ins-sdid-dot" />
+          <text
+            x={flipLastLabel ? lastX - 8 : lastX + 8}
+            y={lastY - 8}
+            textAnchor={flipLastLabel ? 'end' : 'start'}
+            fontSize={11}
+            fontWeight={700}
+            className="ins-sdid-dot-label num"
+          >
+            {last.observed.toFixed(1)}
+          </text>
 
           {boundaryX !== null ? (
             <g>
