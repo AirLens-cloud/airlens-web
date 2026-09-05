@@ -68,7 +68,7 @@ export default function LoadingVeil({ label = 'LOADING', done = false }: Props) 
       <div style={{ animation: reduced ? 'none' : 'lv-pulse 1.6s ease-in-out infinite' }}>
         <AirLensMark size={44} />
       </div>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: '0.3em', color: 'var(--ink-2)', minHeight: 16 }}>
+      <span className="t-tag" style={{ letterSpacing: '0.3em', color: 'var(--ink-2)', minHeight: 16 }}>
         {typed}
         {!reduced && typed.length < label.length ? '█' : ''}
       </span>
