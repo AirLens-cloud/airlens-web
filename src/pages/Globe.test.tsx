@@ -224,6 +224,47 @@ describe('Globe — evidence card slide-in', () => {
   })
 })
 
+describe('Globe — DQSS grade provenance gate', () => {
+  // Globe.tsx's evidence-card wiring (`dqssGrade={focus?.dqssProvenance ===
+  // 'measured' || focus?.dqssProvenance === 'partial' ? dqssScoreToGrade(...) :
+  // null}`) has no direct test of its own — only AtmosphericEvidenceCard's
+  // *rendering* of a given grade is covered. These pin the gate itself: a
+  // station with a real score still shows no grade when its provenance isn't
+  // 'measured'/'partial' (e.g. 'seed' — a demo value), and does show one,
+  // with the PARTIAL tag, when it is.
+  it('shows no grade ("DQSS —") when the station has a score but an unrecognized/demo provenance (seed)', () => {
+    // Arrange
+    useGlobeStore.setState({
+      selectedStation: {
+        lat: 37.5, lon: 127.0, pm25: 18.4, name: 'Seoul', station_uid: 'grid-1',
+        dqss: 82, dqss_provenance: 'seed',
+      },
+    })
+    // Act
+    const { container } = render(<Globe />)
+    // Assert
+    const qualityLine = container.querySelector('.atmos-quality-line')
+    expect(qualityLine?.querySelector('b')).toBeNull()
+    expect(qualityLine?.textContent).toContain('DQSS —')
+  })
+
+  it('shows the grade with a PARTIAL tag when the station provenance is partial', () => {
+    // Arrange
+    useGlobeStore.setState({
+      selectedStation: {
+        lat: 37.5, lon: 127.0, pm25: 18.4, name: 'Seoul', station_uid: 'grid-1',
+        dqss: 82, dqss_provenance: 'partial',
+      },
+    })
+    // Act
+    const { container } = render(<Globe />)
+    // Assert — dqssScoreToGrade(82) === 'A' (globeOntology.ts cutoffs).
+    const qualityLine = container.querySelector('.atmos-quality-line')
+    expect(qualityLine?.querySelector('b')?.textContent).toBe('A')
+    expect(qualityLine?.querySelector('em[title]')?.textContent).toBe('PARTIAL')
+  })
+})
+
 describe('Globe — shared cursor', () => {
   it('surfaces the selected station in the HUD once a mark is picked, so all three views read the same cursor', () => {
     // Arrange — same SelectedStation shape Table/Map/3D all write via
