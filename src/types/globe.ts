@@ -236,15 +236,21 @@ export interface DQSSStation {
 
 /**
  * DQSS 값의 출처. 5 가드 §5 Glass-box — 시드/데모 점수를 실측 품질점수처럼 보여주지 않는다.
- * 'seed' = 손으로 채운 데모값 · 'measured' = DQSS 파이프라인 산출.
+ * 'seed' = 손으로 채운 데모값 · 'measured' = DQSS 파이프라인 5개 성분 전부 실측 산출 ·
+ * 'partial' = 일부 성분만 실측(나머지는 unavailable) — 등급은 표시하되 PARTIAL 태그 +
+ * 상세("N/5 components measured · measured weight ≤M%")를 병기한다.
  */
-export type DQSSProvenance = 'seed' | 'measured';
+export type DQSSProvenance = 'seed' | 'measured' | 'partial';
 
 /** data_quality.json 의 출처 선언 (없으면 미표기 → 배지에 아무 라벨도 붙이지 않는다) */
 export interface DataQualityMeta {
   source: DQSSProvenance;
   generated_at?: string;
   note?: string;
+  /** 'partial' 소스일 때 성분별 실측 여부 (예: {freshness:"measured", consistency:"unavailable-no-cross-source-pair"}). */
+  inputs?: Record<string, string>;
+  /** 'partial' 소스일 때 실측 성분들의 가중치 합 범위 [min, max] (%). */
+  measured_weight_range?: number[];
 }
 
 /** Response shape of data_quality.json */
@@ -624,11 +630,27 @@ export type DQSSGrade = 'A' | 'B' | 'C' | 'D' | 'F';
 
 export type DQSSScoreMap = Map<string, number>;
 
+/**
+ * `'partial'` provenance 의 파생 상세 — `data_quality.json` 의 `meta.inputs` /
+ * `meta.measured_weight_range` 에서 계산한다 (문구 하드코딩 아님). 파생 불가하면
+ * `DQSSCache.partialDetail`이 null — 그때는 배지에 PARTIAL 태그만 붙고 상세 문구는 생략.
+ */
+export interface DQSSPartialDetail {
+  /** 실측('measured')으로 선언된 성분 개수 */
+  measured: number;
+  /** 선언된 성분 총 개수 */
+  total: number;
+  /** 실측 성분들의 가중치 합 상한 (%) */
+  measuredWeightMax: number;
+}
+
 export interface DQSSCache {
   map: DQSSScoreMap;
   stations: DQSSStation[];
   /** 파일이 선언한 출처. 선언 없으면 null — 라벨을 지어내지 않는다. */
   provenance: DQSSProvenance | null;
+  /** 'partial' 일 때만 값 존재 — 그 외에는 null. */
+  partialDetail: DQSSPartialDetail | null;
 }
 
 // ── IDW Heatmap Worker (Globe P4a — three/systems/idwCore.ts) ──

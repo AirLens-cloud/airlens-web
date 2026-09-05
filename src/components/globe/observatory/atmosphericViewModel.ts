@@ -13,6 +13,7 @@ import type { ActiveGridMeta, SelectedStation } from '../../../store/globeStore'
 import type {
   AtmosphericMode,
   DQSSProvenance,
+  DQSSPartialDetail,
   FireCoverage,
   OverlayType,
   SelectedCountry,
@@ -39,8 +40,10 @@ export interface AtmosphericFocus {
   p10: number | null
   p90: number | null
   dqss: number | null
-  /** `dqss` 값의 출처. 'measured' 가 아니면 카드는 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
+  /** `dqss` 값의 출처. 'measured'/'partial' 가 아니면 카드는 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
   dqssProvenance: DQSSProvenance | null
+  /** 'partial' 일 때만 값 존재 — "N/5 components measured · measured weight ≤M%" 상세의 원천. */
+  dqssPartialDetail: DQSSPartialDetail | null
   qualityGrade: string | null
   source: string | null
   version: string | null
@@ -136,6 +139,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p90: finite(station.p90) ? station.p90 : null,
       dqss: finite(station.dqss) ? station.dqss : null,
       dqssProvenance: station.dqss_provenance ?? null,
+      dqssPartialDetail: station.dqss_partial_detail ?? null,
       qualityGrade: null,
       source: station.source ?? null,
       version: null,
@@ -153,6 +157,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p90: prediction.p90,
       dqss: null,
       dqssProvenance: null,
+      dqssPartialDetail: null,
       qualityGrade: prediction.confidenceGrade ?? null,
       source: prediction.source ?? null,
       version: prediction.modelVersion ?? null,
@@ -169,6 +174,7 @@ function focusFor(state: AtmosphericViewState): AtmosphericFocus | null {
       p90: null,
       dqss: null,
       dqssProvenance: null,
+      dqssPartialDetail: null,
       qualityGrade: null,
       source: null,
       version: null,

@@ -189,6 +189,7 @@ const StationLabels = () => {
     const onClick = (e: PointerEvent) => {
       const station = findStation(e);
       if (station) {
+        const dqssInfo = dqssOf(station.lat, station.lon);
         setSelectedStation({
           lat: station.lat,
           lon: station.lon,
@@ -196,7 +197,9 @@ const StationLabels = () => {
           name: station.name,
           p10: station.p10,
           p90: station.p90,
-          ...dqssOf(station.lat, station.lon),
+          ...dqssInfo,
+          // 상세는 'partial' 일 때만 함께 이동 — 다른 provenance 에 잘못 붙지 않게.
+          dqss_partial_detail: dqssInfo.dqss_provenance === 'partial' ? (dqssCache?.partialDetail ?? undefined) : undefined,
           source: station.source,
           station_uid: station.stationUid,
         });

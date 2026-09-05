@@ -104,6 +104,25 @@ describe('atmosphericViewModel', () => {
     expect(undeclared.focus).toMatchObject({ dqss: 82, dqssProvenance: null })
   })
 
+  it('passes a "partial" station\'s dqss_partial_detail through to focus.dqssPartialDetail', () => {
+    const partialDetail = { measured: 4, total: 5, measuredWeightMax: 80 }
+    const partial = buildAtmosphericViewModel({
+      ...BASE,
+      selectedStation: {
+        lat: 37.5, lon: 127, pm25: 18, name: 'Partial station',
+        dqss: 67, dqss_provenance: 'partial', dqss_partial_detail: partialDetail,
+      },
+    })
+    expect(partial.focus).toMatchObject({ dqss: 67, dqssProvenance: 'partial', dqssPartialDetail: partialDetail })
+
+    // No detail published alongside the 'partial' tag — degrades to null, never fabricated.
+    const partialNoDetail = buildAtmosphericViewModel({
+      ...BASE,
+      selectedStation: { lat: 37.5, lon: 127, pm25: 18, name: 'Partial, no detail', dqss: 67, dqss_provenance: 'partial' },
+    })
+    expect(partialNoDetail.focus).toMatchObject({ dqss: 67, dqssProvenance: 'partial', dqssPartialDetail: null })
+  })
+
   it('builds a scaled band only from ordered, finite real quantiles', () => {
     expect(scaleUncertaintyBand(10, 20, 40)).toMatchObject({ low: expect.any(Number), center: expect.any(Number), high: expect.any(Number) })
     expect(scaleUncertaintyBand(30, 20, 40)).toBeNull()

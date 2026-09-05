@@ -30,7 +30,7 @@
  * per-type subtotal) — band/quality/details structure is unchanged, so the
  * panel doesn't need to "relearn" itself on mode change.
  */
-import type { AtmosphericMode, DQSSProvenance } from '../../../types/globe'
+import type { AtmosphericMode, DQSSProvenance, DQSSPartialDetail } from '../../../types/globe'
 
 export interface AtmosphericEvidenceFocus {
   label: string
@@ -40,8 +40,10 @@ export interface AtmosphericEvidenceFocus {
   p90: number | null
   kind: string
   dqss?: number | null
-  /** `dqss` 값의 출처. 'measured' 가 아니면 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
+  /** `dqss` 값의 출처. 'measured'/'partial' 가 아니면 숫자를 감추고 "DQSS —" 를 보인다(§5 Glass-box). */
   dqssProvenance?: DQSSProvenance | null
+  /** 'partial' 일 때만 값 존재 — PARTIAL 태그 옆 상세 문구("N/5 components measured · measured weight ≤M%")의 원천. */
+  dqssPartialDetail?: DQSSPartialDetail | null
   qualityGrade?: string | null
   version?: string | null
 }
@@ -207,10 +209,16 @@ export default function AtmosphericEvidenceCard({
                   {dqssGrade ? 'DQSS' : 'Prediction confidence'}
                 </span>
                 <b>{qualityTag}</b>
+                {/* Some, not all, of the 5 DQSS components were measured — the grade is
+                    real (Glass-box still allows showing it) but this tag flags that it
+                    rests on fewer inputs than a full 'measured' score. */}
+                {focus?.dqssProvenance === 'partial' && (
+                  <em title="Some DQSS components are measured, others are not yet available">PARTIAL</em>
+                )}
               </>
             )}
             {focus?.dqss != null && (
-              focus.dqssProvenance === 'measured' ? (
+              focus.dqssProvenance === 'measured' || focus.dqssProvenance === 'partial' ? (
                 <em>{Math.round(focus.dqss)}/100</em>
               ) : (
                 <em>DQSS —</em>
@@ -236,6 +244,12 @@ export default function AtmosphericEvidenceCard({
           )}
           {mode === 'forecast' && !band && (
             <p className="atmos-caveat">GEFS single-member forecast — no uncertainty band</p>
+          )}
+          {focus?.dqssProvenance === 'partial' && focus.dqssPartialDetail && (
+            <p className="atmos-caveat">
+              {focus.dqssPartialDetail.measured}/{focus.dqssPartialDetail.total} components measured
+              {' '}· measured weight ≤{focus.dqssPartialDetail.measuredWeightMax}%
+            </p>
           )}
           <dl className="atmos-provenance">
             <div>
