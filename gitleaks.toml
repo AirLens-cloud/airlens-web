@@ -16,11 +16,15 @@ regexes = [
   '''placeholder''',
 ]
 
-# Paths — placeholders / build output / vendor.
+# Paths — build output / vendor only. `.env.example` etc. are deliberately
+# NOT here: a whole-file path exclusion would hide a real secret pasted into
+# a "placeholder" file just as readily as an actual placeholder — verified
+# 2026-09-05 (P1 audit) that a synthetic secret in `.env.example` slipped
+# past detection entirely under the old path-based exclusion. Legitimate
+# placeholders (`your_..._key`, the literal word "placeholder") are already
+# covered by the `regexes` allowlist above, which only exempts the matched
+# string, not the whole file.
 paths = [
-  '''.*\.env\.example$''',
-  '''.*\.env\.sample$''',
-  '''.*\.env\.template$''',
   '''.*/node_modules/.*''',
   '''package-lock\.json$''',
   '''dist/.*''',
