@@ -21,9 +21,14 @@ if command -v gitleaks >/dev/null 2>&1; then
     exit 1
   fi
 else
-  echo "${YELLOW}⚠ gitleaks not installed — skipping secret scan.${NC}" >&2
+  # Fail closed, not open. This repo is public — a secret in a pushed commit
+  # is exposed the moment it leaves this machine, before CI's `secret-scan`
+  # job (required on main, but post-push) ever runs. Silently skipping here
+  # would make the local hook a no-op exactly when it matters most.
+  echo "${RED}✗ gitleaks not installed — commit blocked (this repo is public).${NC}" >&2
   echo "  Install: brew install gitleaks  (or https://github.com/gitleaks/gitleaks/releases)" >&2
-  echo "  CI will still enforce in GitHub Actions." >&2
+  echo "  Bypass (emergency only, CI secret-scan still gates the merge): git commit --no-verify" >&2
+  exit 1
 fi
 
 echo "${GREEN}✓ pre-commit checks passed${NC}" >&2
