@@ -32,6 +32,10 @@ const PAD_R = 76
 const PAD_T = 20
 const PAD_B = 36
 const MAX_SERIES = 4
+// An endpoint label is two stacked 10px text lines (value + flag); the group
+// needs this much vertical room before it collides with its neighbour.
+// Exported for the de-overlap tests, so their gap assertions track this value.
+export const LABEL_GAP = 26
 
 export default function PolicyTrendLines({
   panels,
@@ -76,8 +80,30 @@ export default function PolicyTrendLines({
         lastX: toX(last.year),
         lastValue: last.pm25,
         labelY: toY(last.pm25),
+        labelTextY: toY(last.pm25),
       }
     })
+
+    // Series whose final values land close together would draw their endpoint
+    // labels on top of each other. Only the text moves to make room — the dot
+    // stays at the true data y, so the label's offset never misstates where
+    // the series actually ends.
+    const byY = [...lines].sort((a, b) => a.labelY - b.labelY)
+    const labelMinY = PAD_T + 8
+    const labelMaxY = VB_H - PAD_B
+    let prevY = -Infinity
+    for (const ln of byY) {
+      ln.labelTextY = Math.max(ln.labelY, labelMinY, prevY + LABEL_GAP)
+      prevY = ln.labelTextY
+    }
+    // The forward pass only pushes down; if the bottom label overflowed the
+    // plot, pull the run back up while keeping the gaps it just earned.
+    // MAX_SERIES * LABEL_GAP is well under the plot height, so this always fits.
+    let nextY = labelMaxY
+    for (let i = byY.length - 1; i >= 0; i--) {
+      byY[i].labelTextY = Math.min(byY[i].labelTextY, nextY)
+      nextY = byY[i].labelTextY - LABEL_GAP
+    }
 
     // Contiguous runs of years that published a non-degenerate spread. A gap
     // breaks the polygon rather than bridging across a year that has no band —
@@ -178,10 +204,10 @@ export default function PolicyTrendLines({
                 style={{ animationDelay: `${ln.idx * 120}ms` }}
               />
               <circle cx={ln.lastX} cy={ln.labelY} r={3} className={`ins-trend-dot ins-trend-line-${ln.idx}`} />
-              <text x={VB_W - PAD_R + 6} y={ln.labelY - 5} fontSize={10} fontWeight={700} className="ins-trend-value num">
+              <text x={VB_W - PAD_R + 6} y={ln.labelTextY - 5} fontSize={10} fontWeight={700} className="ins-trend-value num">
                 {ln.lastValue.toFixed(1)}
               </text>
-              <text x={VB_W - PAD_R + 6} y={ln.labelY + 8} fontSize={10} className={`ins-trend-label ins-trend-line-${ln.idx}`}>
+              <text x={VB_W - PAD_R + 6} y={ln.labelTextY + 8} fontSize={10} className={`ins-trend-label ins-trend-line-${ln.idx}`}>
                 {ln.flag ?? ln.countryCode}
               </text>
             </g>

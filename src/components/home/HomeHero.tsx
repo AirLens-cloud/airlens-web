@@ -174,10 +174,20 @@ export default function HomeHero({
           <div className="home-hero__tier">
             <AqiDot tier={data.tier} size={14} />
             <span className="home-hero__tier-label">{tierLabel}</span>
-            {isStale && (
-              <StateChip variant="stale" detail={formatElapsed(elapsedMs)?.replace(/ ago$/, '')} index={0} />
+            {/* One chip either way: stale merges both states into a single
+                label ("Forecast · Stale 3h") instead of stacking a second
+                chip — the hero section sits at the mono-caps label budget
+                (DESIGN.md §2, ≤8 per section) and a ninth would break it. */}
+            {isStale ? (
+              <StateChip
+                variant="stale"
+                label="Forecast · Stale"
+                detail={formatElapsed(elapsedMs)?.replace(/ ago$/, '')}
+                index={0}
+              />
+            ) : (
+              <StateChip variant="forecast" index={0} />
             )}
-            <StateChip variant="forecast" index={isStale ? 1 : 0} />
           </div>
         </div>
 

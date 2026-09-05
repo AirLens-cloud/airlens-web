@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import PolicyTrendLines from './PolicyTrendLines'
+import PolicyTrendLines, { LABEL_GAP } from './PolicyTrendLines'
 import type { CountryPanel, CountryPanelPoint } from '../../types/policy'
 
 afterEach(cleanup)
@@ -143,6 +143,75 @@ describe('PolicyTrendLines — the spread band', () => {
     const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
     // Assert
     expect(bands(container)).toHaveLength(0)
+  })
+})
+
+// The de-overlap contract: endpoint TEXT moves to keep a minimum gap, the dot
+// never does. Value texts render at labelTextY - 5, dots at the true labelY.
+const PLOT_BOTTOM = 320 - 36 // VB_H - PAD_B
+
+function sortedYs(container: HTMLElement, selector: string, attr: string): number[] {
+  return [...container.querySelectorAll(selector)]
+    .map((el) => Number(el.getAttribute(attr)))
+    .sort((a, b) => a - b)
+}
+
+describe('PolicyTrendLines — endpoint label de-overlap', () => {
+  it('separates labels whose series end on nearly the same value', () => {
+    // Arrange — four series ending 0.3 µg/m³ apart: ~5px naturally, on top of
+    // each other at two 10px text lines per label.
+    const panels = [
+      panel('KR', [pt(2018, 13, 6, 20), pt(2019, 12.0)]),
+      panel('JP', [pt(2018, 13, 6, 20), pt(2019, 12.3)]),
+      panel('CN', [pt(2018, 13, 6, 20), pt(2019, 12.6)]),
+      panel('DE', [pt(2018, 13, 6, 20), pt(2019, 12.9)]),
+    ]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert — the fixture really is crowded (dots closer than the gap), and
+    // every adjacent pair of value labels got pushed at least a gap apart.
+    const dots = sortedYs(container, '.ins-trend-dot', 'cy')
+    const values = sortedYs(container, '.ins-trend-value', 'y')
+    expect(values).toHaveLength(4)
+    expect(dots[1] - dots[0]).toBeLessThan(LABEL_GAP)
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i] - values[i - 1]).toBeGreaterThanOrEqual(LABEL_GAP)
+    }
+  })
+
+  it('pulls a crowded run back up rather than overflowing the plot bottom', () => {
+    // Arrange — four near-zero endings sit at the bottom edge; pushing down
+    // alone would walk the last label off the chart.
+    const panels = [
+      panel('KR', [pt(2018, 2, 1, 4), pt(2019, 0.5)]),
+      panel('JP', [pt(2018, 2, 1, 4), pt(2019, 0.6)]),
+      panel('CN', [pt(2018, 2, 1, 4), pt(2019, 0.7)]),
+      panel('DE', [pt(2018, 2, 1, 4), pt(2019, 0.8)]),
+    ]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert — gaps hold AND the lowest label group stays inside the plot.
+    const values = sortedYs(container, '.ins-trend-value', 'y')
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i] - values[i - 1]).toBeGreaterThanOrEqual(LABEL_GAP)
+    }
+    expect(values[values.length - 1]).toBeLessThanOrEqual(PLOT_BOTTOM)
+  })
+
+  it('leaves well-separated labels at their natural data position', () => {
+    // Arrange — endings far apart; nothing should move.
+    const panels = [
+      panel('KR', [pt(2018, 6, 3, 10), pt(2019, 5)]),
+      panel('JP', [pt(2018, 16, 8, 24), pt(2019, 15)]),
+      panel('CN', [pt(2018, 26, 13, 38), pt(2019, 25)]),
+      panel('DE', [pt(2018, 36, 18, 50), pt(2019, 35)]),
+    ]
+    // Act
+    const { container } = render(<PolicyTrendLines panels={panels} selectedCode="KR" />)
+    // Assert — each value text sits exactly 5px above its (unmoved) dot.
+    const dots = sortedYs(container, '.ins-trend-dot', 'cy')
+    const values = sortedYs(container, '.ins-trend-value', 'y')
+    values.forEach((y, i) => expect(y).toBeCloseTo(dots[i] - 5, 5))
   })
 })
 
