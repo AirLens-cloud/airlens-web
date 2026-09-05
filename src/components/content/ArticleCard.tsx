@@ -16,9 +16,12 @@ const SUMMARY_CARD_MAX_CHARS = 200
 /**
  * Dispatch card — `dispatch-article-signal-desk.md` §4.1: meta row holds
  * category · source · date and NOTHING else (acceptance test #2, ≤3 badges).
- * EditorialTrust is a separate, differently-styled badge, not a 4th meta
- * chip — folding it into the same row would blur the "which axis is this"
- * distinction §8 requires.
+ * EditorialTrust and the cross-link chips are real information, not noise —
+ * badge-diet 2026-09-05 keeps both but demotes them into one hairline-topped
+ * `__footer` row, visually quieter than the primary meta/title/summary
+ * block above it rather than removed. The footer also sits below a
+ * flex-grown `__body`, so cards with 0/1/2 cross-link chips still bottom-
+ * align across a grid row instead of leaving ragged whitespace.
  */
 export default function ArticleCard({ article, index, onOpen }: ArticleCardProps) {
   const date = formatDate(article.publishedAt)
@@ -46,13 +49,15 @@ export default function ArticleCard({ article, index, onOpen }: ArticleCardProps
               No summary generated — original link only.
             </p>
           )}
-          <EditorialTrustBadge trust={article.editorialTrust} className="dispatch-card__trust" />
         </div>
       </button>
-      {/* Outside <button> — an <a> cannot nest inside one. News Surface
-          Contract §8 badge-density: own row at the card bottom, not folded
-          into the meta row above. */}
-      <NewsCrossLinks article={article} className="dispatch-card__cross-links" />
+      {/* Outside <button> — an <a> cannot nest inside one. Secondary tier:
+          trust axis + cross-link chips share one quieter row, separated
+          from the primary card by a hairline. */}
+      <div className="dispatch-card__footer">
+        <EditorialTrustBadge trust={article.editorialTrust} className="dispatch-card__trust" />
+        <NewsCrossLinks article={article} className="dispatch-card__cross-links" />
+      </div>
     </article>
   )
 }

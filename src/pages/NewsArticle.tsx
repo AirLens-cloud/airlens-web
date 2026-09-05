@@ -91,11 +91,17 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
         ariaLabel="Breadcrumb"
       />
 
+      {/* Primary tier — category/source/date, same peer-weight pills the
+          Dispatch card uses. Trust is a different axis (Q2: how much to
+          trust this?), so it gets its own quieter line below rather than
+          folding into this row (mirrors the card's meta/footer split). */}
       <div className="article-meta t-micro">
         {article.category ? <span className="content-tag">{article.category}</span> : null}
-        <EditorialTrustBadge trust={article.editorialTrust} />
         {article.sourceName ? <span className="content-tag">{article.sourceName}</span> : null}
         {date ? <span className="content-tag">{date}</span> : null}
+      </div>
+      <div className="article-trust-row">
+        <EditorialTrustBadge trust={article.editorialTrust} />
       </div>
 
       <h1 className="article-title h-2 fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>{article.title}</h1>
