@@ -217,7 +217,7 @@
 }
 
 .obs-surface .gl-tab {
-  padding: 5px 8px;
+  padding: 5px 8px; /* design-lint-ok: spacing — obs dense-HUD instrument tab, sub-8pt subgrid */
   color: var(--obs-hud-dim);
   background: transparent;
   border: 1px solid rgba(232, 236, 244, .14);
@@ -293,7 +293,7 @@
 .obs-surface .gl-switch:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
 .obs-surface .gl-switch:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
 .obs-surface .gl-switch.is-on { color: var(--obs-ink); border-color: rgba(37, 226, 244, .2); }
-.obs-surface .gl-switch-copy { display: grid; grid-auto-flow: column; grid-template-columns: auto 1fr; align-items: center; gap: 3px 6px; min-width: 0; }
+.obs-surface .gl-switch-copy { display: grid; grid-auto-flow: column; grid-template-columns: auto 1fr; align-items: center; gap: 3px 6px; min-width: 0; } /* design-lint-ok: spacing — obs dense-HUD switch copy, sub-8pt subgrid */
 .obs-surface .gl-switch-icon { grid-row: 1 / 3; color: var(--obs-hud-dim); }
 .obs-surface .gl-switch.is-on .gl-switch-icon { color: var(--obs-cyan); }
 .obs-surface .gl-switch-copy strong { font: 700 9px/1 var(--obs-mono); letter-spacing: .1em; }

@@ -40,7 +40,7 @@
   opacity: 0;
   transform: translateY(4px) scale(0.94);
   animation: state-chip-in var(--dur-fast, 200ms) var(--ease-spring-soft, cubic-bezier(0.22, 1.2, 0.36, 1)) forwards;
-  animation-delay: calc(var(--chip-i, 0) * 80ms);
+  animation-delay: calc(var(--chip-i, 0) * 80ms); /* design-lint-ok: token — per-chip stagger index, set inline by StateChip */
 }
 
 .state-chip--withheld {

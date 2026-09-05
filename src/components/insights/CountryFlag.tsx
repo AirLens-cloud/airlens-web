@@ -35,11 +35,13 @@ export default function CountryFlag({ countryCode, countryName, size = 24 }: Cou
   const iso2 = countryCode.length === 2 ? countryCode.toLowerCase() : ''
   const url = iso2 ? getFlagUrl(iso2) : ''
 
+  const fallbackStyle = { width: size, height: size, fontSize: Math.round(size * 0.42) } // design-lint-ok: typography — glyph scales with the badge's dynamic `size` prop, not prose
+
   if (!url || failed) {
     return (
       <span
         className="ins-flag ins-flag--fallback num"
-        style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
+        style={fallbackStyle}
         aria-hidden="true"
         title={countryName}
       >

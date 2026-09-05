@@ -423,7 +423,7 @@ canvas.cursor-trail { z-index: 2; }
   left: -11px;
   width: 2px;
   background: var(--obs-cyan);
-  border-radius: 1px;
+  border-radius: 1px; /* design-lint-ok: radius — endcap of the 2px liquid-indicator bar, sub-token geometry */
   pointer-events: none;
   transition: top 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1)), height 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1));
 }
