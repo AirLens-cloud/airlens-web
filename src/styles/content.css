@@ -168,6 +168,34 @@
 .news-chip:hover { border-color: var(--accent); }
 .news-chip--muted.t-caption { color: var(--ink-1); }
 
+/* ---- Article story links (mockup gate G2) — hairline 2-col band, article
+   body end / above ◆ evidence block. Distinct from `.news-chips` above: this
+   is article-detail only, and its second column names a real dataset link
+   rather than the article's own source. ---- */
+.article-story-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-top: var(--sp-3);
+}
+.article-story-links:has(> :only-child) { grid-template-columns: 1fr; }
+.article-story-links__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-4);
+}
+.article-story-links__col + .article-story-links__col { border-left: 1px solid var(--rule); }
+.article-story-links__label { color: var(--ink-1); text-transform: uppercase; letter-spacing: .06em; }
+.article-story-links__value { color: var(--accent); }
+.article-story-links__value:hover { text-decoration: underline; }
+.article-story-links__meta { color: var(--ink-2); }
+@media (max-width: 640px) {
+  .article-story-links { grid-template-columns: 1fr; }
+  .article-story-links__col + .article-story-links__col { border-left: 0; border-top: 1px solid var(--rule); }
+}
+
 .content-body { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 68ch; }
 .content-body__heading { margin: var(--sp-3) 0 0; }
 .content-body__para { margin: 0; color: var(--ink-1); }

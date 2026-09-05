@@ -165,11 +165,13 @@ function mapRawPolicyData(raw: RawPolicyImpactData, index: PolicyIndexEntry | un
 
 let _indexCache: PolicyIndexEntry[] | null = null
 let _summaryCache: PolicySummary | null = null
+let _indexPromise: Promise<PolicyIndexEntry[]> | null = null
 
 /** Test seam — drops the memoized index/summary so a fetch runs again. */
 export function resetPolicyIndexCache(): void {
   _indexCache = null
   _summaryCache = null
+  _indexPromise = null
 }
 
 /**
@@ -199,19 +201,34 @@ export async function fetchPolicySummary(): Promise<PolicySummary | null> {
   }
 }
 
+/**
+ * Concurrent callers on the same page (`ArticleStoryLinks` and
+ * `ArticleEvidenceBlock` via `fetchCountryPolicyImpact`, both below) share one
+ * in-flight request through `_indexPromise` — without it, two components
+ * calling this before either's fetch resolves would each issue their own
+ * `index.json` request, since `_indexCache` is still empty for both.
+ * `_indexPromise` is cleared once the request settles either way, so a
+ * failure never wedges the module into replaying a rejected promise forever.
+ */
 export async function fetchPolicyIndex(): Promise<PolicyIndexEntry[]> {
   if (_indexCache) return _indexCache
-  try {
-    const res = await fetch(POLICY_INDEX_URL)
-    if (!res.ok) return []
-    const parsed = (await res.json()) as PolicyIndexEntry[]
-    if (!Array.isArray(parsed)) return []
-    _indexCache = parsed
-    return _indexCache
-  } catch (err) {
-    logger.warn('fetchPolicyIndex failed:', err)
-    return []
-  }
+  if (_indexPromise) return _indexPromise
+  _indexPromise = (async () => {
+    try {
+      const res = await fetch(POLICY_INDEX_URL)
+      if (!res.ok) return []
+      const parsed = (await res.json()) as PolicyIndexEntry[]
+      if (!Array.isArray(parsed)) return []
+      _indexCache = parsed
+      return _indexCache
+    } catch (err) {
+      logger.warn('fetchPolicyIndex failed:', err)
+      return []
+    } finally {
+      _indexPromise = null
+    }
+  })()
+  return _indexPromise
 }
 
 /**

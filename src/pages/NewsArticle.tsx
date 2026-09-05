@@ -11,6 +11,7 @@ import type { ArticleLookupResult } from '../types/news'
 import EditorialTrustBadge from '../components/content/EditorialTrustBadge'
 import ArticleEvidenceBlock from '../components/content/ArticleEvidenceBlock'
 import NewsCrossLinks from '../components/content/NewsCrossLinks'
+import ArticleStoryLinks from '../components/content/ArticleStoryLinks'
 import BoundedImage from '../components/content/BoundedImage'
 import WfBreadcrumb from '../components/wireframe/WfBreadcrumb'
 import WfSkeleton from '../components/wireframe/WfSkeleton'
@@ -130,7 +131,9 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
         ) : null}
       </section>
 
-      <NewsCrossLinks article={article} className="article-cross-links fluid-enter" />
+      <NewsCrossLinks article={article} className="article-cross-links fluid-enter" hideCountryChip />
+
+      <ArticleStoryLinks article={article} className="fluid-enter" />
 
       <div className="fluid-enter" style={{ '--enter-i': 3 } as CSSProperties}>
         <ArticleEvidenceBlock countryCode={article.countryCode} />
