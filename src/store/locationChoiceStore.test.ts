@@ -131,19 +131,38 @@ describe('locationChoiceStore', () => {
     expect(reloadedStore.getState().choice).toBeNull()
   })
 
-  it('G1: a geolocation pick clears a previously-persisted search choice, so reload lands on fallback not the stale city', async () => {
+  it('G1: a geolocation pick is a true no-op on disk — an earlier persisted search choice survives, and a reload restores it', async () => {
     // Arrange — an earlier session searched a city (persisted)...
     const storage = createMemoryStorage()
     Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
-    const { useLocationChoiceStore } = await import('./locationChoiceStore')
-    useLocationChoiceStore.getState().setChoice({ lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' })
+    const first = await import('./locationChoiceStore')
+    first.useLocationChoiceStore
+      .getState()
+      .setChoice({ lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' })
     expect(storage.getItem('airlens-location-choice')).not.toBeNull()
-    // Act — ...then this session uses geolocation instead
-    useLocationChoiceStore
+    // Act — ...then this session also tries geolocation. The decision is
+    // about not writing the GPS fix to disk, not about erasing the
+    // visitor's own earlier explicit choice — the store has no standing to
+    // clear a pick it wasn't asked to clear.
+    first.useLocationChoiceStore
       .getState()
       .setChoice({ lat: 37.5, lon: 127.0, label: 'My location', source: 'geolocation' })
-    // Assert
-    expect(storage.getItem('airlens-location-choice')).toBeNull()
+    // Assert — untouched on disk...
+    expect(JSON.parse(storage.getItem('airlens-location-choice')!)).toEqual({
+      lat: 48.8566,
+      lon: 2.3522,
+      label: 'Paris, FR',
+      source: 'search',
+    })
+    // ...and a reload restores the search pick, not the global fallback
+    vi.resetModules()
+    const { useLocationChoiceStore: reloadedStore } = await import('./locationChoiceStore')
+    expect(reloadedStore.getState().choice).toEqual({
+      lat: 48.8566,
+      lon: 2.3522,
+      label: 'Paris, FR',
+      source: 'search',
+    })
   })
 
   it('G1: discards a pre-existing geolocation record left over from before this guard shipped', async () => {

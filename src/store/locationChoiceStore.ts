@@ -19,9 +19,14 @@
  * G1 (2026-09-05, user decision): a `source: 'geolocation'` choice — a real
  * GPS/Wi-Fi fix, not something the visitor typed — is never written to
  * disk. It lives in memory for the rest of this tab's session only; a
- * reload falls back to the honest fallback/approximate reading, and the
- * visitor re-clicks "Use my location"/"See air quality near me" to
- * personalize again. A `source: 'search'` choice keeps the prior
+ * reload lands on whatever's actually on disk — the honest fallback/
+ * approximate reading if nothing was ever persisted, or an earlier
+ * `search` pick if one is — and the visitor re-clicks "Use my location"/
+ * "See air quality near me" to personalize with geolocation again. The
+ * decision is specifically about not writing a GPS/Wi-Fi fix to disk, not
+ * about erasing an unrelated explicit choice the visitor already made —
+ * `writeStored` treats a geolocation choice as a true no-op, never
+ * touching an existing key. A `source: 'search'` choice keeps the prior
  * "personalize once, stays personalized" behavior — a typed-in city has no
  * extra privacy cost beyond what's already visible in the UI.
  */
@@ -84,12 +89,17 @@ function readStored(): LocationChoice | null {
 function writeStored(choice: LocationChoice | null): void {
   try {
     if (typeof window === 'undefined') return
-    // Geolocation is session-only (see the header comment) — never written
-    // to disk. Clearing any existing key here (rather than leaving an
-    // older search pick in place untouched) matches the documented reload
-    // behavior: after a geolocation pick, a reload lands on the honest
-    // fallback/approximate reading, not a stale prior choice.
-    if (choice === null || choice.source === 'geolocation') window.localStorage.removeItem(STORAGE_KEY)
+    // Geolocation is session-only (see the header comment) — the decision
+    // is specifically about not writing a GPS/Wi-Fi fix to disk, NOT about
+    // clearing whatever else is already there. A true no-op: an existing
+    // persisted search pick (e.g. the visitor searched "Seoul" earlier,
+    // then also tried "Use my location" this session) is left exactly as
+    // it was — it's the visitor's own explicit choice, this store has no
+    // standing to erase it just because a different, unrelated pick also
+    // happened. Only `choice === null` (an explicit `clearChoice()`) still
+    // removes the key.
+    if (choice !== null && choice.source === 'geolocation') return
+    if (choice === null) window.localStorage.removeItem(STORAGE_KEY)
     else window.localStorage.setItem(STORAGE_KEY, JSON.stringify(choice))
   } catch {
     // Storage denied/unavailable — in-memory state still works this session.
