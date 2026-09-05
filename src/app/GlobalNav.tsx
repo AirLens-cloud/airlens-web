@@ -8,6 +8,7 @@ import {
   TodayIcon,
   type IconProps,
 } from '../components/icons'
+import ThemeToggle from '../components/nav/ThemeToggle'
 import { NAV_GROUPS, getActiveGroupKey, navGroupItems, type NavGroup } from './nav'
 
 /** Maps each `NAV_GROUPS` key to its mockup §01 nav glyph (data-only `nav.ts`
@@ -142,6 +143,8 @@ export default function GlobalNav({ variant, onMobileOpenChange }: GlobalNavProp
             ))}
           </ul>
         </nav>
+
+        <ThemeToggle />
 
         <button
           type="button"

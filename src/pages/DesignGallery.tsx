@@ -34,7 +34,7 @@ import WfGlassCard from '../components/wireframe/WfGlassCard'
 import WfCodeBlock from '../components/wireframe/composites/WfCodeBlock'
 import WfTimelineScrubber from '../components/wireframe/composites/WfTimelineScrubber'
 import WfChartFrame from '../components/wireframe/composites/WfChartFrame'
-import AirLensMark from '../components/AirLensMark'
+import BrandMark from '../components/icons/BrandMark'
 import GlobeFallback from '../components/globe/GlobeFallback'
 import GlobeObsHud from '../components/globe/observatory/GlobeObsHud'
 import AtmosphericModeRail from '../components/globe/observatory/AtmosphericModeRail'
@@ -122,8 +122,8 @@ export default function DesignGallery() {
         <p className="t-micro">t-micro — labels/eyebrows</p>
       </Section>
 
-      <Section title="AirLensMark">
-        <AirLensMark size={48} />
+      <Section title="BrandMark">
+        <BrandMark size={48} />
       </Section>
 
       <Section title="AqiDot (K4 6-tier)" note="Repainted per decision #4 — never rendered without a text label alongside it.">

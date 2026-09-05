@@ -15,6 +15,7 @@
  * repo's cascade (`useGlobeData.fetchDQSSData`). Claiming "faint = low quality"
  * for stations would describe an encoding the user cannot see.
  */
+import { useState } from 'react'
 import { useGlobeStore } from '../../../store/globeStore'
 import { COLOR_BAR_CONFIGS, OVERLAY_DISPLAY_LABELS } from '../../../lib/config/globeOverlays'
 import { GLOBE_CONFIG } from '../../../lib/config/globe'
@@ -27,7 +28,42 @@ const WIND_SAMPLES = [
   { key: 'strong', label: 'Strong', range: '15+' },
 ] as const
 
+// Collapse choice persists per browser (P2 design-audit item #4: the
+// colour-scale card sat on screen at full height for the whole session).
+// Same guarded-storage shape as `locationChoiceStore.ts` — a private window
+// or blocked storage just means the choice doesn't survive a reload, not a
+// broken toggle.
+const COLLAPSE_STORAGE_KEY = 'airlens-globe-legend-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeCollapsed(collapsed: boolean): void {
+  try {
+    if (typeof window === 'undefined') return
+    if (collapsed) window.localStorage.setItem(COLLAPSE_STORAGE_KEY, '1')
+    else window.localStorage.removeItem(COLLAPSE_STORAGE_KEY)
+  } catch {
+    // Storage denied/unavailable — the toggle still works this session.
+  }
+}
+
 export default function GlobeLegend() {
+  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed)
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      writeCollapsed(next)
+      return next
+    })
+  }
+
   const overlayType = useGlobeStore((s) => s.overlayType)
   const showParticles = useGlobeStore((s) => s.showParticles)
   const showStations = useGlobeStore((s) => s.showStations)
@@ -64,6 +100,33 @@ export default function GlobeLegend() {
   const info = OVERLAY_DISPLAY_LABELS[active]
   if (!bar || !info) return null
 
+  const toggleButton = (
+    <button
+      type="button"
+      className="lg-toggle"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Expand ${info.label} legend` : `Collapse ${info.label} legend`}
+      onClick={toggleCollapsed}
+    >
+      <span className="lg-toggle-chevron" aria-hidden="true" />
+    </button>
+  )
+
+  if (collapsed) {
+    // Minimal label — current field name + the button to bring the colour
+    // bar, ticks, and caveats back. Not a conditional render of the whole
+    // card (§0 the card itself stays mounted so its screen anchor doesn't
+    // jump): only the content below the header is gone.
+    return (
+      <LiquidGlass variant="night" radius={0} className="globe-legend is-collapsed" as="aside">
+        <div className="lg-head fluid-enter">
+          <span className="name">{info.label}</span>
+          {toggleButton}
+        </div>
+      </LiquidGlass>
+    )
+  }
+
   const fresh = meta != null && meta.overlayType === active
   const hasRange = fresh && Number.isFinite(meta.min) && Number.isFinite(meta.max)
   // The published max can sit far past what `pm25ToAqi`/`gradeFromPm25` are
@@ -90,49 +153,58 @@ export default function GlobeLegend() {
             {isTimeline ? `${timeLabel} · VALID ${validHHMM}` : 'NOW'} {meta.min.toFixed(1)}–{meta.max.toFixed(1)}
           </span>
         )}
+        {toggleButton}
       </div>
-      <div className="lg-bar" style={{ background: bar.gradient }} />
-      <div className="lg-ticks">
-        {bar.ticks.map((tick) => (
-          <span key={tick}>{tick}</span>
-        ))}
-      </div>
-      {pm25RangeVerdict?.verdict === 'beyond-scale' && (
-        <span className="lg-caveat">
-          Range max above is {pm25RangeVerdict.reason} (scale tops out at {REPORTABLE_MAX_UGM3} µg/m³).
-        </span>
-      )}
-      {active === 'wind' && (
-        <div className="lg-wind-motion" aria-label="How to read wind speed">
-          {WIND_SAMPLES.map((sample) => (
-            <span key={sample.key} className={`lg-wind-sample ${sample.key}`}>
-              <span className="track" aria-hidden="true"><span className="dash" /></span>
-              <span className="label">{sample.label}</span>
-              <span className="range">{sample.range}<span className="unit">m/s</span></span>
-            </span>
+      {/* Everything below the header is what collapsing hides — wrapped so
+          un-collapsing (a fresh mount, not a re-render of a persistent node)
+          gets the existing fluid-enter pop-in for free. Collapsing removes
+          it immediately with no exit transition, same as the evidence panel
+          on this page (Globe.tsx's "honest state — nothing left to show"
+          note) — there's nothing left to key once it's gone. */}
+      <div className="lg-body fluid-enter">
+        <div className="lg-bar" style={{ background: bar.gradient }} />
+        <div className="lg-ticks">
+          {bar.ticks.map((tick) => (
+            <span key={tick}>{tick}</span>
           ))}
         </div>
-      )}
-      {isTimeline && (
-        <span className="lg-caveat">GEFS single-member forecast — no uncertainty band.</span>
-      )}
-      {active === 'wind' && (
-        <span className="lg-caveat">
-          {transportLens
-            ? 'In FLOW the concentration field is layered over the wind-speed colouring.'
-            : 'Faster wind travels further per frame, trails longer, and shifts warmer.'}
-        </span>
-      )}
-      {/* IDW fallback only — here transparency means "no nearby observation",
-          not "clean air", so an unlabelled faint cell reads as good news. */}
-      {fresh && meta.source === GLOBE_CONFIG.GLOBE_HEATMAP.IDW_SOURCE_LABEL && (
-        <span className="lg-caveat">
-          No published grid — interpolated from stations (IDW). Cells far from any station are drawn fainter.
-        </span>
-      )}
-      {caveats.map((text) => (
-        <span key={text} className="lg-caveat">{text}</span>
-      ))}
+        {pm25RangeVerdict?.verdict === 'beyond-scale' && (
+          <span className="lg-caveat">
+            Range max above is {pm25RangeVerdict.reason} (scale tops out at {REPORTABLE_MAX_UGM3} µg/m³).
+          </span>
+        )}
+        {active === 'wind' && (
+          <div className="lg-wind-motion" aria-label="How to read wind speed">
+            {WIND_SAMPLES.map((sample) => (
+              <span key={sample.key} className={`lg-wind-sample ${sample.key}`}>
+                <span className="track" aria-hidden="true"><span className="dash" /></span>
+                <span className="label">{sample.label}</span>
+                <span className="range">{sample.range}<span className="unit">m/s</span></span>
+              </span>
+            ))}
+          </div>
+        )}
+        {isTimeline && (
+          <span className="lg-caveat">GEFS single-member forecast — no uncertainty band.</span>
+        )}
+        {active === 'wind' && (
+          <span className="lg-caveat">
+            {transportLens
+              ? 'In FLOW the concentration field is layered over the wind-speed colouring.'
+              : 'Faster wind travels further per frame, trails longer, and shifts warmer.'}
+          </span>
+        )}
+        {/* IDW fallback only — here transparency means "no nearby observation",
+            not "clean air", so an unlabelled faint cell reads as good news. */}
+        {fresh && meta.source === GLOBE_CONFIG.GLOBE_HEATMAP.IDW_SOURCE_LABEL && (
+          <span className="lg-caveat">
+            No published grid — interpolated from stations (IDW). Cells far from any station are drawn fainter.
+          </span>
+        )}
+        {caveats.map((text) => (
+          <span key={text} className="lg-caveat">{text}</span>
+        ))}
+      </div>
     </LiquidGlass>
   )
 }

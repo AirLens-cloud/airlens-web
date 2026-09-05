@@ -123,3 +123,31 @@
     animation: none !important;
   }
 }
+
+/* ---- Theme crossfade (design audit P2 §7 row 4) ----
+ * `themeStore.ts` adds `.theme-transitioning` to <html> for exactly 280ms
+ * around a system/light/dark toggle, so tokens.css's `[data-theme]` token
+ * swap reads as a fade instead of an abrupt cut (audit finding: "Globe(항상
+ * 야간) ↔ Today(주간 틴트) 전환 시 명암 급변"). Reuses --ease-ios (already
+ * this file's "page transitions" curve) rather than introducing a new
+ * --dur-* token: 280ms doesn't match any existing named duration, and the
+ * only other place it may appear is themeStore.ts's matching cleanup
+ * timeout — see that file for why the two numbers have to stay in sync.
+ * Scoped to the transitioning window only (never a standing `* {
+ * transition }`), and `!important` because it has to momentarily override
+ * whatever transition (or none) each element already declares. */
+.theme-transitioning,
+.theme-transitioning * {
+  transition:
+    background-color 280ms var(--ease-ios),
+    border-color 280ms var(--ease-ios),
+    color 280ms var(--ease-ios),
+    fill 280ms var(--ease-ios) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-transitioning,
+  .theme-transitioning * {
+    transition: none !important;
+  }
+}

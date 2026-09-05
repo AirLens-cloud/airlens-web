@@ -1,4 +1,4 @@
-import AirLensMark from '../components/AirLensMark'
+import BrandMark from '../components/icons/BrandMark'
 import { LEGAL_DOCS } from '../content/legal'
 import { NAV_GROUPS, navGroupItems } from './nav'
 
@@ -27,7 +27,7 @@ export default function SiteFooter() {
       <div className="chrome-footer__grid">
         <div className="chrome-footer__col chrome-footer__col--brand">
           <a className="chrome-footer__logo" href="/" aria-label="AirLens home">
-            <AirLensMark size={22} />
+            <BrandMark size={22} />
             <span className="chrome-footer__wordmark">AirLens</span>
           </a>
           <p className="chrome-footer__tagline">

@@ -17,16 +17,6 @@
   letter-spacing: normal;
 }
 
-/* AQI 틴트 glass 카드 안에서는 사이트 테마 축(--ink-*)이 아니라 틴트 축을
-   탄다 — 라이트 틴트 위 --ink-2 라벨(withheld 사유 등)이 대비 미달로 실측된
-   게이트 발견(2026-09-05). F2 CTA(--glass-card-ink-contrast)와 같은 계열 수리.
-   키/사유도 100% 틴트 잉크 — 위계는 투명도가 아니라 배치가 만든다(정직함 문법). */
-.glass-card .trust-line,
-.glass-card .trust-line__k,
-.glass-card .trust-line__na {
-  color: var(--glass-card-ink, var(--tint-ink-dark));
-}
-
 .trust-line__item {
   white-space: nowrap;
 }
@@ -48,6 +38,18 @@
      reason IS the Glass-box contract this component exists for — so it wraps
      instead. The key run stays nowrap, so nothing splits mid-pair. */
   white-space: normal;
+}
+
+/* AQI 틴트 glass 카드 안에서는 사이트 테마 축(--ink-*)이 아니라 틴트 축을
+   탄다 — 라이트 틴트 위 --ink-2 라벨(withheld 사유 등)이 대비 미달로 실측된
+   게이트 발견(2026-09-05). F2 CTA(--glass-card-ink-contrast)와 같은 계열 수리.
+   키/사유도 100% 틴트 잉크 — 위계는 투명도가 아니라 배치가 만든다(정직함 문법).
+   trustLineWrap.test.ts 의 blockFor() 가 `.trust-line__na` 첫 매치 블록을
+   파싱하므로 이 그룹 셀렉터는 반드시 원 `.trust-line__na` 규칙 **뒤**에 둔다. */
+.glass-card .trust-line,
+.glass-card .trust-line__k,
+.glass-card .trust-line__na {
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 
 .trust-line a {

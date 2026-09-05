@@ -397,13 +397,15 @@
   margin: var(--sp-3) 0 0;
   color: var(--ink-2);
 }
+/* design-audit 2026-09-05 §4/§7 "라벨 예산" — was mono-uppercase (matched
+   the section kickers above); softened to a plain sentence-style link since
+   it carries no state/value, just a "see more" affordance. */
 .home-stories__more,
 .home-research__more {
   display: inline-block;
   margin-top: var(--sp-3);
-  font-family: var(--mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--sans);
+  font-size: 13px;
   color: var(--ink-2);
   text-decoration: none;
 }

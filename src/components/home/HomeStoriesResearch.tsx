@@ -71,7 +71,9 @@ export default function HomeStoriesResearch() {
               return (
                 <li key={post.slug} className="home-story-card">
                   <a className="home-story-card__link" href={`/blog/${post.slug}`}>
-                    <span className="home-story-card__title t-body">{post.title}</span>
+                    <span className="home-story-card__title t-body" lang={post.bodyLang ?? undefined}>
+                      {post.title}
+                    </span>
                     <span className="home-story-card__meta t-micro">
                       {post.topic}
                       {date ? ` · ${date}` : ''}
@@ -83,7 +85,7 @@ export default function HomeStoriesResearch() {
           </ul>
         )}
 
-        <a className="home-stories__more t-micro" href="/blog">
+        <a className="home-stories__more" href="/blog">
           All Field Notes →
         </a>
       </div>
@@ -95,7 +97,7 @@ export default function HomeStoriesResearch() {
           A reviewed, reproducible-only publication record of analyses built in the Lab — not a results gallery.
           No receipts are published yet.
         </p>
-        <a className="home-research__more t-micro" href="/research">
+        <a className="home-research__more" href="/research">
           What a receipt is →
         </a>
       </div>

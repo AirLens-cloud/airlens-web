@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { render, cleanup, screen } from '@testing-library/react'
+import { render, cleanup, screen, fireEvent } from '@testing-library/react'
 import GlobeLegend from './GlobeLegend'
 import { useGlobeStore } from '../../../store/globeStore'
 
@@ -10,6 +10,30 @@ beforeEach(() => {
 })
 
 afterEach(cleanup)
+
+// jsdom in this project's vitest setup has no `window.localStorage` by
+// default (same fact `locationChoiceStore.test.ts` documents) — a real
+// memory-backed Storage is stubbed in just for the collapse-persistence
+// tests below, which need to observe an actual write/read round trip.
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>()
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value)
+    },
+    removeItem: (key: string) => {
+      store.delete(key)
+    },
+    clear: () => {
+      store.clear()
+    },
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+}
 
 describe('GlobeLegend', () => {
   it('renders nothing when no field and no markers are on screen', () => {
@@ -100,5 +124,67 @@ describe('GlobeLegend', () => {
     render(<GlobeLegend />)
     // Assert
     expect(screen.getByText(/no uncertainty band/i)).toBeTruthy()
+  })
+})
+
+describe('GlobeLegend — collapse toggle', () => {
+  let originalDescriptor: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    useGlobeStore.setState({
+      overlayType: 'pm25',
+      activeGridMeta: { overlayType: 'pm25', source: 'Test grid', timestamp: 1, min: 3.2, max: 71.4 },
+    })
+    originalDescriptor = Object.getOwnPropertyDescriptor(window, 'localStorage')
+    Object.defineProperty(window, 'localStorage', { value: createMemoryStorage(), configurable: true })
+  })
+
+  afterEach(() => {
+    if (originalDescriptor) Object.defineProperty(window, 'localStorage', originalDescriptor)
+    else delete (window as { localStorage?: Storage }).localStorage
+  })
+
+  it('starts expanded — the colour bar is on screen and the toggle reports aria-expanded=true', () => {
+    // Arrange / Act
+    const { container } = render(<GlobeLegend />)
+    // Assert
+    expect(container.querySelector('.lg-bar')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Collapse PM2\.5 legend/i }).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('removes the colour bar and ticks from the DOM when the toggle is clicked, and flips its own label', () => {
+    // Arrange
+    const { container } = render(<GlobeLegend />)
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /Collapse PM2\.5 legend/i }))
+    // Assert — DOM absence, not a hidden/collapsed attribute (a bare `hidden`
+    // attribute loses to an author display rule in this codebase — see
+    // GlobeLayerToggles' [hidden] fix — so this asserts the node is gone).
+    expect(container.querySelector('.lg-bar')).toBeNull()
+    expect(container.querySelector('.lg-ticks')).toBeNull()
+    const toggle = screen.getByRole('button', { name: /Expand PM2\.5 legend/i })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('brings the colour bar back when the toggle is clicked again', () => {
+    // Arrange
+    const { container } = render(<GlobeLegend />)
+    fireEvent.click(screen.getByRole('button', { name: /Collapse PM2\.5 legend/i }))
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /Expand PM2\.5 legend/i }))
+    // Assert
+    expect(container.querySelector('.lg-bar')).toBeTruthy()
+  })
+
+  it('persists the collapsed choice across remounts (localStorage)', () => {
+    // Arrange
+    const first = render(<GlobeLegend />)
+    fireEvent.click(screen.getByRole('button', { name: /Collapse PM2\.5 legend/i }))
+    first.unmount()
+    // Act — simulate a fresh mount reading the same persisted choice
+    const { container } = render(<GlobeLegend />)
+    // Assert
+    expect(container.querySelector('.lg-bar')).toBeNull()
+    expect(screen.getByRole('button', { name: /Expand PM2\.5 legend/i })).toBeTruthy()
   })
 })
