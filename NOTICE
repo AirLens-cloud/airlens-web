@@ -15,7 +15,7 @@ Dual licensing
 --------------
 
 airlens-web follows the same two-track licensing as the AirLens monorepo
-(github.com/joymin5655/AirLens):
+(github.com/AirLens-cloud/AirLens):
 
   1. Open source — GNU AGPL-3.0-or-later (this repository, the LICENSE file).
      The AGPL's Section 13 requires that if you run a modified version to
