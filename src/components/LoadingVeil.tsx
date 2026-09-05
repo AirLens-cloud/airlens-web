@@ -17,14 +17,13 @@ interface Props {
 
 export default function LoadingVeil({ label = 'LOADING', done = false }: Props) {
   const reduced = useReducedMotion()
-  const [typed, setTyped] = useState(reduced ? label : '')
-  const [hidden, setHidden] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [fadedOut, setFadedOut] = useState(false)
 
   useEffect(() => {
-    if (reduced) {
-      setTyped(label)
-      return
-    }
+    // reduced-motion shows the full label via render-time derivation below —
+    // no typing interval, and no synchronous setState inside the effect.
+    if (reduced) return
     let i = 0
     const id = window.setInterval(() => {
       i += 1
@@ -35,16 +34,13 @@ export default function LoadingVeil({ label = 'LOADING', done = false }: Props) 
   }, [label, reduced])
 
   useEffect(() => {
-    if (!done) return
-    if (reduced) {
-      setHidden(true)
-      return
-    }
-    const id = window.setTimeout(() => setHidden(true), 420)
+    if (!done || reduced) return
+    const id = window.setTimeout(() => setFadedOut(true), 420)
     return () => window.clearTimeout(id)
   }, [done, reduced])
 
-  if (hidden) return null
+  const shown = reduced ? label : typed
+  if (fadedOut || (done && reduced)) return null
 
   return (
     <div
@@ -69,8 +65,8 @@ export default function LoadingVeil({ label = 'LOADING', done = false }: Props) 
         <AirLensMark size={44} />
       </div>
       <span className="t-tag" style={{ letterSpacing: '0.3em', color: 'var(--ink-2)', minHeight: 16 }}>
-        {typed}
-        {!reduced && typed.length < label.length ? '█' : ''}
+        {shown}
+        {!reduced && shown.length < label.length ? '█' : ''}
       </span>
     </div>
   )
