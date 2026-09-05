@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup, fireEvent, within } from '@testing-library/react'
+import { render, cleanup, fireEvent, within, act } from '@testing-library/react'
 import AqiCapsule from './AqiCapsule'
 import type { CapsuleDataReady } from './useCapsuleData'
 
@@ -224,5 +224,82 @@ describe('AqiCapsule', () => {
     // Assert
     expect(within(container).getByText('Seoul')).toBeTruthy()
     expect(container.querySelector('.aq-capsule__warn')).toBeNull()
+  })
+})
+
+describe('AqiCapsule — hide on scroll down', () => {
+  // The listener only attaches with motion enabled, so this block overrides
+  // the file-default reduced-motion stub. rAF is captured into a queue and
+  // flushed manually per scroll so assertions never depend on frame timing
+  // (springs may enqueue frames too — flushing them once is harmless).
+  let frames: FrameRequestCallback[]
+
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    frames = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      frames.push(cb)
+      return frames.length
+    })
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+  })
+
+  function scrollTo(y: number): void {
+    Object.defineProperty(window, 'scrollY', { value: y, configurable: true, writable: true })
+    fireEvent.scroll(window)
+    act(() => {
+      frames.splice(0).forEach((cb) => cb(0))
+    })
+  }
+
+  it('slides away scrolling down, returns scrolling up, always shows near the top', () => {
+    // Arrange
+    scrollTo(0)
+    const { container } = render(<AqiCapsule />)
+    const root = container.querySelector('.aq-capsule')!
+    expect(root.hasAttribute('data-hidden')).toBe(false)
+    // Act / Assert — down past the delta threshold: hides
+    scrollTo(200)
+    expect(root.hasAttribute('data-hidden')).toBe(true)
+    // back up: returns without needing to reach the top
+    scrollTo(120)
+    expect(root.hasAttribute('data-hidden')).toBe(false)
+    // down again, then into the near-top band: always shown there
+    scrollTo(500)
+    expect(root.hasAttribute('data-hidden')).toBe(true)
+    scrollTo(30)
+    expect(root.hasAttribute('data-hidden')).toBe(false)
+  })
+
+  it('never hides while the panel is open', () => {
+    // Arrange
+    scrollTo(0)
+    const { container } = render(<AqiCapsule />)
+    fireEvent.click(within(container).getByRole('button'))
+    // Act — a scroll that would hide the idle pill
+    scrollTo(200)
+    // Assert
+    expect(container.querySelector('.aq-capsule')!.hasAttribute('data-hidden')).toBe(false)
+  })
+
+  it('does not attach the listener under reduced motion', () => {
+    // Arrange — restore the file-default reduced-motion stub
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('reduced-motion'),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    scrollTo(0)
+    const { container } = render(<AqiCapsule />)
+    // Act
+    scrollTo(400)
+    // Assert — capsule stays put instead of sliding
+    expect(container.querySelector('.aq-capsule')!.hasAttribute('data-hidden')).toBe(false)
   })
 })

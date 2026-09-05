@@ -24,6 +24,18 @@
 
 .aq-capsule {
   font-family: var(--mono);
+  transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
+}
+
+/* Hide-on-scroll-down (P1 fix — see the HIDE_* constants in AqiCapsule.tsx):
+ * slides up past its own height plus the overlay anchor so no sliver stays
+ * on-screen. Only ever set on the idle collapsed pill, never while open or
+ * alerting, and never under reduced motion (the scroll listener is skipped
+ * there, so this attribute cannot appear). */
+.aq-capsule[data-hidden] {
+  transform: translateY(calc(-100% - var(--fluid-chrome-top)));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .aq-capsule__shell {
@@ -35,7 +47,40 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  color: #ffffff;
+  color: var(--capsule-ink);
+  /* Ink scale for the capsule's own text/decoration, not the design system's
+     `--ink-*` (those are for opaque paper surfaces). Night is this glass
+     tier's original design — a dark scene behind it (Globe) — so it keeps
+     literal white. Overridden for `.liquid-glass--day` below. */
+  --capsule-ink: #ffffff;
+  --capsule-ink-muted: rgba(255, 255, 255, 0.7);
+  --capsule-chip-bg: rgba(255, 255, 255, 0.14);
+  --capsule-fill-soft: rgba(255, 255, 255, 0.16);
+  --capsule-stroke: #ffffff;
+  --capsule-dot-bg: rgba(255, 255, 255, 0.3);
+  --capsule-dot-active: #ffffff;
+}
+
+/* P1 fix (2026-09-05 audit): day glass renders a pale fill (`--glass-fill`/
+ * `--glass-opaque` — light in system-light, dark navy in system-dark per
+ * tokens.css's dark-media redefinition) — the literal white text above was
+ * white-on-white on /today and /insights (both `capsuleVariant="day"`) under
+ * forced system light, an ~1:1 contrast ratio. `--ink-0`/`--ink-2` already
+ * flip alongside `--glass-fill` for dark mode, so pairing with them keeps
+ * both themes correct instead of only fixing the one that was reported.
+ * Measured (node, WCAG relative-luminance formula) against the composited
+ * day fill: ink-0 21.0:1 / ink-2 5.33:1 (blur/refract tier, light theme),
+ * and 18.26:1 / 4.63:1 against the solid `--glass-opaque` tint fallback —
+ * both clear AA's 4.5:1 floor. (`--ink-3` was tried for the countdown/meta
+ * text first and rejected: 4.18:1 on the opaque fallback, just under AA.) */
+.aq-capsule__glass.liquid-glass--day {
+  --capsule-ink: var(--ink-0);
+  --capsule-ink-muted: var(--ink-2);
+  --capsule-chip-bg: color-mix(in srgb, var(--ink-0) 10%, transparent);
+  --capsule-fill-soft: color-mix(in srgb, var(--ink-0) 10%, transparent);
+  --capsule-stroke: var(--ink-0);
+  --capsule-dot-bg: color-mix(in srgb, var(--ink-0) 20%, transparent);
+  --capsule-dot-active: var(--ink-0);
 }
 
 .aq-capsule[data-phase="alerting"] .aq-capsule__glass {
@@ -77,7 +122,7 @@
    of stylesheet load order. */
 .aq-capsule__loc-row.t-micro {
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--capsule-ink-muted);
 }
 
 .aq-capsule__loc {
@@ -116,14 +161,14 @@
 
 .aq-capsule__unit {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--capsule-ink-muted);
   letter-spacing: 0.08em;
 }
 
 .aq-capsule__countdown {
   margin-left: auto;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--capsule-ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -163,7 +208,7 @@
 
 .aq-capsule-panel__current-unit {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--capsule-ink-muted);
 }
 
 .aq-capsule-panel__tier-chip {
@@ -173,14 +218,14 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--capsule-chip-bg);
 }
 
 .aq-capsule-panel__range,
 .aq-capsule-panel__meta {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--capsule-ink-muted);
 }
 
 .aq-capsule-panel__spark {
@@ -190,12 +235,12 @@
 }
 
 .aq-capsule-panel__spark-area {
-  fill: rgba(255, 255, 255, 0.16);
+  fill: var(--capsule-fill-soft);
   stroke: none;
 }
 
 .aq-capsule-panel__spark-line {
-  stroke: #ffffff;
+  stroke: var(--capsule-stroke);
   stroke-width: 1.5;
 }
 
@@ -216,10 +261,10 @@
   padding: 0;
   border: 0;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--capsule-dot-bg);
   cursor: pointer;
 }
 
 .aq-capsule-panel__dot--active {
-  background: #ffffff;
+  background: var(--capsule-dot-active);
 }
