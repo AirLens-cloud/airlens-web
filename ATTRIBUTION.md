@@ -38,6 +38,15 @@ code, not just with this deployment.
 | File | Source | License | Required attribution |
 |---|---|---|---|
 | `public/data/countries-50m.json` | [world-atlas](https://github.com/topojson/world-atlas), derived from [Natural Earth](https://www.naturalearthdata.com) | ISC (world-atlas) over public-domain Natural Earth | Made with Natural Earth. |
+| `public/geo/seoul-districts.json` | KOSTAT (Statistics Korea) 2013 census administrative-division geodata, via [southkorea/seoul-maps](https://github.com/southkorea/seoul-maps) | Apache-2.0 per that repo's README (no separate `LICENSE`/`NOTICE` file exists upstream to reproduce) | Confirmed by matching the 25-feature set, `base_year: "2013"`, and `code`/`name`/`name_eng`/`base_year` property schema against the repo's KOSTAT-2013 municipality layer (simplified via MapShaper, per its README). The file already self-documents this as a GeoJSON foreign member — see its top-level `attribution` key — since it was first committed (`apps/landing-lab` history, 2026-07-15). Statistics Korea's own SGIS portal page for this dataset did not surface separate terms-of-use or 공공누리(KOGL) markings on inspection; nothing found narrows the permissive Apache-2.0 terms carried by the intermediate repo. |
+
+**Bundled textures**
+
+| File | Source | License | Required attribution |
+|---|---|---|---|
+| `public/textures/earth-bump.png` | NASA Earth Observatory, *Blue Marble: Next Generation — Topography* (GEBCO_08 Grid elevation, imagery by Jesse Allen) | Public Domain (U.S. Government work) | Confirmed by pixel-correlating this file (r ≈ 1.0000) against `gebco_08_rev_elev_5400x2700.jpg` in the AirLens pipeline's local texture cache, which matches NASA's published filename and description for this image. NASA imagery credit: Jesse Allen, NASA Earth Observatory, using GEBCO data from the British Oceanographic Data Centre. |
+| `public/textures/earth-land-mask.png` | [Solar System Scope](https://www.solarsystemscope.com/textures/) — inverted from their `8k_earth_specular_map` | CC BY 4.0 | Textures by Solar System Scope (solarsystemscope.com), CC BY 4.0. Source and licence were stated in the commit that introduced the mask (`fix(globe): replace incomplete country-mask with Solar System Scope land mask`); confirmed by near-perfect inverse pixel correlation (r ≈ −0.99999996) against the specular map, and independently by fetching Solar System Scope's own licence page. |
+| `public/textures/earth-night-2k.jpg` | NASA Black Marble 2016 (city lights) | Public Domain (U.S. Government work) | NASA Black Marble 2016. Already credited in code (`src/lib/config/globe-presets.ts:99`) — listed here so the table matches what ships. |
 
 ## Fonts bundled and redistributed
 
@@ -59,14 +68,28 @@ subsetting a new one.
 
 ## Assets whose provenance is not yet recorded
 
-Honest gap rather than a silent one. These are committed and therefore
-redistributed, and their upstreams have not been verified: `public/textures/
-earth-bump.png`, `earth-land-mask.png`, `public/mirror/data/earth-topo.json`,
-`public/geo/seoul-districts.json`, `public/icons.svg`. (`public/textures/
-earth-night-2k.jpg` is credited in code — `src/lib/config/globe-presets.ts:99`,
-NASA Black Marble 2016, public domain — but belongs in this table too.)
-`seoul-districts.json` is the one to check first: Korean administrative
-boundaries can carry usage conditions that the others almost certainly do not.
+Honest gap rather than a silent one. `earth-bump.png`, `earth-land-mask.png`,
+`earth-night-2k.jpg`, and `seoul-districts.json` were verified (2026-09-05) and
+moved into the tables above. Two remain unresolved:
+
+- **`public/mirror/data/earth-topo.json`** — *Estimated source (unverified):
+  Natural Earth (naturalearthdata.com), likely public domain.* No commit
+  message or code comment names a source. The estimate rests on a structural
+  match: the TopoJSON's four object names — `coastline_50m`, `coastline_110m`,
+  `lakes_50m`, `lakes_110m` — are Natural Earth's own theme names at two of its
+  three canonical scales, which is a distinctive enough combination that
+  coincidence is unlikely, but no direct citation was found to confirm it.
+- **`public/icons.svg`** — *Unresolved.* Four of its six symbols
+  (`bluesky-icon`, `discord-icon`, `github-icon`, `x-icon`) are recognizable
+  official brand marks used in the standard "link to our socials" convention
+  — a trademark-usage question, not an attribution-license one, and not
+  pursued further here. The other two (`documentation-icon`, `social-icon`,
+  generic outline icons in a shared purple-stroke style) have no identifiable
+  source: no git commit message, no reference anywhere in `src/` (the file
+  appears unused — confirmed by grep — and a same-day design-audit doc already
+  flags it for consolidation into a new icon sheet), and it was not carried
+  over from the AirLens-platform monorepo this project was ported from. It may
+  be originally authored for this repo; that could not be confirmed either.
 
 ## What is deliberately *not* claimed here
 
