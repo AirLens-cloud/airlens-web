@@ -8,6 +8,17 @@ export interface CapsulePanelProps {
   data: CapsuleDataReady
   /** Content width in px — one drag page's travel distance. */
   contentWidth: number
+  /** Where the shown reading's location came from — governs the fallback
+   * note and "Use my location" CTA below the city line (UI G1). */
+  locationSource: 'user' | 'approx' | 'none'
+  /** Distance from the visitor's own geolocation pick to the resolved feed
+   * city, in km — null unless `locationSource === 'user'` via an actual
+   * geolocation fix (never for a searched city or the IP-approximate guess;
+   * see `AqiCapsule`'s computation). */
+  distanceKm: number | null
+  requestingLocation: boolean
+  locationDenied: boolean
+  onRequestLocation: () => void
 }
 
 const DRAG_SPRING = { damping: 0.72, response: 0.32 }
@@ -60,7 +71,15 @@ function buildSparkline(series: CapsuleDataReady['series24h'], w: number, h: num
  * sparkline). Horizontal drag with pointer capture, rubberband resistance
  * past the edges, and a momentum-projected snap to the nearer page.
  */
-export default function CapsulePanel({ data, contentWidth }: CapsulePanelProps): ReactNode {
+export default function CapsulePanel({
+  data,
+  contentWidth,
+  locationSource,
+  distanceKm,
+  requestingLocation,
+  locationDenied,
+  onRequestLocation,
+}: CapsulePanelProps): ReactNode {
   const [page, setPage] = useState(0)
   const translateX = useSpring(0, DRAG_SPRING)
   const trackRef = useRef<HTMLDivElement | null>(null)
@@ -145,6 +164,38 @@ export default function CapsulePanel({ data, contentWidth }: CapsulePanelProps):
                 : 'No uncertainty band published for this forecast'}
             </p>
             <p className="aq-capsule-panel__meta">{data.city}</p>
+            {locationSource === 'user' && distanceKm !== null && (
+              <p className="aq-capsule-panel__location-note t-micro">
+                NEAREST TO YOU · {Math.round(distanceKm)} KM
+              </p>
+            )}
+            {locationSource !== 'user' && (
+              <div className="aq-capsule-panel__location">
+                {locationSource === 'none' && (
+                  <p className="aq-capsule-panel__location-note t-micro">
+                    NEAREST FEED CITY — NOT YOUR LOCATION
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="aq-capsule-panel__location-cta"
+                  onClick={onRequestLocation}
+                  disabled={requestingLocation}
+                >
+                  {requestingLocation ? 'Locating…' : 'Use my location'}
+                </button>
+                {locationDenied && locationSource === 'none' && (
+                  <p className="aq-capsule-panel__location-note t-micro">
+                    LOCATION DENIED — SHOWING FEED FALLBACK
+                  </p>
+                )}
+                {locationDenied && locationSource === 'approx' && (
+                  <p className="aq-capsule-panel__location-note t-micro">
+                    LOCATION DENIED — SHOWING APPROXIMATE (IP-BASED)
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="aq-capsule-panel__page" style={{ width: contentWidth }}>
             <p className="aq-capsule-panel__meta">

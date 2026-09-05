@@ -15,6 +15,7 @@ import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
 import { useLocationPersonalization } from '../../../hooks/useLocationPersonalization'
 import { formatElapsed } from '../../../lib/home/whyNow'
+import { haversineKm } from '../../../lib/today/nearestCity'
 
 const CAPSULE_SPRING = { damping: 0.68, response: 0.38 }
 const COLLAPSED_W = 220
@@ -99,12 +100,21 @@ export interface AqiCapsuleProps {
  * that opt-in it falls back to the same `approx` (edge IP) point Home uses,
  * so the two surfaces never disagree about where the visitor is. Idle state
  * always shows a location label, badged by how the point was obtained:
- * nothing for an opt-in choice, "APPROXIMATE" for the IP guess, and "NOT
- * YOUR LOCATION" for the feed's "thickest air" fallback pick — that last
- * number is very unlikely to be the visitor's own air.
+ * a "NEAREST TO YOU" distance for an opt-in geolocation choice, nothing
+ * extra for a searched city, "APPROXIMATE" for the IP guess, and "NEAREST
+ * FEED CITY — NOT YOUR LOCATION" for the feed's "thickest air" fallback
+ * pick — that last number is very unlikely to be the visitor's own air.
+ *
+ * UI G1 (2026-09-05, approved mockup): the fallback/approximate states also
+ * carry their own "Use my location" CTA directly on the expanded panel —
+ * `requestGeolocation` from the same shared `useLocationPersonalization`
+ * hook Home's hero CTA already calls, so a pick made here and a pick made
+ * on Home write to (and read from) the identical store; there is no second,
+ * capsule-only location state. No auto-prompt: the browser permission
+ * dialog only fires from this button's own click, never on mount.
  */
 export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
-  const { choice, approx } = useLocationPersonalization()
+  const { choice, approx, requesting, denied, requestGeolocation } = useLocationPersonalization()
   const point = choice ?? approx
   const personalizedLocation = point ? { lat: point.lat, lon: point.lon } : null
   // Same three-way honesty as the Home hero: an opt-in choice is the
@@ -112,6 +122,17 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   // neither means this is the feed's thickest-air pick.
   const locationSource: 'user' | 'approx' | 'none' = choice ? 'user' : approx ? 'approx' : 'none'
   const data = useCapsuleData(personalizedLocation)
+  // Distance from the visitor's own geolocation pick to the feed city it
+  // resolved to — only meaningful for a real GPS/Wi-Fi fix (`source ===
+  // 'geolocation'`), not a typed-in search pick (already an exact match to
+  // whatever city the visitor chose) or the IP-approximate guess (not an
+  // opt-in). `haversineKm` is the same great-circle helper `pickNearestCity`
+  // already uses to resolve that city in the first place — no second
+  // distance formula.
+  const distanceKm =
+    data.status === 'ready' && choice?.source === 'geolocation'
+      ? haversineKm(choice.lat, choice.lon, data.lat, data.lon)
+      : null
   const reducedMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [pulsing, setPulsing] = useState(false)
@@ -314,7 +335,12 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
         <span className="aq-capsule__loc-row t-micro">
           <span className="aq-capsule__loc">{data.city}</span>
           {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
-          {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
+          {locationSource === 'none' && (
+            <span className="aq-capsule__warn">NEAREST FEED CITY — NOT YOUR LOCATION</span>
+          )}
+          {locationSource === 'user' && distanceKm !== null && (
+            <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
+          )}
         </span>
         <span className="aq-capsule__reading-row">
           <AqiDot tier={data.tier} size={10} />
@@ -359,7 +385,15 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
           </button>
           {open && data.status === 'ready' && (
             <div id={panelId} className="aq-capsule__panel">
-              <CapsulePanel data={data} contentWidth={EXPANDED_W - PANEL_PAD * 2} />
+              <CapsulePanel
+                data={data}
+                contentWidth={EXPANDED_W - PANEL_PAD * 2}
+                locationSource={locationSource}
+                distanceKm={distanceKm}
+                requestingLocation={requesting}
+                locationDenied={denied}
+                onRequestLocation={requestGeolocation}
+              />
             </div>
           )}
         </LiquidGlass>

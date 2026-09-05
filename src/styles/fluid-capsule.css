@@ -147,6 +147,17 @@
   letter-spacing: 0.05em;
 }
 
+/* Positive confirmation, not a warning — deliberately NOT `.aq-capsule__warn`
+   (the solid orange-ink badge means "this isn't your location"; a real
+   geolocation pick is the opposite of that). Muted text like the rest of
+   the idle bar's secondary copy. */
+.aq-capsule__distance {
+  flex-shrink: 0;
+  color: var(--capsule-ink-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
 .aq-capsule__reading-row {
   display: flex;
   align-items: center;
@@ -226,6 +237,53 @@
   margin: 0;
   font-size: 12px;
   color: var(--capsule-ink-muted);
+}
+
+.aq-capsule-panel__location {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+}
+
+.aq-capsule-panel__location-note {
+  margin: 0;
+}
+/* Same compound-override idiom as `.aq-capsule__loc-row.t-micro` above:
+   `.t-micro` supplies size/family/weight/case, this keeps the muted glass
+   ink instead of `.t-micro`'s own `--ink-2` (that fixed value under-
+   contrasts on the day glass tier — see the P1 fix comment on
+   `.aq-capsule__glass.liquid-glass--day` above). */
+.aq-capsule-panel__location-note.t-micro {
+  letter-spacing: 0.08em;
+  color: var(--capsule-ink-muted);
+}
+
+/* Same secondary-CTA pattern as the Home hero's `.home-hero__cta--secondary`
+   (home.css: transparent fill, `currentColor` border, `--r-0` radius) —
+   NOT that literal class, though: home.css is only ever loaded once
+   `Home.tsx` mounts, but this panel renders from `FluidChrome` on
+   /today, /globe, /insights too, where home.css may never have loaded.
+   Redeclaring the same values here (self-contained in this globally-loaded
+   stylesheet) keeps the visual language identical without a cross-page
+   stylesheet dependency. `currentColor` already resolves to the capsule's
+   own `--capsule-ink` (set on `.aq-capsule__glass`), so no color override
+   is needed here either — same reason the Home version works. */
+.aq-capsule-panel__location-cta {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-0);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.aq-capsule-panel__location-cta:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .aq-capsule-panel__spark {

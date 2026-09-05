@@ -6,7 +6,10 @@
  */
 import type { ForecastCity } from '../../types/forecast'
 
-function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+/** Great-circle distance in km. Exported for callers that need a raw
+ * point-to-point distance (e.g. the capsule's "NEAREST TO YOU · N KM" label)
+ * rather than a nearest-of-many lookup. */
+export function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
   const r = 6371
   const dLat = ((bLat - aLat) * Math.PI) / 180
   const dLon = ((bLon - aLon) * Math.PI) / 180

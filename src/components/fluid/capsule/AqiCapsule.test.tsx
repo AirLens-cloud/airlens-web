@@ -195,13 +195,13 @@ describe('AqiCapsule', () => {
     expect(within(container).getByText('NO FEED')).toBeTruthy()
   })
 
-  it('shows the location label and a NOT YOUR LOCATION warning for the fallback pick', () => {
+  it('shows the location label and an honest fallback warning for the fallback pick', () => {
     // Arrange — no choice, no approx (default mock): the feed's thickest-air pick
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).getByText('Seoul')).toBeTruthy()
-    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
+    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
   })
 
   it('badges an IP-approximate reading as APPROXIMATE rather than as the visitor’s own', () => {
@@ -224,6 +224,87 @@ describe('AqiCapsule', () => {
     // Assert
     expect(within(container).getByText('Seoul')).toBeTruthy()
     expect(container.querySelector('.aq-capsule__warn')).toBeNull()
+  })
+})
+
+describe('AqiCapsule — G1 location personalization', () => {
+  it('never requests geolocation on mount — only a click fires the permission prompt', () => {
+    // Arrange
+    const requestGeolocation = vi.fn()
+    mockPersonalization({ requestGeolocation })
+    // Act
+    render(<AqiCapsule />)
+    // Assert
+    expect(requestGeolocation).not.toHaveBeenCalled()
+  })
+
+  it('offers a "Use my location" CTA on the fallback panel that requests geolocation on click', () => {
+    // Arrange
+    const requestGeolocation = vi.fn()
+    mockPersonalization({ requestGeolocation })
+    const { container } = render(<AqiCapsule />)
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Act
+    const cta = within(container).getByText('Use my location')
+    fireEvent.click(cta)
+    // Assert
+    expect(requestGeolocation).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows "Locating…" and disables the CTA while a request is in flight', () => {
+    // Arrange
+    mockPersonalization({ requesting: true })
+    const { container } = render(<AqiCapsule />)
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Assert
+    const cta = within(container).getByText('Locating…') as HTMLButtonElement
+    expect(cta.disabled).toBe(true)
+  })
+
+  it('shows a NEAREST TO YOU distance once a geolocation pick personalizes the reading', () => {
+    // Arrange — a real GPS/Wi-Fi fix, not an exact match to the resolved city
+    mockPersonalization({ choice: { lat: 37.5, lon: 127.0, label: 'My location', source: 'geolocation' } })
+    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert — idle bar
+    expect(within(container).getByText(/^NEAREST TO YOU · \d+ KM$/)).toBeTruthy()
+    // Assert — expanded panel repeats it
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    expect(within(container).getAllByText(/^NEAREST TO YOU · \d+ KM$/).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('does not show a distance for a typed-in search pick — already an exact match', () => {
+    // Arrange
+    mockPersonalization({ choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' } })
+    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(within(container).queryByText(/NEAREST TO YOU/)).toBeNull()
+  })
+
+  it('keeps the fallback label and surfaces a denial note when permission was refused', () => {
+    // Arrange — no choice, no approx, denied
+    mockPersonalization({ denied: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Assert
+    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
+    expect(within(container).getByText('LOCATION DENIED — SHOWING FEED FALLBACK')).toBeTruthy()
+  })
+
+  it('hides the CTA and fallback note once a real choice personalizes the reading', () => {
+    // Arrange
+    mockPersonalization({ choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'search' } })
+    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Assert
+    expect(within(container).queryByText('Use my location')).toBeNull()
+    expect(within(container).queryByText(/NOT YOUR LOCATION/)).toBeNull()
   })
 })
 
