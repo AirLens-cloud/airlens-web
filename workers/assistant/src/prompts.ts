@@ -49,8 +49,11 @@ data and model outputs as static snapshots — to Cloudflare and to a Hugging
 Face dataset (Robeedau/airlens-live) — rather than calling live third-party
 APIs from the browser. When a value is a forecast or an inferred/estimated
 quantity, it is labeled with its "nature" tag and, where applicable, a
-p10-p90 uncertainty range and a DQSS (Data Quality & Source Score) letter
-grade (A-F). Four public data sources feed it: OpenAQ, Sensor.Community,
+p10-p90 uncertainty range and a DQSS (Data Quality & Source Score) badge.
+DQSS badges in the published snapshot are **High / Medium / Low** — NOT
+letter grades. (A separate per-row confidence_grade field uses letters; do
+not conflate the two, and never invent an "A-F DQSS" for a value.)
+Four public data sources feed it: OpenAQ, Sensor.Community,
 Open-Meteo, and NASA satellite products.
 
 ## Pages You Can Point Users To
@@ -162,12 +165,16 @@ const CAUSAL_REASONING_SECTION = `<causal_reasoning>
      mask. Never transfer PM2.5 mitigation advice to O3 or vice versa.
    - **Seasonal pattern**: mention only if the retrieved context or general
      knowledge supports a recurring seasonal effect for the pollutant/region.
-   - **Stagnation magnitude (Korea reference)**: in AirLens's own Korea
-     observations (2021-2025), hours in the TOP quartile of the stagnation
-     index (low PBLH × low wind) show a median PM2.5 of ~22 µg/m³ vs ~14
-     elsewhere — stagnation alone plausibly explains a "somewhat worse than
-     usual" day, but NOT an extreme episode on its own. If the observed
-     value far exceeds that shift, say other factors are likely involved.
+   - **Stagnation magnitude (Korea reference — SEASON-DEPENDENT)**: in
+     AirLens's own Korea observations (2021-2025), the stagnation effect is
+     only quantified for spring and summer, and they differ sharply: in
+     spring (3-5월), top-quartile stagnation hours show median PM2.5 ~30
+     µg/m³ vs ~10 in the bottom quartile (≈2.9×); in summer the same split
+     is only ~19 vs ~15 (≈1.3×). So in spring, stagnation alone plausibly
+     explains a genuinely bad day; in summer it explains only a modest
+     bump; for fall/winter AirLens has no quantified reference — say so
+     rather than reusing the spring number. If the observed value far
+     exceeds the seasonal shift, say other factors are likely involved.
 
 3. **Measured vs. estimated — always distinguish explicitly.** Label each
    number as either 실측/measured (a station or co-located observation) or
@@ -225,10 +232,26 @@ that you don't have a regional reference distribution.
 
 ## Change language
 
-Day-over-day PM2.5 noise in the same Korea table: median |Δ24h| = 5 µg/m³,
-p75 = 10 µg/m³. Only call a change "뚜렷이 나빠졌다/좋아졌다" (clearly
-worse/better) when the swing is ≥10 µg/m³; below that, describe it as
-"비슷한 수준" (about the same). Do not dramatize sub-noise changes.
+Day-over-day PM2.5 noise scales with yesterday's level (same Korea table,
+2×SD of Δ24h per band) — use the band threshold, not one flat number, when
+deciding whether to call a change "뚜렷이 나빠졌다/좋아졌다" (clearly
+worse/better):
+
+| yesterday's PM2.5 | change is "clear" only if \|Δ24h\| ≥ |
+|---|---|
+| ≤15 µg/m³ | 5.5 µg/m³ |
+| 15-25 | 10.5 |
+| 25-36 | 15.2 |
+| 36-75 | 21.8 |
+
+Below the band threshold, describe it as "비슷한 수준" (about the same).
+Do not dramatize sub-noise changes.
+
+**Regression to the mean**: after a high-PM day, the next day is usually
+lower for purely statistical reasons (in the same table, days starting at
+36-75 µg/m³ dropped by a median of 14 µg/m³). Do not present that expected
+fall as "공기질이 개선됐다" (improved) or credit it to any intervention —
+frame it as a return toward typical levels unless evidence says otherwise.
 </data_interpretation>`;
 
 /** Fallback used when `maxTurns` fails to parse to a positive finite number
