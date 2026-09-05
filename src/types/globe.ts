@@ -251,6 +251,10 @@ export interface DataQualityMeta {
   inputs?: Record<string, string>;
   /** 'partial' 소스일 때 실측 성분들의 가중치 합 범위 [min, max] (%). */
   measured_weight_range?: number[];
+  /** 파이프라인이 등급을 매긴 관측소 수 (forward-compat — 미선언 파일은 `stations.length`로 대체). */
+  graded_stations?: number;
+  /** 업스트림이 아는 전체 관측소 수 (선택 — `graded_stations` 없이는 무의미). */
+  total_stations?: number;
 }
 
 /** Response shape of data_quality.json */
@@ -644,6 +648,18 @@ export interface DQSSPartialDetail {
   measuredWeightMax: number;
 }
 
+/**
+ * 관측소 카운트 — `meta.graded_stations`/`total_stations`가 선언되어 있으면 그 값,
+ * 아니면 `DQSSCache.stations.length`(이미 finite `final_score`만 필터된 배열)로
+ * 대체한다. `declared: false` 는 그 대체 경로를 탔다는 표시 — G8 신뢰도 스트립이
+ * 툴팁 문구를 다르게 고른다 (선언값 vs 파생값을 같은 문장으로 뭉개지 않는다).
+ */
+export interface DQSSStationCounts {
+  graded: number;
+  total: number | null;
+  declared: boolean;
+}
+
 export interface DQSSCache {
   map: DQSSScoreMap;
   stations: DQSSStation[];
@@ -651,6 +667,8 @@ export interface DQSSCache {
   provenance: DQSSProvenance | null;
   /** 'partial' 일 때만 값 존재 — 그 외에는 null. */
   partialDetail: DQSSPartialDetail | null;
+  /** 항상 값 존재 — 관측소가 0개여도 `{graded: 0, total: null, declared: false}`. */
+  stationCounts: DQSSStationCounts;
 }
 
 // ── IDW Heatmap Worker (Globe P4a — three/systems/idwCore.ts) ──

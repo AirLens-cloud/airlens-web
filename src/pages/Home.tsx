@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import HomeHero from '../components/home/HomeHero'
+import HomeTrustStrip from '../components/home/HomeTrustStrip'
 import HomeForecastStrip from '../components/home/HomeForecastStrip'
 import HomeWhyNow from '../components/home/HomeWhyNow'
 import HomeActOnIt from '../components/home/HomeActOnIt'
@@ -80,6 +81,9 @@ export default function Home() {
           onRequestLocation={requestGeolocation}
           onSelectCity={selectCity}
         />
+        {data.status === 'ready' && (
+          <HomeTrustStrip coords={coords} updatedAt={data.updatedAt} nowMs={renderedAtMs} />
+        )}
       </div>
 
       {data.status === 'ready' ? (

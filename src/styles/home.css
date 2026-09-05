@@ -201,6 +201,76 @@
   color: inherit;
 }
 
+/* ============================= G8 trust strip ============================= */
+/* HomeTrustStrip — hairline 3-cell strip directly under the hero reading
+   (approved mockup, design-audit 2026-09-05 G8). Same `--shell` column width
+   as the hero/below-fold shell — a continuation of the hero band, not a new
+   container. `.t-tag` gives mono/11px/weight-600 for free; like
+   `trust-line.css`'s `.trust-line.t-tag`, the uppercase+tracking it also
+   carries is right for the LABEL row but wrong for VALUES ("493 graded",
+   "42m ago" must not read as "493 GRADED"), so this cancels it at the
+   container and re-applies it only on `__label`. */
+.home-trust-strip.t-tag {
+  text-transform: none;
+  letter-spacing: normal;
+}
+.home-trust-strip {
+  max-width: var(--shell);
+  margin: var(--sp-4) auto 0;
+  padding: var(--sp-3) var(--pad-x) 0;
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+}
+@media (max-width: 640px) {
+  .home-trust-strip {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+}
+.home-trust-strip__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.home-trust-strip__label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+.home-trust-strip__value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  width: fit-content;
+  color: var(--orange-ink);
+  text-decoration: none;
+}
+a.home-trust-strip__value:hover {
+  text-decoration: underline;
+}
+.home-trust-strip__value--static {
+  color: var(--ink-1);
+}
+/* PARTIAL tag — same structural pattern (`<em title="…">`) as the Globe
+   evidence card's `.atmos-quality-line em` (AtmosphericEvidenceCard.tsx),
+   ported here rather than shared cross-page since that stylesheet lives in
+   the observatory-scoped CSS carve-out (design-taxonomy.md's OBS_EXEMPT_SCOPE),
+   which this page is not part of. */
+.home-trust-strip__value em {
+  font-style: normal;
+  letter-spacing: 0.08em;
+  padding: 0 var(--sp-1);
+  border: 1px solid currentColor;
+}
+.home-trust-strip__caveat {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-style: italic;
+  color: var(--ink-2);
+}
+
 /* ============================= 24h strip ================================= */
 
 .home-strip {
