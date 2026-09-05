@@ -118,12 +118,14 @@ export const routes: Array<Route<RouteRender>> = [
   // readout — its former always-visible PM2.5 HUD+Answer content moved into
   // the Insight tab (Weather Storyboard v3, Wave 2A), so wrapping in
   // FluidChrome no longer doubles up a floating AqiCapsule. Same
-  // capsuleVariant="day" pattern as /insights, below.
+  // capsuleVariant="day" pattern as /insights, below. `capsuleLocationDisplay
+  //="minimal"` (UI G4, 2026-09-05 audit): WeatherHero already shows the
+  // visitor's location up top, so the capsule drops its own duplicate row.
   {
     path: '/today',
     render: () => ({
       element: (
-        <FluidChrome capsuleVariant="day">
+        <FluidChrome capsuleVariant="day" capsuleLocationDisplay="minimal">
           <Today />
         </FluidChrome>
       ),

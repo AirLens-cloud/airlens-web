@@ -85,7 +85,20 @@ export interface AqiCapsuleProps {
   /** Glass surface variant — night for the landing hero, day for light
    * surfaces (Today porting). */
   variant?: LiquidGlassProps['variant']
+  /** UI G4 (2026-09-05 design audit): 'full' (default) shows the idle bar's
+   * location line (city name + APPROXIMATE/NOT YOUR LOCATION badge or
+   * NEAREST-TO-YOU distance). 'minimal' drops that row and shows only the
+   * reading — for a host page whose OWN hero already displays the visitor's
+   * location (Today's `WeatherHero` place name + source badge), so the
+   * floating capsule stops repeating it right next to it. The expanded
+   * panel (`CapsulePanel`) is unaffected either way — its fuller location
+   * detail (distance, "Use my location" CTA) is worth the extra room once
+   * the visitor has chosen to open it. */
+  locationDisplay?: 'full' | 'minimal'
 }
+
+const MINIMAL_COLLAPSED_W = 168
+const MINIMAL_COLLAPSED_H = 56
 
 /**
  * AqiCapsule — floating pill that expands into a 2-page glass panel
@@ -116,7 +129,9 @@ export interface AqiCapsuleProps {
  * capsule-only location state. No auto-prompt: the browser permission
  * dialog only fires from this button's own click, never on mount.
  */
-export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
+export default function AqiCapsule({ variant = 'night', locationDisplay = 'full' }: AqiCapsuleProps = {}): ReactNode {
+  const collapsedW = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_W : COLLAPSED_W
+  const collapsedH = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_H : COLLAPSED_H
   const { choice, approx, requesting, denied, requestGeolocation } = useLocationPersonalization()
   const point = choice ?? approx
   const personalizedLocation = point ? { lat: point.lat, lon: point.lon } : null
@@ -149,8 +164,8 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   const userInteractedRef = useRef(false)
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const width = useSpring(COLLAPSED_W, CAPSULE_SPRING)
-  const height = useSpring(COLLAPSED_H, CAPSULE_SPRING)
+  const width = useSpring(collapsedW, CAPSULE_SPRING)
+  const height = useSpring(collapsedH, CAPSULE_SPRING)
 
   useEffect(() => {
     const applyW = (v: number) => {
@@ -172,8 +187,8 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
 
   function applyOpen(next: boolean): void {
     setOpen(next)
-    width.set(next ? EXPANDED_W : COLLAPSED_W)
-    height.set(next ? EXPANDED_H : COLLAPSED_H)
+    width.set(next ? EXPANDED_W : collapsedW)
+    height.set(next ? EXPANDED_H : collapsedH)
   }
 
   function clearAutoCloseTimer(): void {
@@ -316,7 +331,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const radius = open ? 20 : COLLAPSED_H / 2
+  const radius = open ? 20 : collapsedH / 2
   const phase = pulsing ? 'alerting' : open ? 'open' : 'idle'
   // Never actually hide while it's open or announcing an alert — only the
   // idle collapsed pill slides away.
@@ -333,21 +348,33 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   } else {
     const elapsed = nowTick - new Date(data.updatedAt).getTime()
     const remaining = REFRESH_INTERVAL_MS - elapsed
+    // UI G4 (2026-09-05 design audit): the bare `mm:ss` countdown had no
+    // visible label anywhere — its meaning (time to the next 6h forecast
+    // refresh, see REFRESH_INTERVAL_MS above) only exists in this file's own
+    // comments. A `title` attribute surfaces it on hover/focus without
+    // spending any of the idle bar's tight width on a permanent label; the
+    // stale branch gets its own, distinct explanation.
+    const countdownTitle =
+      remaining > 0
+        ? `Next forecast refresh in ${formatCountdown(remaining)} (updates every 6h)`
+        : 'This forecast is older than its usual 6h refresh window'
     idle = (
       <>
-        <span className="aq-capsule__loc-row t-micro">
-          <span className="aq-capsule__loc">{data.city}</span>
-          {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
-          {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
-          {locationSource === 'user' && distanceKm !== null && (
-            <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
-          )}
-        </span>
+        {locationDisplay === 'full' && (
+          <span className="aq-capsule__loc-row t-micro">
+            <span className="aq-capsule__loc">{data.city}</span>
+            {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
+            {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
+            {locationSource === 'user' && distanceKm !== null && (
+              <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
+            )}
+          </span>
+        )}
         <span className="aq-capsule__reading-row">
           <AqiDot tier={data.tier} size={10} />
           <span className="aq-capsule__value">{Math.round(data.current)}</span>
           <span className="aq-capsule__unit">µg/m³</span>
-          <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined}>
+          <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined} title={countdownTitle}>
             {remaining > 0 ? formatCountdown(remaining) : formatElapsed(elapsed)}
           </span>
         </span>

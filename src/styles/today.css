@@ -33,13 +33,20 @@
 }
 
 /* UI Tier-1 P3-B: sits below the sky-glass hero (not inside it — WeatherHero
- * owns the one glass surface on this page). Only adds the page gutter
- * (`--pad-x`, matching `.today-toolbar`'s left edge) — `.trust-line`'s own
- * 560px cap (trust-line.css) is left alone, not fought with a second
- * max-width here. */
+ * owns the one glass surface on this page). design-audit V3 (2026-09-05):
+ * this used to be a flat `margin: 0 var(--pad-x)` — a DIFFERENT gutter
+ * recipe than the hero/toolbar/conditions' shared `max-width:var(--shell) +
+ * margin:0 auto + padding:0 var(--pad-x)`, so on wide viewports (>1280+2·
+ * pad-x) this sat at a flat --pad-x while the hero's edge grew past it
+ * (measured 40px vs 80px at 1440px — see `.wx-sky`'s comment in weather.css
+ * for the algebra). Same recipe here closes that gap; `.trust-line`'s own
+ * 560px cap (trust-line.css) is untouched — it just now lives inside a
+ * correctly-gutter-aligned wrapper instead of a bare margin. */
 .today-hero__trust-line {
-  margin-left: var(--pad-x);
-  margin-right: var(--pad-x);
+  max-width: var(--shell);
+  margin: 0 auto;
+  padding: 0 var(--pad-x);
+  box-sizing: border-box;
 }
 
 /* Embedded dark instrument panel — see file header. Width-capped + centered

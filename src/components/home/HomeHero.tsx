@@ -7,9 +7,11 @@ import TrustLine from '../wireframe/TrustLine'
 import StateChip from '../content/StateChip'
 import Materialize from '../fluid/Materialize'
 import CitySearch from '../weather/CitySearch'
+import HomeHeroRail from './HomeHeroRail'
 import { dataState } from '../../types/dataState'
 import { ACTION_SENTENCE, STALE_THRESHOLD_MS, TIER_LABEL, TIER_TINT_BAND } from '../../lib/config/homeBriefing'
 import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
+import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
 import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
 import type { WeatherCity } from '../../lib/cityCatalog'
 import { useSpring } from '../../motion/useSpring'
@@ -78,6 +80,7 @@ export default function HomeHero({
   const [displayedValue, setDisplayedValue] = useState(targetValue)
   const hasSyncedRef = useRef(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const reducedMotion = useReducedMotion()
 
   // The `.set()`/`.jump()` calls are side effects, not state updates — same
   // separation ChatFAB's `translateY` effect uses. The first time `data`
@@ -150,6 +153,7 @@ export default function HomeHero({
       aria-label="Current air quality"
     >
       <div className="home-hero__inner">
+        <div className="home-hero__main">
         <div className="home-hero__eyebrow">
           {locationSource === 'user' ? (
             <>MY LOCATION · {data.city}, {data.countryCode}</>
@@ -161,9 +165,11 @@ export default function HomeHero({
         </div>
 
         <div className="home-hero__reading">
-          <div className="home-hero__value t-numeric num">
-            {value}
-            <span className="home-hero__unit">µg/m³</span>
+          <div className={reducedMotion ? 'home-hero__value-mask' : 'home-hero__value-mask motion-reveal-mask'}>
+            <div className="home-hero__value t-numeric num">
+              {value}
+              <span className="home-hero__unit">µg/m³</span>
+            </div>
           </div>
           <div className="home-hero__tier">
             <AqiDot tier={data.tier} size={14} />
@@ -256,6 +262,9 @@ export default function HomeHero({
           uncertainty={uncertainty}
           scopeLabel="THIS FORECAST"
         />
+      </div>
+
+      <HomeHeroRail data={data} reducedMotion={reducedMotion} />
       </div>
     </WfGlassCard>
   )

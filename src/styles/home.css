@@ -53,7 +53,22 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  gap: var(--sp-5);
+}
+@media (min-width: 860px) {
+  .home-hero__inner {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-6);
+  }
+}
+.home-hero__main {
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-3);
+  min-width: 0;
+  flex: 1;
 }
 
 .home-hero__eyebrow {
@@ -92,6 +107,12 @@
   vertical-align: super;
   font-weight: 600;
 }
+.home-hero__value-mask {
+  overflow: hidden;
+}
+/* REVEAL verb (Wave 2A entrance vocabulary, motion.css) — same mask-rise
+ * treatment as WeatherHero's `.wx-hero__temp-mask`. `.motion-reveal-mask` is
+ * applied conditionally by the component (useReducedMotion gate). */
 .home-hero__tier {
   display: flex;
   align-items: center;
@@ -199,6 +220,83 @@
 }
 .home-hero__location-note.t-caption {
   color: inherit;
+}
+
+/* ---- Instrument rail (design-audit V2) — fills the hero's right-hand
+   space at desktop widths (`.home-hero__inner`'s row layout, above). Same
+   spark grammar as `WeatherHeroRail` (weather.css): thick round-cap line +
+   soft area fill + accented endpoint. Ink rides `--glass-card-ink` (the
+   hero's own AQI-tint axis, surfaces.css), not the sitewide `--ink-*` scale
+   — same reasoning as `.home-hero__cta--primary` above. */
+.home-hero__rail {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  color: var(--glass-card-ink, var(--tint-ink-dark));
+}
+@media (min-width: 860px) {
+  .home-hero__rail {
+    width: clamp(280px, 30vw, 340px);
+  }
+}
+.home-hero__rail-head.t-micro {
+  opacity: 0.72;
+}
+.home-hero__rail-svg {
+  width: 100%;
+  height: 52px;
+  display: block;
+  overflow: visible;
+}
+.home-hero__rail-area {
+  fill: color-mix(in srgb, currentColor 10%, transparent);
+  stroke: none;
+}
+.home-hero__rail-line {
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.home-hero__rail-dot {
+  fill: var(--orange);
+}
+.home-hero__rail-empty {
+  opacity: 0.72;
+}
+/* DRAW verb (Wave 2A entrance vocabulary, motion.css) — same left-to-right
+ * hairline grow as WeatherHeroRail's divider. `.motion-draw` is applied
+ * conditionally by the component (useReducedMotion gate). */
+.home-hero__rail-divider {
+  height: 1px;
+  background: currentColor;
+  opacity: 0.24;
+}
+.home-hero__rail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-3);
+}
+.home-hero__rail-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--sp-2) 0 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+}
+.home-hero__rail-tile-label.t-micro {
+  opacity: 0.72;
+}
+.home-hero__rail-tile-value {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: var(--fs-stat-s);
+  font-variant-numeric: tabular-nums;
+}
+.home-hero__rail-tile-sub.t-caption {
+  opacity: 0.72;
 }
 
 /* ============================= G8 trust strip ============================= */

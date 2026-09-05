@@ -173,6 +173,7 @@ export default function Today() {
           status={weatherData.status}
           configured={weatherData.configured}
           weather={weatherData.weather}
+          aq={weatherData.aq}
           onRetry={weatherData.retry}
         />
         {primaryPm25 !== null && (

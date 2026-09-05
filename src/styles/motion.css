@@ -92,6 +92,48 @@
   }
 }
 
+/* ---- Wave 2A entrance vocabulary — REVEAL / DRAW / RISE ----
+ * Run-once mount choreography for the Today/Home hero instrument rails
+ * (WeatherHeroRail/HomeHeroRail + the headline number masks they sit beside).
+ * RISE is `.fluid-enter` above (already the sitewide staggered entrance) —
+ * these two are the other two verbs. Both are `--ease-out` only, never a
+ * spring: springs in this codebase are reserved for interactive feedback
+ * (AqiCapsule/CapsulePanel's drag-driven `useSpring`), not page-load
+ * choreography. Applied conditionally by each component via its own
+ * `useReducedMotion()` read — the class is never assigned under reduced
+ * motion, so there is nothing here for that case to override. Neither
+ * keyframe touches `will-change`: both are short, single-shot, and scoped to
+ * a handful of elements, so there is no lingering compositor promotion to
+ * clean up after the animation ends. */
+@keyframes w2a-reveal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+/* Wrap the element to mask (e.g. `.wx-hero__temp`) in a `overflow:hidden`
+ * parent carrying this class; the child needs no class of its own — the
+ * animation runs on the parent's `::before`-free content by animating the
+ * child in via context: */
+.motion-reveal-mask > * {
+  animation: w2a-reveal var(--dur-spring-slow) var(--ease-out) both;
+}
+
+@keyframes w2a-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.motion-draw {
+  transform-origin: left center;
+  animation: w2a-draw var(--dur-spring-base) var(--ease-out) both;
+}
+
 /* ---- Theme crossfade (design audit P2 §7 row 4) ----
  * `themeStore.ts` adds `.theme-transitioning` to <html> for exactly 280ms
  * around a system/light/dark toggle, so tokens.css's `[data-theme]` token

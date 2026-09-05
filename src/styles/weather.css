@@ -76,7 +76,16 @@
   --bg-1: rgba(11, 26, 46, 0.08);
   border-radius: var(--r-0);
   overflow: hidden;
-  padding: var(--sp-6) var(--pad-x) var(--sp-7);
+  /* Horizontal gutter moved to `.wx-hero__inner` below (design-audit V3):
+     this section owns the full-bleed sky-gradient background only — its
+     content's left/right inset is decided by ONE container
+     (design-taxonomy.md News Contract #1 "one container, one gutter"), not
+     stacked on top of a second `max-width`+`margin:auto` centering. Splitting
+     it across both elements canceled `--pad-x` out on wide viewports (algebra:
+     padX + ((V-2·padX)-1280)/2 = (V-1280)/2, independent of padX), leaving the
+     hero's real edge at (V-1280)/2 while `.today-hero__trust-line` below it
+     sat at a flat `--pad-x` — measured 80px vs 40px at a 1440px viewport. */
+  padding: var(--sp-6) 0 var(--sp-7);
 }
 .wx-sky[data-sky-phase='night'],
 .wx-sky[data-sky-phase='rain'],
@@ -120,6 +129,11 @@
   z-index: 1;
   max-width: var(--shell);
   margin: 0 auto;
+  /* Same recipe as `.wx-shell`/`.today-toolbar`/`.today-conditions` (one
+     element carrying both the shell cap and the gutter padding) — see the
+     `.wx-sky` comment above for why this moved here from the outer section. */
+  padding: 0 var(--pad-x);
+  box-sizing: border-box;
 }
 
 .wx-hero__top {
@@ -177,13 +191,38 @@
   cursor: not-allowed;
 }
 
-.wx-hero__reading {
+/* S1 band — `.wx-hero__reading` (temp + condition) beside the new
+ * `.wx-hero__rail` instrument companion (design-audit V2: the reading alone
+ * left ~751 of 1280px unused on desktop). Single column on mobile/tablet —
+ * the rail drops below the reading, full width. */
+.wx-hero__band {
   margin-top: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+@media (min-width: 860px) {
+  .wx-hero__band {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-6);
+  }
+}
+
+.wx-hero__reading {
   display: flex;
   align-items: flex-end;
   gap: var(--sp-5);
   flex-wrap: wrap;
 }
+.wx-hero__temp-mask {
+  overflow: hidden;
+}
+/* REVEAL verb (Wave 2A entrance vocabulary, motion.css) — the headline
+ * number rises out of an overflow mask on mount rather than fading in place.
+ * `.motion-reveal-mask` is applied conditionally by the component
+ * (useReducedMotion gate); when absent this wrapper is inert. */
 .wx-hero__temp {
   font-family: var(--mono);
   font-weight: 700;
@@ -213,6 +252,67 @@
   font-family: var(--mono);
   font-size: 12px;
   color: var(--wx-ink-2);
+}
+
+/* ---- S1 instrument rail (design-audit V2) ---- */
+.wx-hero__rail {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+@media (min-width: 860px) {
+  .wx-hero__rail {
+    width: clamp(280px, 30vw, 340px);
+  }
+}
+/* `.t-micro` supplies size/family/weight/case/tracking; this only swaps its
+   default `--ink-2` for the sky-glass ink scale (same compound-override
+   idiom as `.aq-capsule__loc-row.t-micro`, fluid-capsule.css). */
+.wx-hero__rail-head.t-micro {
+  color: var(--wx-ink-3);
+}
+.wx-hero__rail-svg {
+  width: 100%;
+  height: 52px;
+  display: block;
+  overflow: visible;
+}
+.wx-hero__rail-area {
+  fill: color-mix(in srgb, var(--wx-ink-1) 10%, transparent);
+  stroke: none;
+}
+.wx-hero__rail-line {
+  stroke: var(--wx-ink-1);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wx-hero__rail-dot {
+  fill: var(--orange);
+}
+.wx-hero__rail-empty {
+  color: var(--wx-ink-3);
+}
+/* DRAW verb (Wave 2A entrance vocabulary, motion.css) — the hairline frame
+ * separating the spark from the stat tiles grows from the left edge on
+ * mount. `.motion-draw` is applied conditionally by the component
+ * (useReducedMotion gate); the divider is a plain static rule without it. */
+.wx-hero__rail-divider {
+  height: 1px;
+  background: var(--rule);
+}
+.wx-hero__rail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-2);
+}
+/* Reuses `.wx-tile`'s own label/value/sub 3-tier grammar (S3 instrument
+ * grid, below) — this override only shrinks the min-height, since the rail
+ * sits in a tighter column than the 3-up Conditions-tab grid. */
+.wx-hero__rail-tile {
+  min-height: 72px;
 }
 
 /* ---- City search panel ---- */
