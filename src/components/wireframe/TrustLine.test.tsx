@@ -60,6 +60,23 @@ describe('TrustLine', () => {
     expect(getByTestId('trust-line').textContent).toMatch(/obs age.*unknown/)
   })
 
+  it('renders no scope tag by default, and the given one when scopeLabel is set', () => {
+    // Arrange / Act
+    const unscoped = render(
+      <TrustLine dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
+    )
+    const scoped = render(
+      <TrustLine
+        dqss={{ available: false, reason: 'n/a' }}
+        uncertainty={{ available: false }}
+        scopeLabel="THIS FORECAST"
+      />,
+    )
+    // Assert
+    expect(unscoped.container.querySelector('.trust-line__scope')).toBeNull()
+    expect(scoped.container.querySelector('.trust-line__scope')?.textContent).toBe('THIS FORECAST')
+  })
+
   it('links "Why this number?" to /methodology by default, or a custom href when given', () => {
     // Arrange / Act
     const defaultLink = render(

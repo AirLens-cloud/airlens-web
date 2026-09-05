@@ -55,6 +55,17 @@ export interface TrustLineProps {
   /** Defaults to `/methodology`. */
   methodologyHref?: string
   className?: string
+  /**
+   * What reading this line is trust-scoring — e.g. "THIS FORECAST". Every
+   * caller (`Home`/`Today`/`CountryProfile`) reads a different quantity
+   * (a CAMS forecast, a GRID analysis cell, an annual aggregate), and none
+   * of them is a ground-station observation — a reader who has just seen a
+   * *different* trust surface for an actual station (Home's own G8 strip)
+   * can otherwise mistake "DQSS withheld" here for that station's grade
+   * going missing. Optional and unset by default: existing call sites keep
+   * rendering exactly as before until they opt in.
+   */
+  scopeLabel?: string
 }
 
 /** "2.3h" / "45m" / "3d" — never a countdown, always elapsed time. */
@@ -73,6 +84,7 @@ export default function TrustLine({
   uncertainty,
   methodologyHref = '/methodology',
   className,
+  scopeLabel,
 }: TrustLineProps) {
   const classes = ['trust-line', 't-tag']
   if (className) classes.push(className)
@@ -81,6 +93,7 @@ export default function TrustLine({
 
   return (
     <div className={classes.join(' ')} data-testid="trust-line">
+      {scopeLabel && <span className="trust-line__scope t-micro">{scopeLabel}</span>}
       <span className="trust-line__item">
         <span className="trust-line__k">obs age</span>{' '}
         {ageText ?? <span className="trust-line__na">unknown</span>}

@@ -28,9 +28,22 @@ vi.mock('../hooks/useLocationPersonalization', () => ({ useLocationPersonalizati
 // `fetch('.../blog-data/posts.json')` call on every render.
 vi.mock('../api/blog', () => ({ fetchBlogFeed: vi.fn() }))
 
+// HomeTrustStrip (mounted right under the hero whenever `data.status ===
+// 'ready'`, `Home.tsx`) reads `useDQSSData()` — its own fetch/matching
+// coverage lives in HomeTrustStrip.test.tsx. Mocked here only so this file's
+// hero-focused 'ready' tests don't trigger a real, unmocked HF `fetch`
+// (`useGlobeData.ts`'s `fetchDQSSData`) — this file's own header comment
+// already rules that pattern out for `useCapsuleData`/`fetchBlogFeed` above.
+vi.mock('../hooks/useGlobeData', async () => {
+  const actual = await vi.importActual<typeof import('../hooks/useGlobeData')>('../hooks/useGlobeData')
+  return { ...actual, useDQSSData: vi.fn() }
+})
+
 import { useCapsuleData, type CapsuleDataState, type CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
 import { useLocationPersonalization } from '../hooks/useLocationPersonalization'
 import { fetchBlogFeed } from '../api/blog'
+import { useDQSSData } from '../hooks/useGlobeData'
+import type { DQSSCache } from '../types/globe'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
 
@@ -68,6 +81,28 @@ function mockData(state: CapsuleDataState) {
   vi.mocked(useCapsuleData).mockReturnValue(state)
 }
 
+/** Default DQSS fixture for `HomeTrustStrip` — a graded station right at
+ * `readyFixture()`'s own default coordinates (Seoul), so the strip's DATA
+ * QUALITY cell resolves to a real grade in every 'ready' test unless a test
+ * overrides it (e.g. the withheld-branch test below). */
+function dqssFixture(overrides: Partial<DQSSCache> = {}): DQSSCache {
+  const stations = overrides.stations ?? [
+    { station_id: 's1', lat: 37.5665, lon: 126.978, final_score: 82 },
+  ]
+  return {
+    map: new Map(),
+    stations,
+    provenance: 'measured',
+    partialDetail: null,
+    stationCounts: { graded: stations.length, total: null, declared: false },
+    ...overrides,
+  }
+}
+
+function mockDQSS(cache: DQSSCache | null) {
+  vi.mocked(useDQSSData).mockReturnValue(cache)
+}
+
 type LocationPersonalizationResult = ReturnType<typeof useLocationPersonalization>
 
 /** Defaults to the unpersonalized state (no choice, no approx) — matches
@@ -98,6 +133,7 @@ beforeEach(() => {
   // HomeStoriesResearch's own states (covered in its own test file).
   vi.mocked(fetchBlogFeed).mockReturnValue(new Promise(() => {}))
   mockLocation()
+  mockDQSS(dqssFixture())
 })
 
 afterEach(() => {
@@ -309,6 +345,10 @@ describe('Home page — ready state', () => {
     expect(trustLine?.textContent).toMatch(/DQSS.*withheld/)
     expect(trustLine?.textContent).toMatch(/not published/)
     expect(trustLine?.textContent).toMatch(/obs age/)
+    // design-review 2026-09-05 (PR #82): this line trust-scores the CAMS
+    // forecast reading, never HomeTrustStrip's ground-station DQSS just
+    // below it — the scope tag says so rather than leaving it ambiguous.
+    expect(container.querySelector('.trust-line__scope')?.textContent).toBe('THIS FORECAST')
   })
 
   it('renders TrustLine with a real p10/p90 range when the source publishes one', () => {
@@ -319,6 +359,36 @@ describe('Home page — ready state', () => {
     // Assert
     const trustLine = container.querySelector('[data-testid="trust-line"]')
     expect(trustLine?.textContent).toMatch(/30\.0–55\.0/)
+  })
+})
+
+describe('Home page — G8 trust strip (DQSS branch coverage)', () => {
+  // HomeTrustStrip has its own full unit coverage in HomeTrustStrip.test.tsx
+  // — these two just confirm Home wires `useDQSSData()` (mocked at the top
+  // of this file) into it for both of the branches a reader can land on:
+  // a real grade, and a withheld one.
+  it('shows a real grade in the DATA QUALITY cell when a station is graded at the hero location', () => {
+    // Arrange — beforeEach's mockDQSS(dqssFixture()) is already the graded case.
+    mockData(readyFixture())
+    // Act
+    const { getByTestId } = render(<Home />)
+    // Assert
+    const strip = getByTestId('home-trust-strip')
+    expect(strip.textContent).toContain('A') // dqssScoreToGrade(82) === 'A'
+    expect(strip.textContent).not.toContain('—')
+  })
+
+  it('shows "—" with a reason in the DATA QUALITY cell when the DQSS feed is withheld (seed provenance)', () => {
+    // Arrange
+    mockData(readyFixture())
+    mockDQSS(dqssFixture({ provenance: 'seed' }))
+    // Act
+    const { getByTestId } = render(<Home />)
+    // Assert
+    const strip = getByTestId('home-trust-strip')
+    const qualityLink = strip.querySelector('a[href="/methodology#dqss"]')
+    expect(qualityLink?.textContent).toBe('—')
+    expect(qualityLink?.getAttribute('title')).toMatch(/withheld/i)
   })
 })
 

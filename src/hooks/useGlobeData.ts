@@ -19,7 +19,7 @@ import { wrapDeltaLon } from '../lib/earth/geo';
 import type { CityPrediction } from '../types/ml';
 import type { GlobalGridSnapshot } from '../types/data';
 import type {
-  DQSSStation, DQSSScoreMap, DQSSCache, DQSSPartialDetail,
+  DQSSStation, DQSSScoreMap, DQSSCache, DQSSPartialDetail, DQSSStationCounts,
   DataQualityMeta, DataQualityResponse, DQSSProvenance,
 } from '../types/globe';
 
@@ -119,6 +119,25 @@ function derivePartialDetail(meta: DataQualityMeta | undefined): DQSSPartialDeta
 }
 
 /**
+ * `meta.graded_stations` (+ optional `total_stations`) is a forward-compat
+ * declaration the DQSS pipeline may or may not publish yet — G8 trust strip's
+ * "GROUND STATIONS" cell needs a count even before it exists. When absent,
+ * `stations.length` is an honest substitute: `fetchDQSSData` has already
+ * filtered to entries with a finite `final_score`, so every station left in
+ * that array already carries a score. `declared` tells the caller which path
+ * was taken, so a "493 graded" declared count and a "493 stations" derived
+ * count don't get worded identically.
+ */
+function deriveStationCounts(meta: DataQualityMeta | undefined, stationCount: number): DQSSStationCounts {
+  const graded = meta?.graded_stations;
+  if (typeof graded === 'number' && isFinite(graded)) {
+    const total = meta?.total_stations;
+    return { graded, total: typeof total === 'number' && isFinite(total) ? total : null, declared: true };
+  }
+  return { graded: stationCount, total: null, declared: false };
+}
+
+/**
  * `data_quality.json` is now published to the HF live dataset by the
  * monorepo's DQSS pipeline (`aq-data/data_quality.json`, W1 honest-publishing
  * — verified 2026-09-03, superseding the 2026-08-26 "no publisher yet" note).
@@ -161,7 +180,13 @@ async function fetchDQSSData(): Promise<DQSSCache> {
   for (const s of stations) {
     map.set(dqssGridKey(s.lat, s.lon), s.final_score);
   }
-  return { map, stations, provenance: readProvenance(json.meta), partialDetail: derivePartialDetail(json.meta) };
+  return {
+    map,
+    stations,
+    provenance: readProvenance(json.meta),
+    partialDetail: derivePartialDetail(json.meta),
+    stationCounts: deriveStationCounts(json.meta, stations.length),
+  };
 }
 
 export function lookupDQSSScore(

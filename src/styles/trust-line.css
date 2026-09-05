@@ -17,6 +17,19 @@
   letter-spacing: normal;
 }
 
+/* Optional scope tag ("THIS FORECAST") — distinguishes this line's reading
+   from a *different* trust surface a page may also show (Home's G8 ground-
+   station strip). `.t-micro` supplies its own uppercase/tracking, unaffected
+   by the container's `.trust-line.t-tag` cancelling that for the mixed-case
+   key:value pairs below it. */
+.trust-line__scope {
+  color: var(--ink-2);
+  margin-right: var(--sp-1);
+}
+.glass-card .trust-line__scope {
+  color: var(--glass-card-ink, var(--tint-ink-dark));
+}
+
 .trust-line__item {
   white-space: nowrap;
 }

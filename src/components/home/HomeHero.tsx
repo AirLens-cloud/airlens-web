@@ -246,10 +246,15 @@ export default function HomeHero({
 
         {actionSentence ? <p className="home-hero__action">{actionSentence}</p> : null}
 
+        {/* `scopeLabel` disambiguates this line from HomeTrustStrip's G8
+            ground-station strip just below it — this one always trust-scores
+            the CAMS *forecast* reading above, never a station observation
+            (design-review 2026-09-05, PR #82). */}
         <TrustLine
           ageMs={elapsedMs}
           dqss={{ available: false, reason: 'not measured by this forecast source' }}
           uncertainty={uncertainty}
+          scopeLabel="THIS FORECAST"
         />
       </div>
     </WfGlassCard>
