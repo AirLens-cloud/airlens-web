@@ -48,3 +48,26 @@
 .trust-line a:hover {
   text-decoration: underline;
 }
+
+/* design-audit 2026-09-05 §1 #4: "Why this number?" promoted from a trailing
+   footnote link to a title-weight one — same position, heavier read. */
+.trust-line__why {
+  font-weight: 700;
+}
+
+.trust-line__withheld {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+/* BandSlot renders its own two-row block (track/bracket + label) — this item
+   lays the "p10–p90" key beside it instead of stacking, and drops the
+   shared `.trust-line__item` nowrap (a withheld reason sentence wraps, same
+   as `.trust-line__na` above). */
+.trust-line__item--band {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  white-space: normal;
+}

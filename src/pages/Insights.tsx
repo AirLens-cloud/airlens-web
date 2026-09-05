@@ -18,6 +18,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import AttHeadline from '../components/insights/AttHeadline'
+import CountryCombobox from '../components/insights/CountryCombobox'
 import LaneCrossCheck from '../components/insights/LaneCrossCheck'
 import PolicyLimitBars from '../components/insights/PolicyLimitBars'
 import PolicyMap from '../components/insights/PolicyMap'
@@ -28,6 +29,7 @@ import NewsSentimentCard from '../components/insights/NewsSentimentCard'
 import WfPlaceholder from '../components/wireframe/WfPlaceholder'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
 import { COUNTRY_CENTERS } from '../lib/config/countryCenters'
+import { formatEstimatedTimestamp } from '../lib/insights/format'
 import {
   useInsightsCatalogue,
   useInsightsDetail,
@@ -104,6 +106,11 @@ export default function Insights() {
 
   const mapAnchor = selected ? COUNTRY_CENTERS[selected.countryCode] : undefined
 
+  const estimatedStamp = useMemo(
+    () => (catalogue.generatedAt ? formatEstimatedTimestamp(catalogue.generatedAt) : null),
+    [catalogue.generatedAt],
+  )
+
   if (catalogue.status === 'loading') {
     return (
       <PublicPageContainer tier="hub" className="ins-page obs-surface">
@@ -135,23 +142,18 @@ export default function Insights() {
     <PublicPageContainer tier="hub" className="ins-page obs-surface">
       <div className="ins-shell">
         <nav className="ins-picker" aria-label="Country">
-          <label className="m ins-picker-label">
-            COUNTRY
-            <select
-              className="ins-picker-select"
-              value={selected.countryCode}
-              onChange={(e) => handleSelect(e.target.value)}
-            >
-              {catalogue.countries.map((c) => (
-                <option key={c.countryCode} value={c.countryCode}>
-                  {c.flag ? `${c.flag} ` : ''}{c.name}
-                  {c.summary.att === null ? ' — not estimated' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          {catalogue.generatedAt ? (
-            <span className="m ins-picker-stamp num">ESTIMATED {catalogue.generatedAt}</span>
+          <div className="ins-picker-label">
+            <span className="m">COUNTRY</span>
+            <CountryCombobox
+              countries={catalogue.countries}
+              selectedCode={selected.countryCode}
+              onSelect={handleSelect}
+            />
+          </div>
+          {estimatedStamp ? (
+            <span className="m ins-picker-stamp num" title={catalogue.generatedAt ?? undefined}>
+              ESTIMATED {estimatedStamp}
+            </span>
           ) : null}
         </nav>
 
@@ -159,7 +161,6 @@ export default function Insights() {
         <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
           <AttHeadline
             countryName={selected.name}
-            flag={selected.flag}
             summary={selected.summary}
             impact={detail.impact}
             estimatedCount={estimatedCount}

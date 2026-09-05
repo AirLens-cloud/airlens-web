@@ -10,7 +10,7 @@
  * - Alert pulses + station labels
  * - Star field background
  */
-import { Suspense, lazy, useMemo, useState, useEffect, useCallback, createRef } from 'react';
+import { Suspense, lazy, useMemo, useState, useEffect, useCallback, useRef, createRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -129,13 +129,28 @@ const StarField = ({ count = SF.COUNT }: { count?: number }) => {
 //   </mesh>
 // );
 
-/** Loading fallback */
-const LoadingFallback = () => (
-  <mesh>
-    <sphereGeometry args={[1.0, 32, 32]} />
-    <meshBasicMaterial color={GLOBE_COLORS.WIREFRAME_LOADING} wireframe opacity={0.2} transparent />
-  </mesh>
-);
+/**
+ * Loading fallback for the inner (data-layer) Suspense — a wireframe sphere
+ * that spins slowly instead of sitting static, so the deck reads as "still
+ * arriving" rather than "stuck" (01-ux-audit.md §2 #1 / 04-motion-system.md
+ * loading scene: 3.2s/revolution). `usePlatform` is already the reduced-motion
+ * source of truth for every other ambient motion in this file (autoRotate,
+ * particle scale) — reused here rather than a second media-query listener.
+ */
+const LoadingFallback = () => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const { prefersReducedMotion } = usePlatform();
+  useFrame((_, delta) => {
+    if (prefersReducedMotion || !meshRef.current) return;
+    meshRef.current.rotation.y += (delta * Math.PI * 2) / 3.2;
+  });
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[1.0, 32, 32]} />
+      <meshBasicMaterial color={GLOBE_COLORS.WIREFRAME_LOADING} wireframe opacity={0.2} transparent />
+    </mesh>
+  );
+};
 
 /** Module-level ref for OrbitControls — accessed by CameraController */
 // eslint-disable-next-line react-refresh/only-export-components -- shared ref, not a component

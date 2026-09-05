@@ -57,7 +57,6 @@ function renderHeadline(summary: PolicySummaryRow, detail: PolicyImpact | null =
   return render(
     <AttHeadline
       countryName="South Korea"
-      flag="🇰🇷"
       summary={summary}
       impact={detail}
       estimatedCount={88}
@@ -79,6 +78,13 @@ describe('AttHeadline — an estimated country', () => {
   it('labels a zero-excluding significant estimate as significant', () => {
     renderHeadline(estimatedRow)
     expect(screen.getByText('SIGNIFICANT')).toBeTruthy()
+  })
+
+  it('shows the country flag next to the name, keyed off the summary row', () => {
+    // Arrange / Act
+    renderHeadline(estimatedRow)
+    // Assert — countryCode comes from `summary`, not a separate emoji prop.
+    expect(screen.getByAltText('South Korea flag')).toBeTruthy()
   })
 
   it('calls an interval that straddles zero inconclusive, not "no effect"', () => {

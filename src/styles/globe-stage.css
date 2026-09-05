@@ -206,25 +206,48 @@
   letter-spacing: .18em;
 }
 
+/* P1 group tabs (AIR / WEATHER / EVENTS / MORE) — one shared exclusive
+   accordion header that drives both the FIELD/OVERLAY radios and the LAYERS
+   switches below via `aria-controls` + `hidden`. AIR is open by default. */
+.obs-surface .gl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 2px;
+}
+
+.obs-surface .gl-tab {
+  padding: 5px 8px; /* design-lint-ok: spacing — obs dense-HUD instrument tab, sub-8pt subgrid */
+  color: var(--obs-hud-dim);
+  background: transparent;
+  border: 1px solid rgba(232, 236, 244, .14);
+  border-radius: var(--r-0);
+  font: 700 8px/1 var(--obs-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+.obs-surface .gl-tab:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
+.obs-surface .gl-tab:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
+.obs-surface .gl-tab.is-active {
+  color: var(--obs-ink);
+  background: rgba(37, 226, 244, .075);
+  border-color: rgba(37, 226, 244, .38);
+}
+
 .obs-surface .gl-overlays {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.obs-surface .gl-overlay-group {
+.obs-surface .gl-group-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   width: 100%;
-}
-
-.obs-surface .gl-group-name {
-  width: 100%;
-  color: var(--obs-hud-dim);
-  font: 400 7px/1 var(--obs-mono);
-  letter-spacing: .14em;
 }
 
 .obs-surface .gl-overlay {
@@ -248,7 +271,13 @@
   border-color: rgba(37, 226, 244, .38);
 }
 
+.obs-surface .gl-switches-groups { display: grid; }
 .obs-surface .gl-switches { display: grid; gap: 3px; }
+/* 저자 display 룰(flex/grid)이 UA 의 [hidden]{display:none} 보다 우선해 그룹
+   접기가 시각적으로 무력화된다 — DOM 속성 단언 테스트는 통과하는데 실렌더는
+   전부 펼쳐져 있던 버그(2026-09-05 실렌더 게이트 실측). 명시 가드가 정본. */
+.obs-surface .gl-group-panel[hidden],
+.obs-surface .gl-switches[hidden] { display: none; }
 
 .obs-surface .gl-switch {
   display: grid;
@@ -269,7 +298,9 @@
 .obs-surface .gl-switch:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
 .obs-surface .gl-switch:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
 .obs-surface .gl-switch.is-on { color: var(--obs-ink); border-color: rgba(37, 226, 244, .2); }
-.obs-surface .gl-switch-copy { display: grid; gap: 3px; min-width: 0; }
+.obs-surface .gl-switch-copy { display: grid; grid-auto-flow: column; grid-template-columns: auto 1fr; align-items: center; gap: 3px 6px; min-width: 0; } /* design-lint-ok: spacing — obs dense-HUD switch copy, sub-8pt subgrid */
+.obs-surface .gl-switch-icon { grid-row: 1 / 3; color: var(--obs-hud-dim); }
+.obs-surface .gl-switch.is-on .gl-switch-icon { color: var(--obs-cyan); }
 .obs-surface .gl-switch-copy strong { font: 700 9px/1 var(--obs-mono); letter-spacing: .1em; }
 .obs-surface .gl-switch-copy small {
   overflow: hidden;
@@ -278,29 +309,35 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.obs-surface .gl-switch-state { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); letter-spacing: .1em; }
-.obs-surface .gl-switch.is-on .gl-switch-state { color: var(--obs-cyan); }
 
-/* T2 — secondary toggles (POLLEN, GRATICULE) collapse into a nested MORE
-   group instead of sitting flush with the primary four; same disclosure
-   pattern as .globe-stage-left-controls above. */
-.obs-surface .gl-more {
-  margin-top: 4px;
-  border-top: 1px solid rgba(232, 236, 244, .08);
+/* iOS-style knob switch (motion spec §04 "레이어 토글") — track + dot instead
+   of an ON/OFF text label; position alone carries the state (Paper-Ink
+   "정직함은 형태로" — not color alone). Knob spring uses --ease-spring /
+   --dur-base from motion.css; press compresses the dot scaleX 1.25. */
+.obs-surface .gl-switch-knob {
+  position: relative;
+  width: 26px;
+  height: 15px;
+  border-radius: var(--r-pill);
+  background: rgba(232, 236, 244, .14);
+  transition: background 180ms ease-out;
 }
-.obs-surface .gl-more-summary {
-  padding: 4px 8px;
-  color: var(--obs-hud-dim);
-  font: 700 8px/1 var(--obs-mono);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  list-style: none;
+.obs-surface .gl-switch.is-on .gl-switch-knob { background: rgba(37, 226, 244, .28); }
+.obs-surface .gl-switch-knob-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--obs-hud-dim);
+  transition:
+    left var(--dur-base, 360ms) var(--ease-spring, cubic-bezier(.34, 1.56, .64, 1)),
+    transform var(--dur-base, 360ms) var(--ease-spring, cubic-bezier(.34, 1.56, .64, 1)),
+    background 180ms ease-out;
 }
-.obs-surface .gl-more-summary::-webkit-details-marker { display: none; }
-.obs-surface .gl-more-summary::before { content: '▸ '; }
-.obs-surface .gl-more[open] .gl-more-summary::before { content: '▾ '; }
-.obs-surface .gl-more .gl-switches { padding-top: 4px; }
+.obs-surface .gl-switch.is-on .gl-switch-knob-dot { left: 13px; background: var(--obs-cyan); }
+.obs-surface .gl-switch:active .gl-switch-knob-dot { transform: scaleX(1.25); }
 
 /* ── GlobeTimeline ───────────────────────────────────────────────────────── */
 
@@ -393,6 +430,48 @@
 .obs-surface .gl-ctx-lost-title { margin: 0; color: var(--obs-ink); font: 700 11px/1 var(--obs-mono); letter-spacing: .14em; text-transform: uppercase; }
 .obs-surface .gl-ctx-lost-desc { margin: 0; color: var(--obs-hud); font: 500 12px/1.5 var(--obs-display); }
 
+/* ── Globe engine loading/failure gate (outer Suspense, above the Canvas) ──
+   01-ux-audit.md §2 #1 — `fallback={null}` on this boundary is what made the
+   stage read as broken instead of busy. The orb is a CSS approximation of
+   `Globe3DScene`'s own inner `LoadingFallback` wireframe mesh (same spin
+   period, 04-motion-system.md loading scene) since no WebGL context exists
+   yet to draw the real one into. */
+
+.obs-surface .globe-engine-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  gap: var(--sp-4);
+  justify-items: center;
+  background: var(--obs-void);
+}
+
+.obs-surface .globe-engine-fallback-orb {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 1px solid rgba(37, 226, 244, .35);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(37, 226, 244, .12), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(232, 236, 244, .12) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgba(232, 236, 244, .12) 0 1px, transparent 1px 12px);
+  animation: globe-engine-fallback-spin 3.2s linear infinite;
+}
+
+.obs-surface .globe-engine-fallback-label {
+  margin: 0;
+  color: var(--obs-hud);
+  font: 700 9px/1 var(--obs-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+@keyframes globe-engine-fallback-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── ViewModeSwitch ──────────────────────────────────────────────────────── */
 
 .obs-surface .view-mode-switch {
@@ -431,27 +510,41 @@
 
 .obs-surface .vms-hint { color: var(--obs-hud-dim); }
 
-/* ── GlobeModeRow (T3) ───────────────────────────────────────────────────────
-   The 5-mode lens selector used to live in `.globe-stage-left` (T2 left it
-   holding only LAYERS/TIMELINE). Same `AtmosphericModeRail` component, same
-   store wiring, same 1-5 keyboard path — `orientation="horizontal"` just
-   asks it to reflow as a HUD tab strip via this modifier class instead of
-   the vertical instrument-rail card its base rule (composites.css) draws. */
-.obs-surface .globe-mode-row {
+/* ── GlobeHudRow (P1) ────────────────────────────────────────────────────────
+   01-ux-audit.md §2 #2 / §6: mode rail + HUD strip + view switch used to live
+   as three stacked full-width bars (~128px, 17% of the viewport — the mode
+   rail's own row, `.gobs-hud`, and the evidence row's docked ViewModeSwitch).
+   They're siblings in one flex row here instead. Each component keeps its
+   own React props, store wiring and 1-5 keyboard path unchanged (T3's
+   comment below is still accurate about *why* the rail reflows horizontally)
+   — this block only changes who's laid out next to whom, plus trims each
+   component's own chrome (border/background/padding) since the row now owns
+   that. Wraps to a second line on narrow viewports (mobile query below)
+   rather than shrinking to unreadable widths or forcing a scrollbar. */
+.obs-surface .globe-hud-row {
   display: flex;
-  padding: 0 var(--sp-4);
+  align-items: stretch;
+  flex-wrap: wrap;
   background: var(--obs-void);
   border-bottom: 1px solid rgba(232, 236, 244, .14);
 }
 
+/* T3 (unchanged rationale): the 5-mode lens selector used to live in
+   `.globe-stage-left` (T2 left it holding only LAYERS/TIMELINE). Same
+   `AtmosphericModeRail` component, same store wiring, same 1-5 keyboard
+   path — `orientation="horizontal"` just asks it to reflow as a HUD tab
+   strip via this modifier class instead of the vertical instrument-rail
+   card its base rule (composites.css) draws. */
 .obs-surface .atmos-mode-rail--horizontal {
-  width: 100%;
+  width: auto;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-3);
   background: transparent;
   border: 0;
+  border-right: 1px solid rgba(232, 236, 244, .14);
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -472,109 +565,104 @@
   padding: var(--sp-1) var(--sp-2);
 }
 
+/* Horizontal tab strip: the shared indicator (composites.css) tracks
+   left/width along the row instead of top/height down the column. */
+.obs-surface .atmos-mode-rail--horizontal .atmos-mode-indicator {
+  left: 0;
+  top: auto;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  transition: left 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1)), width 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1));
+}
+
 /* Redundant with the `title` tooltip AtmosphericModeRail now sets on every
    button — no horizontal room for the reason line the vertical rail showed
    inline via <small>. */
 .obs-surface .atmos-mode-rail--horizontal .atmos-mode-copy small { display: none; }
 
-/* ── GlobeEvidenceRow (T1) ───────────────────────────────────────────────────
-   Replaces the old right-hand `.globe-stage-rail`: AtmosphericEvidenceCard's
-   Layer 1 (name·unit·status, big value, compact band, quality/lineage) now
-   runs as one horizontal strip directly under the HUD, with ViewModeSwitch
-   docked to its right. The card's own DOM/tests are untouched — everything
-   below only restyles its existing atmos-* classes for a row instead of a
-   column, via `display: contents` on `.atmos-l1` (its four blocks become
-   direct flex items of the row) and an absolute popover for Layer 2+3
-   (`.atmos-evidence-body`, now nested inside the `<details>` — see
-   AtmosphericEvidenceCard.tsx), so opening it never reflows the canvas. */
-.obs-surface .globe-evidence-row {
-  display: flex;
-  align-items: stretch;
-  border-bottom: 1px solid var(--obs-void-line);
-}
-
-.obs-surface .globe-evidence-row .atmos-evidence {
-  position: relative;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-  width: auto;
+/* `.gobs-hud` and `.view-mode-switch` inside `.globe-hud-row`: both keep
+   their own base rules (composites.css / this file's ViewModeSwitch block
+   above) — these overrides only strip the border/margin/background each one
+   drew as a standalone full-width bar, since the row now owns that edge. */
+.obs-surface .globe-hud-row .gobs-hud {
+  flex: 1 1 320px;
   min-width: 0;
-  padding: 0 16px;
-  background: transparent;
-  border: 0;
-}
-
-.obs-surface .globe-evidence-row .atmos-l1 {
-  display: contents;
-}
-
-.obs-surface .globe-evidence-row .atmos-headline,
-.obs-surface .globe-evidence-row .atmos-value-block,
-.obs-surface .globe-evidence-row .atmos-band-compact,
-.obs-surface .globe-evidence-row .atmos-band-empty,
-.obs-surface .globe-evidence-row .atmos-field-range,
-.obs-surface .globe-evidence-row .atmos-honest-empty,
-.obs-surface .globe-evidence-row .atmos-quality-line {
-  flex: none;
-  padding: 8px 0;
-}
-
-.obs-surface .globe-evidence-row .atmos-status { margin-left: 12px; }
-
-/* Redundant with the compact band line right next to it in the strip. */
-.obs-surface .globe-evidence-row .atmos-value-caption { display: none; }
-
-.obs-surface .globe-evidence-row .atmos-band-compact,
-.obs-surface .globe-evidence-row .atmos-band-empty {
-  min-width: 150px;
-  background: transparent;
-  border-block: 0;
-}
-
-.obs-surface .globe-evidence-row .atmos-band-track { width: 100%; }
-
-/* Layer 2+3 trigger stays an inline chip in the strip; the disclosed body
-   (`.atmos-evidence-body`) pops over the canvas instead of pushing the row
-   taller. z-index 6 clears GlobeLegend (3) and CompareTray (4). */
-.obs-surface .globe-evidence-row .atmos-evidence-details {
-  position: relative;
-  flex: none;
-  align-self: center;
-}
-
-.obs-surface .globe-evidence-row .atmos-source-line {
-  padding: 4px 8px;
-  border: 1px solid rgba(232, 236, 244, .4);
-}
-
-.obs-surface .globe-evidence-row .atmos-evidence-details[open] .atmos-source-line {
-  border-color: var(--obs-cyan);
-}
-
-.obs-surface .globe-evidence-row .atmos-evidence-body {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 6;
-  width: 320px;
-  max-width: 80vw;
-  background: var(--glass-night-fill, rgba(5, 9, 16, .82));
-  border: 1px solid var(--obs-cyan);
-  box-shadow: 0 20px 60px rgba(5, 7, 13, .55);
-}
-
-.obs-surface .globe-evidence-row .view-mode-switch {
-  flex: none;
-  padding: 8px 16px;
+  margin-top: 0;
   border-bottom: 0;
-  border-left: 1px solid var(--obs-void-line);
+  padding: 8px 12px;
+}
+
+.obs-surface .globe-hud-row .view-mode-switch {
+  flex: none;
+  padding: 8px var(--sp-3);
+  border-bottom: 0;
+  border-left: 1px solid rgba(232, 236, 244, .14);
 }
 
 /* Redundant in the compact row — same 3-button switch, no room for the copy. */
-.obs-surface .globe-evidence-row .vms-hint { display: none; }
+.obs-surface .globe-hud-row .vms-hint { display: none; }
+
+/* ── GlobeEvidencePanel (P1) ─────────────────────────────────────────────────
+   01-ux-audit.md §2 #2, §6 / 04-motion-system.md "증거 카드": the permanent
+   evidence strip (T1) is gone — AtmosphericEvidenceCard now mounts only once
+   Globe.tsx's `showEvidencePanel` is true (a station/prediction/country is
+   focused, or the engine failed and needs to say so). It renders with its
+   own unmodified vertical-card layout (composites.css `.atmos-evidence` and
+   friends — the same shape DesignGallery's mock already uses), positioned as
+   an absolute overlay on `.globe-stage-main` instead of the old horizontal
+   strip's `display: contents` flattening. Opening/closing it never reflows
+   the canvas, the legend, or the compare tray's anchors. */
+.obs-surface .globe-evidence-panel {
+  position: absolute;
+  top: var(--obs-gut);
+  right: var(--obs-gut);
+  z-index: 5; /* clears GlobeLegend (3) and CompareTray (4) — this is the user's active focus */
+  width: min(340px, calc(100% - 2 * var(--obs-gut)));
+  /* Leaves headroom above CompareTray's bottom-right footprint so an open
+     evidence panel and a pinned comparison don't stack directly on top of
+     each other at the same corner. */
+  max-height: calc(100% - 2 * var(--obs-gut) - 96px);
+  overflow-y: auto;
+  transition: opacity var(--dur-spring-base) var(--ease-out-expo), transform var(--dur-spring-base) var(--ease-out-expo);
+}
+
+/* Mount-in entrance, no JS: `@starting-style` (also used by `.fluid-enter`,
+   motion.css) sets the pre-transition frame the instant the element is
+   inserted, then the base rule's `transition` above animates from it. */
+@starting-style {
+  .obs-surface .globe-evidence-panel {
+    opacity: 0;
+    transform: translateX(28px) scale(.98);
+  }
+}
+
+.obs-surface .globe-evidence-panel .atmos-evidence {
+  width: 100%;
+}
+
+/* Room for .globe-evidence-close, which sits over the headline's top-right
+   corner where the status pill (`.atmos-status`) would otherwise collide. */
+.obs-surface .globe-evidence-panel .atmos-headline {
+  padding-right: 32px;
+}
+
+.obs-surface .globe-evidence-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 4px 8px;
+  color: var(--obs-hud);
+  background: rgba(5, 9, 16, .6);
+  border: 1px solid rgba(232, 236, 244, .2);
+  border-radius: var(--r-0);
+  font: 700 9px/1 var(--obs-mono);
+  cursor: pointer;
+}
+
+.obs-surface .globe-evidence-close:hover { color: var(--obs-ink); background: rgba(255, 255, 255, .075); }
+.obs-surface .globe-evidence-close:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
 
 /* ── GlobeTableView ──────────────────────────────────────────────────────── */
 
@@ -791,27 +879,42 @@
     border-right: 0;
     border-top: 1px solid var(--obs-void-line);
   }
-  /* Evidence row (T1 mobile — mockup frame 03): the strip wraps instead of
-     overflowing, and ViewModeSwitch drops to its own full-width row below it
-     rather than squeezing three buttons into whatever width the strip left. */
-  .obs-surface .globe-evidence-row {
-    flex-wrap: wrap;
+  /* HUD row (P1 mobile — mockup frame 03): the mode rail and ViewModeSwitch
+     each drop to their own full-width row instead of squeezing three chrome
+     pieces into whatever width is left; `.gobs-hud` keeps flowing inline
+     (its own flex-wrap, composites.css, already breaks it onto further
+     lines if the label/status/valid-time trio doesn't fit). */
+  .obs-surface .atmos-mode-rail--horizontal {
+    flex: 1 0 100%;
+    border-right: 0;
+    border-bottom: 1px solid rgba(232, 236, 244, .14);
   }
-  .obs-surface .globe-evidence-row .atmos-evidence {
+  .obs-surface .globe-hud-row .gobs-hud {
     padding: 8px 12px;
   }
-  .obs-surface .globe-evidence-row .view-mode-switch {
+  .obs-surface .globe-hud-row .view-mode-switch {
     flex: 1 0 100%;
     justify-content: stretch;
     padding: 0;
     border-left: 0;
     border-top: 1px solid var(--obs-void-line);
   }
-  .obs-surface .globe-evidence-row .vms-buttons {
+  .obs-surface .globe-hud-row .vms-buttons {
     flex: 1;
   }
-  .obs-surface .globe-evidence-row .vms-btn {
+  .obs-surface .globe-hud-row .vms-btn {
     flex: 1;
+  }
+  /* Evidence panel: a bottom sheet like the other narrow-viewport overlays
+     (same reasoning as .globe-legend/.compare-tray below) instead of a
+     340px right-edge card that would eat most of a phone-width stage. */
+  .obs-surface .globe-evidence-panel {
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 50dvh;
   }
   /* Both overlays go near-full-width at this size — the bottom-left anchor
      + reserved-width formula that keeps them apart on desktop doesn't leave
@@ -845,6 +948,14 @@
 @media (prefers-reduced-motion: reduce) {
   .obs-surface .gl-overlay,
   .obs-surface .gl-switch,
+  .obs-surface .gl-tab,
+  .obs-surface .gl-switch-knob,
+  .obs-surface .gl-switch-knob-dot,
   .obs-surface .gt-frame,
   .obs-surface .vms-btn { transition: none; }
+  .obs-surface .globe-engine-fallback-orb { animation: none; }
+  /* Slide-in becomes an instant appearance — no transition to animate
+     through, so the panel is simply present at its final position/opacity
+     the moment it mounts. */
+  .obs-surface .globe-evidence-panel { transition: none; }
 }

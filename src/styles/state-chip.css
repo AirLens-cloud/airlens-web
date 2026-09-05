@@ -1,0 +1,66 @@
+/* state-chip.css — <StateChip>: an honest freshness/scope state rendered as
+ * a badge next to a value, never an opacity knock on the value itself
+ * (design-audit 2026-09-05 §7 #1). Promoted from home.css's hero-only
+ * `.home-hero__chip` to a shared, page-agnostic component so Today /
+ * CountryProfile / Insights can badge stale, forecast, approximate,
+ * withheld, or experimental readings the same way.
+ *
+ * Variants differ by border style + icon, not color alone — a colorblind
+ * viewer can still tell them apart from shape:
+ *   stale         solid border  + ◷ icon + elapsed-time detail
+ *   forecast      solid border  (no icon)
+ *   approximate   solid border  + ~ icon
+ *   withheld      dashed border (no icon)
+ *   experimental  dotted border + △ icon
+ *
+ * `color: inherit` rides whatever ink axis the parent surface sets (e.g. an
+ * AQI-tinted glass card's `--glass-card-ink` — surfaces.css already measures
+ * that pairing for AA; the border alone carries no contrast requirement).
+ */
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--orange);
+  border-radius: var(--r-0);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — micro state badge, not prose (matches chrome.css's badge-pill scale) */
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: inherit;
+  line-height: 1.4;
+
+  /* Spring-soft entrance (design-audit §7 "Today 숫자" motion spec):
+     80ms/step stagger via the consumer's `--chip-i` index. Falls back to a
+     local cubic-bezier until motion.css's shared token lands, so this file
+     never depends on load order with that parallel edit. */
+  opacity: 0;
+  transform: translateY(4px) scale(0.94);
+  animation: state-chip-in var(--dur-fast, 200ms) var(--ease-spring-soft, cubic-bezier(0.22, 1.2, 0.36, 1)) forwards;
+  animation-delay: calc(var(--chip-i, 0) * 80ms); /* design-lint-ok: token — per-chip stagger index, set inline by StateChip */
+}
+
+.state-chip--withheld {
+  border-style: dashed;
+}
+.state-chip--experimental {
+  border-style: dotted;
+}
+
+@keyframes state-chip-in {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-chip {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}

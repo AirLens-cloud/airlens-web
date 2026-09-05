@@ -1,0 +1,53 @@
+/* band-slot.css — <BandSlot>: a p10-p90 uncertainty strip (design-audit
+ * 2026-09-05 §7 #2). Available and unavailable states share the same
+ * two-row footprint (track/bracket line + label line) so adopting/losing a
+ * band never shifts the layout around it (design-audit §1 #5).
+ */
+.band-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 96px;
+}
+
+.band-slot__track {
+  position: relative;
+  height: 4px;
+  border: 1px solid var(--rule);
+  background: var(--bg-1);
+}
+.band-slot__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--orange);
+  opacity: 0.35;
+}
+.band-slot__marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--orange);
+  transform: translateX(-1px);
+}
+.band-slot__label {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — micro range readout, not prose (matches trust-line.css's t-tag scale) */
+  color: var(--ink-1);
+  white-space: nowrap;
+}
+
+.band-slot__bracket {
+  height: 4px;
+  border: 1px dashed var(--ink-3);
+  background: transparent;
+}
+.band-slot__empty {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px; /* design-lint-ok: typography — micro range readout, not prose (matches trust-line.css's t-tag scale) */
+  font-style: italic;
+  color: var(--ink-2);
+  white-space: normal;
+}

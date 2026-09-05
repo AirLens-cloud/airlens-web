@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import WfGlassCard from '../wireframe/WfGlassCard'
-import WfTag from '../wireframe/WfTag'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
 import AqiDot from '../wireframe/AqiDot'
 import TrustLine from '../wireframe/TrustLine'
+import StateChip from '../content/StateChip'
 import Materialize from '../fluid/Materialize'
 import CitySearch from '../weather/CitySearch'
 import { dataState } from '../../types/dataState'
@@ -161,18 +161,17 @@ export default function HomeHero({
         </div>
 
         <div className="home-hero__reading">
-          <div
-            className={
-              isStale ? 'home-hero__value home-hero__value--muted t-numeric num' : 'home-hero__value t-numeric num'
-            }
-          >
+          <div className="home-hero__value t-numeric num">
             {value}
             <span className="home-hero__unit">µg/m³</span>
           </div>
           <div className="home-hero__tier">
             <AqiDot tier={data.tier} size={14} />
             <span className="home-hero__tier-label">{tierLabel}</span>
-            <WfTag className="home-hero__badge">Forecast</WfTag>
+            {isStale && (
+              <StateChip variant="stale" detail={formatElapsed(elapsedMs)?.replace(/ ago$/, '')} index={0} />
+            )}
+            <StateChip variant="forecast" index={isStale ? 1 : 0} />
           </div>
         </div>
 

@@ -12,7 +12,7 @@ const ORG = {
   '@type': 'Organization',
   name: 'AirLens',
   url: CANONICAL_ORIGIN,
-  logo: `${CANONICAL_ORIGIN}/og-icon.png`,
+  logo: `${CANONICAL_ORIGIN}/icon-512.png`,
 } as const
 
 // Single source for the dataset license URL — used by both the country-hub

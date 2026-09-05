@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
-import AirLensMark from '../components/AirLensMark'
+import BrandMark from '../components/icons/BrandMark'
 import {
   DataTrustIcon,
   InsightsIcon,
@@ -114,7 +114,7 @@ export default function GlobalNav({ variant, onMobileOpenChange }: GlobalNavProp
       </a>
       <div className="chrome-nav__bar">
         <a className="chrome-nav__logo" href="/" aria-label="AirLens home">
-          <AirLensMark size={28} />
+          <BrandMark size={28} />
           <span className="chrome-nav__wordmark">AirLens</span>
         </a>
 

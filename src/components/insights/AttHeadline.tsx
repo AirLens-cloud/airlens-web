@@ -14,6 +14,7 @@
  * the panel-fit grade. A country the gate stopped shows the reason it stopped,
  * in place of the number — never a zero, never a dash on its own.
  */
+import CountryFlag from './CountryFlag'
 import DqssBadge, { type DqssGrade } from '../wireframe/DqssBadge'
 import { attGateReason, attReliability, type AttReliability } from '../../api/policy'
 import { POLICY_FIT_GRADE_CUTOFFS } from '../../lib/config/policy'
@@ -22,7 +23,6 @@ import type { PolicyImpact, PolicySummaryRow } from '../../types/policy'
 
 export interface AttHeadlineProps {
   countryName: string
-  flag: string | null
   /** The verdict. Always present — it rides on the catalogue. */
   summary: PolicySummaryRow
   /** The detail file, for the policy name. Null while loading or if it failed. */
@@ -62,7 +62,6 @@ function fitGrade(score: number | null): DqssGrade {
 
 export default function AttHeadline({
   countryName,
-  flag,
   summary,
   impact,
   estimatedCount,
@@ -82,7 +81,9 @@ export default function AttHeadline({
       </header>
 
       <h1 id="ins-headline-title" className="ins-headline-title">
-        {flag ? <span aria-hidden="true">{flag} </span> : null}
+        <span className="ins-headline-flag">
+          <CountryFlag key={summary.countryCode} countryCode={summary.countryCode} countryName={countryName} />
+        </span>
         {countryName}
       </h1>
 

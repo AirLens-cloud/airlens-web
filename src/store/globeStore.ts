@@ -9,8 +9,13 @@ import type { PM25Grade } from '../types/data';
 
 /** Which renderer the stage shows for the shared grid/mark payload — same cursor, three ways to read it. */
 export type GlobeViewMode = 'globe' | 'map' | 'table';
-/** Why the view switched — 'manual' is a user click, 'webgl-fallback' is the stage routing around a WebGL2 probe failure. */
-export type ViewSwitchReason = 'manual' | 'webgl-fallback';
+/**
+ * Why the view switched — 'manual' is a user click, 'webgl-fallback' is the
+ * stage routing around a WebGL2 probe failure, 'slow-load' is the engine
+ * chunk still loading past the 8s patience window, 'engine-error' is that
+ * chunk import rejecting outright.
+ */
+export type ViewSwitchReason = 'manual' | 'webgl-fallback' | 'slow-load' | 'engine-error';
 
 /**
  * A frozen snapshot of one selection pinned into the Compare tray. Values are
@@ -445,7 +450,11 @@ export const useGlobeStore = create<GlobeStore>((set, get) => ({
 
   // ── Earth Visualization (Nullschool + IQAir Clone) ──
   dataMode: 'air',
-  overlayType: 'none',
+  // P0 (01-ux-audit.md §2 #3): the first paint had no field on, so a fresh
+  // visit showed a bare sphere with nothing to look at. PM2.5 is the deck's
+  // one always-available field (station + grid), so it's the honest default
+  // rather than an empty stage pretending to wait for a user choice.
+  overlayType: 'pm25',
   projectionType: 'orthographic',
   visualizationType: 'wind',
   viewMode: 'citizen',

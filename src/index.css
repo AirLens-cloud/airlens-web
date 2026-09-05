@@ -13,6 +13,8 @@
 @import './styles/surfaces.css';
 @import './styles/wireframe.css';
 @import './styles/trust-line.css';
+@import './styles/state-chip.css';
+@import './styles/band-slot.css';
 @import './styles/composites.css';
 @import './styles/gallery.css';
 @import './styles/chrome.css';

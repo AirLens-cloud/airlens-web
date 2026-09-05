@@ -14,7 +14,7 @@
  *     The store setter is already a strict no-op in that case; disabling the
  *     control says so instead of swallowing the click.
  */
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { useGlobeStore, type CompareSlot, type GlobeViewMode } from '../store/globeStore'
@@ -101,6 +101,89 @@ function freshnessLabel(sinceMs: number | null): string | null {
   return formatElapsed(Date.now() - sinceMs)
 }
 
+/**
+ * Outer-Suspense loading/failure UI for the engine chunk (three/fiber +
+ * everything it pulls in). This sits *above* `Globe3DScene`'s own Canvas, so
+ * unlike its inner `LoadingFallback` mesh, this one has no WebGL context yet
+ * to draw into — it is plain DOM/CSS (spin via `globe-stage.css`, honoring
+ * `prefers-reduced-motion` the same way `.gobs-live-dot` and other ambient
+ * chrome already do).
+ *
+ * 01-ux-audit.md §2 #1: the previous `fallback={null}` meant this stage was
+ * a literal blank void for as long as the chunk took to fetch and parse —
+ * "LOADING" text with nothing to look at reads as broken, not busy.
+ */
+function GlobeEngineFallback({
+  variant,
+  onOpenMap,
+}: {
+  /** 'loading' before the patience window, 'timeout' past it, 'error' when the chunk import rejected outright. */
+  variant: 'loading' | 'timeout' | 'error'
+  onOpenMap: () => void
+}) {
+  return (
+    <div className="globe-engine-fallback" role="status" aria-live="polite">
+      <div className="globe-engine-fallback-orb" aria-hidden="true" />
+      <p className="globe-engine-fallback-label">
+        {variant === 'error' ? 'UNAVAILABLE · engine failed to load' : 'Loading globe engine…'}
+      </p>
+      {variant !== 'loading' && (
+        <button type="button" className="btn btn-ink globe-engine-fallback-cta" onClick={onOpenMap}>
+          Open Map view
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 8s patience window (04-motion-system.md loading scene spec): the skeleton
+ * alone stays honest about "still arriving", but past 8s a stuck chunk fetch
+ * (slow network, not a hard failure) deserves an escape hatch rather than an
+ * indefinite spinner. The CTA is a click, never an auto-redirect — Globe
+ * stays the default lens until the user says otherwise.
+ */
+function GlobeEngineLoadingGate({ onOpenMap }: { onOpenMap: () => void }) {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const id = window.setTimeout(() => setSlow(true), 8000)
+    return () => window.clearTimeout(id)
+  }, [])
+  return <GlobeEngineFallback variant={slow ? 'timeout' : 'loading'} onOpenMap={onOpenMap} />
+}
+
+/**
+ * Catches the engine chunk's `import()` rejecting (bad chunk hash after a
+ * deploy, network failure mid-fetch) — the one failure mode `<Suspense>`
+ * cannot express on its own, since a rejected lazy import throws past the
+ * fallback rather than resolving to it. A class component because
+ * `getDerivedStateFromError`/`componentDidCatch` have no hook equivalent.
+ * Resets for free: Globe.tsx already unmounts this whole subtree whenever
+ * `globeViewMode` leaves `'globe'`, so switching to Map/Table and back is
+ * the natural "try again" path — no manual reset key needed.
+ */
+class GlobeEngineErrorBoundary extends Component<
+  { onOpenMap: () => void; onEngineError: (reason: string) => void; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    this.props.onEngineError(error instanceof Error ? error.message : 'engine chunk failed to load')
+  }
+
+  render() {
+    if (this.state.failed) {
+      return <GlobeEngineFallback variant="error" onOpenMap={this.props.onOpenMap} />
+    }
+    return this.props.children
+  }
+}
+
 export default function Globe() {
   const platform = usePlatform()
   const webgl = useMemo(() => isWebGLSupported(), [])
@@ -108,6 +191,8 @@ export default function Globe() {
 
   const setAtmosphericMode = useGlobeStore((s) => s.setAtmosphericMode)
   const setSelectedCountry = useGlobeStore((s) => s.setSelectedCountry)
+  const setSelectedStation = useGlobeStore((s) => s.setSelectedStation)
+  const setSelectedPrediction = useGlobeStore((s) => s.setSelectedPrediction)
   const setFlyToTarget = useGlobeStore((s) => s.setFlyToTarget)
   const setTimeline = useGlobeStore((s) => s.setTimeline)
   const { timelineFrames, timelineStale } = useGlobeStore(
@@ -119,6 +204,25 @@ export default function Globe() {
   const compareSlots = useGlobeStore((s) => s.compareSlots)
   const pinCompareSlot = useGlobeStore((s) => s.pinCompareSlot)
   const removeCompareSlot = useGlobeStore((s) => s.removeCompareSlot)
+
+  // Engine-chunk failure (01-ux-audit.md §2 #1, item 3): null until the
+  // outer Suspense's error boundary actually catches an import() rejection.
+  // Overrides the HUD/evidence-card status below rather than threading a
+  // new status through `useAtmosphericViewModel` — this is a stage-loading
+  // fact, not a data-freshness one, and doesn't own that hook's file.
+  const [engineFailureReason, setEngineFailureReason] = useState<string | null>(null)
+  const handleOpenMapFromEngineIssue = useCallback(
+    (reason: 'slow-load' | 'engine-error') => setGlobeViewMode('map', reason),
+    [setGlobeViewMode],
+  )
+  const handleOpenMapAfterTimeout = useCallback(
+    () => handleOpenMapFromEngineIssue('slow-load'),
+    [handleOpenMapFromEngineIssue],
+  )
+  const handleOpenMapAfterError = useCallback(
+    () => handleOpenMapFromEngineIssue('engine-error'),
+    [handleOpenMapFromEngineIssue],
+  )
 
   // WebGL2 missing: Globe can never draw, so the switch redirects to Map once
   // rather than leaving the deck on a lens it cannot render. This runs only
@@ -206,6 +310,8 @@ export default function Globe() {
       }
       if (key === 'Escape') {
         e.preventDefault()
+        setSelectedStation(null)
+        setSelectedPrediction(null)
         setSelectedCountry(null)
         setFlyToTarget(null)
         return
@@ -242,12 +348,17 @@ export default function Globe() {
         // Chunk-load failure disables keyboard nav — it must not fail silently.
         .catch((err) => { logger.warn('Globe3DScene dynamic import failed — keyboard nav disabled:', err) })
     },
-    [forecastReady, setAtmosphericMode, setSelectedCountry, setFlyToTarget],
+    [forecastReady, setAtmosphericMode, setSelectedStation, setSelectedPrediction, setSelectedCountry, setFlyToTarget],
   )
 
   const focus = view.focus
   const band = focus ? scaleUncertaintyBand(focus.p10, focus.value, focus.p90) : null
-  const chromeStatus = toChromeStatus(view.status)
+  // An engine-chunk failure outranks the data-freshness status the view
+  // model computes — a caveat about stale grid data is moot when the stage
+  // that would render it never mounted at all.
+  const chromeStatus = engineFailureReason ? 'unavailable' : toChromeStatus(view.status)
+  const hudLabel = engineFailureReason ? `UNAVAILABLE · ${engineFailureReason}` : view.label
+  const evidenceStatusLabel = engineFailureReason ? `UNAVAILABLE · ${engineFailureReason}` : STATUS_LABELS[view.status]
   const modeNumber = ATMOSPHERIC_MODES.find((m) => m.id === view.mode)?.number ?? '—'
 
   // What "Pin current scene" would add to the Compare tray right now — every
@@ -271,17 +382,62 @@ export default function Globe() {
     if (currentCompareSlot) pinCompareSlot(currentCompareSlot)
   }, [currentCompareSlot, pinCompareSlot])
 
+  // P1 (01-ux-audit.md §2 #2, §6): the evidence card only earns screen space
+  // once there's something to show evidence *for* — a station, a prediction
+  // marker, or a country. `view.focus` is exactly that condition (it's built
+  // from the same three selection fields in atmosphericViewModel.ts). An
+  // engine-chunk failure is the one carve-out: that's a real problem the user
+  // needs to see even with nothing selected, not a "select something first"
+  // gate.
+  const showEvidencePanel = !!focus || chromeStatus === 'unavailable'
+
+  const handleCloseEvidence = useCallback(() => {
+    setSelectedStation(null)
+    setSelectedPrediction(null)
+    setSelectedCountry(null)
+    setFlyToTarget(null)
+  }, [setSelectedStation, setSelectedPrediction, setSelectedCountry, setFlyToTarget])
+
+  // Focus moves into the panel on open (04-motion-system.md "증거 카드" scene
+  // treats this as a slide-in surface, not a passive readout) — the close
+  // button is the one interactive element, so it's the natural landing spot.
+  const evidenceCloseRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (showEvidencePanel) evidenceCloseRef.current?.focus()
+  }, [showEvidencePanel])
+
+  const handleEvidencePanelKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCloseEvidence()
+      }
+    },
+    [handleCloseEvidence],
+  )
+
   return (
     <main
       className="obs-surface globe-page"
       data-platform={platform.kind}
       data-touch={platform.isTouch ? 'on' : 'off'}
     >
-      <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
+      {/* P1 (01-ux-audit.md §2 #2, §6): the mode rail, the HUD strip and the
+          view switcher used to be three stacked full-width bars (~128px, 17%
+          of the viewport). They're siblings in one flex row here instead —
+          each component and its store wiring is unchanged (same
+          AtmosphericModeRail 1-5 keyboard path via handleStageKeyDown, same
+          GlobeObsHud props, same ViewModeSwitch radiogroup); only who's next
+          to whom changed. Wraps to a second line on narrow viewports rather
+          than forcing a horizontal scrollbar (globe-stage.css mobile query).
+          The evidence card is no longer here — see the conditional slide-in
+          panel inside .globe-stage-main below. */}
+      <div className="fluid-enter globe-hud-row" style={{ '--enter-i': 0 } as CSSProperties}>
+        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
         <GlobeObsHud
           status={chromeStatus}
-          label={view.label}
-          unit={view.unit || null}
+          label={hudLabel}
+          unit={engineFailureReason ? null : (view.unit || null)}
           range={view.range ? [view.range[0], view.range[1]] : null}
           leadHours={view.leadHours}
           nature={view.nature}
@@ -290,42 +446,6 @@ export default function Globe() {
           validTime={view.validTime}
           mode={view.mode}
           cursor={selectedStation ? { lat: selectedStation.lat, lon: selectedStation.lon, label: selectedStation.name } : null}
-        />
-      </div>
-
-      {/* T3: mode selection moved out of the left instrument rail into a HUD
-          tab strip — same AtmosphericModeRail component (`orientation`
-          controls the reflow), same store wiring, same 1-5 keyboard path
-          (handleStageKeyDown below is unchanged). This is a pure position
-          change: LAYERS/TIMELINE stay in `.globe-stage-left` since they're
-          overlay controls, not the mode cursor. */}
-      <div className="globe-mode-row">
-        <AtmosphericModeRail items={modeItems} onSelect={handleModeSelect} orientation="horizontal" />
-      </div>
-
-      {/* Evidence row (T1): Layer 1 of the evidence card runs as one horizontal
-          strip here instead of a vertical right-hand rail, with ViewModeSwitch
-          docked to its right — see globe-stage.css ".globe-evidence-row". */}
-      <div className="globe-evidence-row">
-        <AtmosphericEvidenceCard
-          status={chromeStatus}
-          statusLabel={STATUS_LABELS[view.status]}
-          label={view.label}
-          unit={view.unit || null}
-          indexLabel={modeNumber}
-          focus={focus}
-          range={view.range ? [view.range[0], view.range[1]] : null}
-          band={band ? { low: band.low, center: band.center, high: band.high } : null}
-          dqssGrade={focus?.dqssProvenance === 'measured' ? dqssScoreToGrade(focus.dqss) : null}
-          mode={view.mode}
-          uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
-          eventCoverage={view.eventCoverage}
-          source={view.source}
-          referenceTimeLabel={utcLabel(view.referenceTime)}
-          validTimeLabel={utcLabel(view.validTime)}
-          freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
-          provenance={[...view.provenance]}
-          coverage={view.coverage}
         />
         <ViewModeSwitch mode={globeViewMode} items={viewModeItems} onSelect={handleViewModeSelect} />
       </div>
@@ -360,9 +480,14 @@ export default function Globe() {
                   aria-label="Globe — arrow keys rotate, +/− zoom, 1–5 switch data mode, Esc clears the selection"
                   onKeyDown={handleStageKeyDown}
                 >
-                  <Suspense fallback={null}>
-                    <Globe3DScene interactiveCountries />
-                  </Suspense>
+                  <GlobeEngineErrorBoundary
+                    onOpenMap={handleOpenMapAfterError}
+                    onEngineError={setEngineFailureReason}
+                  >
+                    <Suspense fallback={<GlobeEngineLoadingGate onOpenMap={handleOpenMapAfterTimeout} />}>
+                      <Globe3DScene interactiveCountries />
+                    </Suspense>
+                  </GlobeEngineErrorBoundary>
                 </div>
               ) : (
                 <GlobeFallback />
@@ -377,6 +502,55 @@ export default function Globe() {
                 onRemove={removeCompareSlot}
               />
             </>
+          )}
+
+          {/* P1 slide-in (01-ux-audit.md §2 #2, 04-motion-system.md "증거
+              카드"): a stage-level overlay (sibling of the Globe/Map/Table
+              alternation above, not nested inside the Globe-only branch) so a
+              station picked in Table or Map also earns the same detail panel.
+              Mounts only once there's a focused reading to show evidence for
+              — showEvidencePanel above. `@starting-style` in globe-stage.css
+              drives the out-expo translateX+scale entrance on mount; there's
+              no exit animation on unmount (closing removes the selection
+              immediately), which is the honest state — nothing left to show
+              evidence for. */}
+          {showEvidencePanel && (
+            <div
+              className="globe-evidence-panel"
+              role="region"
+              aria-label="Selected reading detail"
+              onKeyDown={handleEvidencePanelKeyDown}
+            >
+              <button
+                ref={evidenceCloseRef}
+                type="button"
+                className="globe-evidence-close"
+                onClick={handleCloseEvidence}
+                aria-label="Close evidence card"
+              >
+                ✕
+              </button>
+              <AtmosphericEvidenceCard
+                status={chromeStatus}
+                statusLabel={evidenceStatusLabel}
+                label={view.label}
+                unit={view.unit || null}
+                indexLabel={modeNumber}
+                focus={focus}
+                range={view.range ? [view.range[0], view.range[1]] : null}
+                band={band ? { low: band.low, center: band.center, high: band.high } : null}
+                dqssGrade={focus?.dqssProvenance === 'measured' ? dqssScoreToGrade(focus.dqss) : null}
+                mode={view.mode}
+                uncertaintyMode={view.uncertainty === 'none' ? 'none' : 'band'}
+                eventCoverage={view.eventCoverage}
+                source={view.source}
+                referenceTimeLabel={utcLabel(view.referenceTime)}
+                validTimeLabel={utcLabel(view.validTime)}
+                freshnessLabel={freshnessLabel(view.referenceTime ?? view.validTime)}
+                provenance={[...view.provenance]}
+                coverage={view.coverage}
+              />
+            </div>
           )}
         </div>
       </section>

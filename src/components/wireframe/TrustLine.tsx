@@ -1,3 +1,6 @@
+import DqssBadge from './DqssBadge'
+import BandSlot from '../content/BandSlot'
+
 /**
  * TrustLine — "how much should I trust this number" strip, shared by every
  * hero that renders a headline PM2.5 reading (Home / Today / Country
@@ -9,6 +12,13 @@
  * Each of the three signals is independent: a surface with a real p10/p90
  * band but no DQSS score renders one withheld and one live, side by side —
  * never collapsed into a single all-or-nothing state.
+ *
+ * design-audit 2026-09-05 §1 #4: withheld fields used to be three lines of
+ * grey italic text — indistinguishable from a rendering bug. The DQSS slot
+ * now shows an actual dashed-outline badge (`DqssBadge`'s existing `unknown`
+ * grade already renders that shape) instead of describing one in prose, and
+ * the p10-p90 slot renders through `<BandSlot>` so "no band" reads as a
+ * placeholder shape, not a blank.
  */
 export interface TrustLineDqss {
   available: false
@@ -80,19 +90,25 @@ export default function TrustLine({
         {dqss.available ? (
           `${Math.round(dqss.value)}/100`
         ) : (
-          <span className="trust-line__na">— withheld ({dqss.reason})</span>
+          <span className="trust-line__withheld">
+            <DqssBadge dqss="unknown" variant="compact" />
+            <span className="trust-line__na">withheld ({dqss.reason})</span>
+          </span>
         )}
       </span>
+      <div className="trust-line__item trust-line__item--band">
+        <span className="trust-line__k">p10–p90</span>
+        <BandSlot
+          emptyLabel="not published"
+          {...(uncertainty.available
+            ? { available: true, p10: uncertainty.p10, p90: uncertainty.p90, unit: uncertainty.unit }
+            : { available: false, reason: uncertainty.reason })}
+        />
+      </div>
       <span className="trust-line__item">
-        <span className="trust-line__k">p10–p90</span>{' '}
-        {uncertainty.available ? (
-          `${uncertainty.p10.toFixed(1)}–${uncertainty.p90.toFixed(1)}${uncertainty.unit ? ` ${uncertainty.unit}` : ''}`
-        ) : (
-          <span className="trust-line__na">not published{uncertainty.reason ? ` (${uncertainty.reason})` : ''}</span>
-        )}
-      </span>
-      <span className="trust-line__item">
-        <a href={methodologyHref}>Why this number? →</a>
+        <a className="trust-line__why" href={methodologyHref}>
+          Why this number? →
+        </a>
       </span>
     </div>
   )

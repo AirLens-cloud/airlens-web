@@ -52,7 +52,6 @@
   min-width: 0;
 }
 
-.ins-picker-select,
 .ins-year-select {
   height: var(--control-h-sm);
   border: 1px solid var(--rule-strong);
@@ -73,6 +72,113 @@
 }
 
 .ins-picker-stamp { color: var(--ink-2); }
+
+/* ── flag: self-hosted PNG or ISO-code badge fallback ── */
+.ins-flag {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.ins-flag--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-1);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.ins-headline-flag {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: var(--sp-2);
+}
+
+/* ── country combobox ── */
+.ins-combo { position: relative; min-width: 260px; max-width: 320px; }
+
+.ins-combo-field {
+  height: var(--control-h-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-0);
+  background: var(--bg-0);
+  padding: 0 var(--sp-2);
+}
+
+.ins-combo-field-flag { display: inline-flex; flex-shrink: 0; }
+
+.ins-combo-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink-0);
+  font-family: var(--mono);
+  font-size: 12px; /* design-lint-ok: typography — matches .ins-picker-select/.ins-year-select's mono search scale */
+}
+
+.ins-combo-input:focus { outline: none; }
+
+.ins-combo-popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--sp-1));
+  left: 0;
+  right: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--rule-strong);
+  display: flex;
+  flex-direction: column;
+  max-height: 60vh;
+}
+
+.ins-combo-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.ins-combo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+/* Typography comes from the shared `.m` micro-label class (JSX applies it)
+   rather than a literal font-size here — this is layout only. */
+.ins-combo-group {
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  color: var(--ink-2);
+}
+
+.ins-combo-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+}
+
+.ins-combo-option.is-active,
+.ins-combo-option:hover { background: var(--rule); }
+
+.ins-combo-option-name { color: var(--ink-0); font-size: 13px; } /* design-lint-ok: typography — matches .ins-card-note/.ins-lane-p's band scale */
+
+.ins-combo-empty { padding: var(--sp-3); color: var(--ink-2); font-size: 13px; } /* design-lint-ok: typography — matches .ins-empty's band scale */
 
 /* ── band 1: headline ── */
 .ins-headline {
