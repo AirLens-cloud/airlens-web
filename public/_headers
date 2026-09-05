@@ -23,7 +23,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://challenges.cloudflare.com; connect-src 'self' https://airlens.cloud https://airlens-assistant.joymin5655.workers.dev https://huggingface.co https://*.huggingface.co https://*.hf.co https://joymin5655.github.io https://cloudflareinsights.com; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com https://challenges.cloudflare.com; connect-src 'self' https://airlens.cloud https://airlens-assistant.joymin5655.workers.dev https://huggingface.co https://*.huggingface.co https://*.hf.co https://cloudflareinsights.com; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'
 
 # connect-src notes:
 #   airlens.cloud        — community API Worker proxy (src/lib/config/dataSources.ts
@@ -46,9 +46,9 @@
 #                          app reads resolves same-origin on huggingface.co
 #                          (verified 2026-08-31), but a feed crossing the LFS
 #                          threshold would start redirecting to cdn-lfs.*.
-#   joymin5655.github.io — snapshot CDN fallback, only reachable via an explicit
-#                          VITE_SNAPSHOT_CDN_BASE override (.env.example). The
-#                          shipped default is HF.
+#   (joymin5655.github.io removed 2026-09 — the Pages snapshot CDN retired with
+#    the org transfer; the shipped SNAPSHOT_CDN_BASE default is HF. A custom
+#    VITE_SNAPSHOT_CDN_BASE override needs its host re-added here.)
 #
 # img-src https: (Wave 4, blog media): Dispatch/Article/Blog cards and hero
 # images source `imageUrl`/`hero_image.url` from third-party news domains —
