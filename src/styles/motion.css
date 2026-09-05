@@ -91,3 +91,35 @@
 @keyframes bm-rimspin {
   to { transform: rotate(360deg); }
 }
+
+/* AirLensMark wordmark glyph — 7-bar EQ breathing animation. Lives here
+ * (not an inline <style> inside the SVG) so the SVG's textContent stays
+ * clean for accessible-name computation and any host that reads it. */
+@keyframes alm-breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.08);
+  }
+}
+
+@keyframes alm-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alm-bar,
+  .alm-dot {
+    animation: none !important;
+  }
+}

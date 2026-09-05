@@ -34,7 +34,10 @@ const SHORT_MONTHS = [
 
 /**
  * "26 Aug 2026 · 9 days ago" from an ISO timestamp (fractional seconds and a
- * UTC offset both allowed — `Date.parse` handles both). `nowMs` is a
+ * UTC offset both allowed — the fraction is trimmed to 3 digits before
+ * parsing, since ECMA-262 only guarantees `Date.parse` for exactly-3-digit
+ * fractions and the pipeline emits 6; anything longer is
+ * implementation-defined and WebKit is not guaranteed to accept it). `nowMs` is a
  * parameter rather than an internal `Date.now()` read so a test can pin it
  * instead of racing the real clock. Returns null only when the timestamp
  * itself does not parse — never fabricated for the raw "date" half.
@@ -49,7 +52,7 @@ const SHORT_MONTHS = [
  * printing a negative age — the absolute date still stands.
  */
 export function formatEstimatedTimestamp(iso: string, nowMs: number = Date.now()): string | null {
-  const ms = Date.parse(iso)
+  const ms = Date.parse(iso.replace(/(\.\d{3})\d+/, '$1'))
   if (Number.isNaN(ms)) return null
 
   const d = new Date(ms)

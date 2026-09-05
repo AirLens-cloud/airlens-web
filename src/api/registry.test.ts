@@ -75,7 +75,7 @@ afterEach(() => {
 })
 
 describe('fetchFeedRegistry', () => {
-  it('derives status/lastSuccess/license from a live poll, never a code constant', async () => {
+  it('derives status/lastSuccess from a live poll, never a code constant', async () => {
     // Arrange
     installFetch()
     // Act
@@ -84,8 +84,37 @@ describe('fetchFeedRegistry', () => {
     // Assert
     expect(forecast?.status).toBe('ready')
     expect(forecast?.lastSuccess).toBe(FRESH)
-    expect(forecast?.license).toBe('Not published — no source registry exists yet')
     expect(registry.feeds).toHaveLength(5)
+  })
+
+  // ATTRIBUTION.md is the SOT this maps against — these assert against that
+  // file's researched table rather than re-deriving a license, so a change to
+  // one without the other fails here instead of the two silently disagreeing.
+  it('resolves each feed\'s license from ATTRIBUTION.md, keyed on its provider', async () => {
+    // Arrange
+    installFetch()
+    // Act
+    const registry = await fetchFeedRegistry()
+    const byId = Object.fromEntries(registry.feeds.map((f) => [f.id, f]))
+    // Assert
+    expect(byId['pm25-grid']?.license).toBe('Public Domain (U.S. Government work)')
+    expect(byId['pm25-timeline']?.license).toBe('Public Domain (U.S. Government work)')
+    expect(byId['fires']?.license).toBe('Public Domain (U.S. Government work)')
+    expect(byId['forecast']?.license).toBe('CC BY 4.0')
+  })
+
+  it('marks a provider absent from ATTRIBUTION.md as unverified rather than guessing', async () => {
+    // Arrange — the wind feed's provider is plain NOAA/NCEP GFS, a distinct
+    // product from the GEFS-Aerosols one ATTRIBUTION.md documents. Sharing a
+    // licence because both are NOAA would be exactly the kind of guess this
+    // registry's own header comment forbids.
+    installFetch()
+    // Act
+    const registry = await fetchFeedRegistry()
+    const wind = registry.feeds.find((f) => f.id === 'wind')
+    // Assert
+    expect(wind?.provider).toBe('NOAA/NCEP GFS')
+    expect(wind?.license).toBe('Unverified — not documented in ATTRIBUTION.md')
   })
 
   it('keeps the last-good state when a later poll cannot reach the feed', async () => {
@@ -150,8 +179,9 @@ describe('fetchFeedRegistry', () => {
   })
 
   it('leaves attribution null where no licence mandates wording', async () => {
-    // Guards the opposite failure: filling every row with a plausible string
-    // would be the fabrication `LICENSE_NOT_PUBLISHED` exists to refuse.
+    // Guards the opposite failure: filling every row with a plausible
+    // attribution sentence would be exactly the fabrication `LICENSE_UNVERIFIED`
+    // exists to refuse for the license field.
     // Arrange
     installFetch()
     // Act

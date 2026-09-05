@@ -84,4 +84,13 @@ describe('formatEstimatedTimestamp', () => {
   it('returns null for an unparseable timestamp rather than fabricating one', () => {
     expect(formatEstimatedTimestamp('not-a-date', NOW)).toBeNull()
   })
+
+  it('normalizes non-spec fraction lengths before parsing (cross-engine safety)', () => {
+    // ECMA-262 only guarantees 3-digit fractions; anything longer must be
+    // trimmed before parse or WebKit may reject the whole stamp.
+    const capturedAt = Date.parse('2026-09-05T00:40:00Z')
+    expect(formatEstimatedTimestamp('2026-08-26T12:47:24.859234123+00:00', capturedAt)).toBe(
+      '26 Aug 2026 · 9 days ago',
+    )
+  })
 })
