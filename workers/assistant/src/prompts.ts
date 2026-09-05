@@ -237,7 +237,7 @@ Day-over-day PM2.5 noise scales with yesterday's level (same Korea table,
 deciding whether to call a change "뚜렷이 나빠졌다/좋아졌다" (clearly
 worse/better):
 
-| yesterday's PM2.5 | change is "clear" only if \|Δ24h\| ≥ |
+| yesterday's PM2.5 | change is "clear" only if the swing (Δ24h magnitude) ≥ |
 |---|---|
 | ≤15 µg/m³ | 5.5 µg/m³ |
 | 15-25 | 10.5 |
