@@ -192,7 +192,12 @@ CHATLOG_HOURLY_MAX = "120"
 #   cap); the worst-case-if-every-turn-maxes-out figure (≈12,053, over the
 #   cap) is the trade-off documented above.
 DAILY_REQUEST_BUDGET = "10000"
-REQUEST_COST_ESTIMATE = "60"
+# 60 → 65 (2026-09-05, MAX_TOKENS 2048→3072 동반): 같은 average-based 관행 유지.
+# 입력 +~400 토큰 ≈ +3.6 neurons, reasoning 증가분 여유 포함 개산 +5. 최악
+# ceiling 은 27273*3072/1e6 + ~20 ≈ 104 neurons 로 상승 (worst-case 미보장
+# 트레이드오프는 위 문단 그대로, 폭만 커짐). floor(10000/65)=153 turns/day.
+# 실측 재보정(usage.neurons 프로브) 전의 개산값임을 명시.
+REQUEST_COST_ESTIMATE = "65"
 MAX_MESSAGE_LENGTH = "2000"
 MAX_HISTORY_TURNS = "10"
 ALLOWED_ORIGINS = "https://airlens.cloud,https://www.airlens.cloud,http://localhost:5173,http://localhost:4173"
@@ -239,7 +244,14 @@ EMBEDDING_MODEL = "@cf/baai/bge-m3"
 #   context window).
 # 2048 adopted — not the single lowest value that happened to pass once, but
 # the lowest value with margin over measured run-to-run variance.
-MAX_TOKENS = "2048"
+# 2048 → 3072 (2026-09-05, 해석 레이어 R2): 프롬프트가 자랐다 — 레벨별 변화
+# 임계 표 + 평균회귀 규칙 + 계절 정체 세분화 + DQSS 배지 정정 (~+400 프롬프트
+# 토큰). reasoning 모델이라 프롬프트가 크면 thinking 토큰도 같이 늘고, CI
+# generation-smoke("DQSS 점수가 뭔가요?", 실 retrieval)가 2048에서
+# finish_reason="length" 재발 (run 33949372046) — round 2가 경고한 바로 그
+# 재발 모드. 3072 = 이전 계측의 최악 자연 완결(1424) 대비 2배+ 여유. 이 값의
+# 자연-완결 여부는 같은 CI 스모크가 커밋마다 재검증한다.
+MAX_TOKENS = "3072"
 TEMPERATURE = "0.3"
 # CHAT_MODEL is a reasoning-capable model — its thinking tokens draw from the
 # SAME MAX_TOKENS budget as the visible answer. Left unset, some questions

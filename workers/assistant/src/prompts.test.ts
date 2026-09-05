@@ -107,4 +107,27 @@ describe('buildMessages', () => {
     expect(system.content).toContain('WHO 2021 24h guideline');
     expect(system.content).toContain('reference distribution');
   });
+
+  it('change-language rule is level-dependent with a regression-to-the-mean caveat (2026-09-05 R2)', () => {
+    // Act
+    const messages = buildMessages('what is pm2.5 in seoul', [], 10, GROUNDED, false, true);
+    const system = messages[0] as { content: string };
+    // Assert — band thresholds replace the old flat ≥10 rule.
+    expect(system.content).toContain("yesterday's PM2.5");
+    expect(system.content).toContain('21.8');
+    expect(system.content).toContain('Regression to the mean');
+    // Stagnation reference (causal section) is season-scoped, not annual.
+    const causalMessages = buildMessages('why is it high', [], 10, GROUNDED, true, false);
+    const causalSystem = causalMessages[0] as { content: string };
+    expect(causalSystem.content).toContain('SEASON-DEPENDENT');
+  });
+
+  it('DQSS is described as High/Medium/Low badges, never A-F letter grades', () => {
+    // Act — platform_context is unconditional, no gating needed.
+    const messages = buildMessages('hello', [], 10, GROUNDED);
+    const system = messages[0] as { content: string };
+    // Assert
+    expect(system.content).toContain('High / Medium / Low');
+    expect(system.content).not.toContain('letter\ngrade (A-F)');
+  });
 });
