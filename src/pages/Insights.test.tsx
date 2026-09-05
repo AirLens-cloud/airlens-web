@@ -46,6 +46,15 @@ vi.mock('../components/insights/PolicyMap', async () => {
 vi.mock('../components/insights/CityPredictionCard', () => ({
   default: () => <div data-testid="band-prediction" />,
 }))
+// Stubbed for the same reason as PolicyMap/CityPredictionCard above: it has
+// its own feed and its own coverage (`ForecastBandCard.test.tsx`), and its
+// honest "could not be read" text would otherwise collide with this file's
+// own failure-state assertions below (both fetch the same globally-stubbed
+// `fetch`, and this file's country feed is deliberately incomplete in most
+// of these tests).
+vi.mock('../components/insights/ForecastBandCard', () => ({
+  default: () => <div data-testid="band-forecast" />,
+}))
 
 const summaryRow = (countryCode: string, att: number | null, significant: boolean | null) => ({
   countryCode,
