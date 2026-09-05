@@ -230,7 +230,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   useEffect(() => {
     if (reducedMotion || typeof window === 'undefined') return
     let lastY = window.scrollY
-    let ticking = false
+    let rafId = 0
 
     function evaluate(): void {
       const y = window.scrollY
@@ -239,17 +239,19 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
       else if (delta > HIDE_SCROLL_DELTA_PX) setScrolledAway(true)
       else if (delta < -HIDE_SCROLL_DELTA_PX) setScrolledAway(false)
       lastY = y
-      ticking = false
+      rafId = 0
     }
 
     function onScroll(): void {
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(evaluate)
+      if (rafId) return
+      rafId = requestAnimationFrame(evaluate)
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
   }, [reducedMotion])
 
   useEffect(() => {
