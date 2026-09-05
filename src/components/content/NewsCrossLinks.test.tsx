@@ -70,6 +70,25 @@ describe('NewsCrossLinks', () => {
     expect(container.querySelector('.news-chips')).toBeNull()
   })
 
+  it('suppresses only the country chip when hideCountryChip is set, keeping the evidence chip', () => {
+    // Arrange
+    const article = fixture({ countryCode: 'KR', sourceName: 'Reuters' })
+    // Act
+    render(<NewsCrossLinks article={article} hideCountryChip />)
+    // Assert
+    expect(screen.queryByRole('link', { name: /south korea/i })).toBeNull()
+    expect(screen.getByText(/evidence: reuters/i)).toBeTruthy()
+  })
+
+  it('renders nothing when hideCountryChip is set and no evidence data is available', () => {
+    // Arrange
+    const article = fixture({ countryCode: 'KR', sourceName: null })
+    // Act
+    const { container } = render(<NewsCrossLinks article={article} hideCountryChip />)
+    // Assert
+    expect(container.querySelector('.news-chips')).toBeNull()
+  })
+
   it('applies a caller-supplied className alongside the base class', () => {
     // Arrange
     const article = fixture()

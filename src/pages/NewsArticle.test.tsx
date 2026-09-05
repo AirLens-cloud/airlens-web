@@ -83,11 +83,12 @@ describe('NewsArticle page', () => {
     expect(container.querySelector('[class*="dqss"]')).toBeNull()
   })
 
-  // UI Tier-1 P2-B — country/evidence cross-link chips on the detail page.
-  // Scoped to `.news-chips`: the mockup-gate-G2 band (ArticleStoryLinks,
-  // below) also renders a "South Korea" link on this page, so an unscoped
-  // query would match both.
-  it('renders country and evidence cross-link chips backed by the real article fields', async () => {
+  // UI Tier-1 P2-B — evidence-source chip on the detail page. The country
+  // chip is suppressed here (`hideCountryChip`, review Major 1): the
+  // mockup-gate-G2 band (ArticleStoryLinks, below) owns the country->profile
+  // link surface on this page, so NewsCrossLinks would otherwise render a
+  // second link to the same destination.
+  it('renders the evidence-source chip from NewsCrossLinks, with its country chip suppressed', async () => {
     vi.mocked(fetchArticleBySlug).mockResolvedValue({
       status: 'found',
       article: article({ countryCode: 'KR', sourceName: 'Reuters' }),
@@ -95,8 +96,25 @@ describe('NewsArticle page', () => {
     const { container } = render(<NewsArticle slug="a" />)
     await screen.findByRole('heading', { name: 'Article A' })
     const chips = within(container.querySelector('.news-chips') as HTMLElement)
-    expect(chips.getByRole('link', { name: /south korea/i }).getAttribute('href')).toBe('/country/KR')
     expect(chips.getByText(/evidence: reuters/i)).toBeTruthy()
+    expect(chips.queryByRole('link', { name: /south korea/i })).toBeNull()
+  })
+
+  // Review Major 1 — the two country-linking components on this page
+  // (NewsCrossLinks + ArticleStoryLinks) must never both point a reader at
+  // `/country/:code`; exactly one profile link should exist.
+  it('renders exactly one country-profile link on the article detail page', async () => {
+    vi.mocked(fetchArticleBySlug).mockResolvedValue({
+      status: 'found',
+      article: article({ countryCode: 'KR', sourceName: 'Reuters' }),
+    })
+    render(<NewsArticle slug="a" />)
+    await screen.findByRole('heading', { name: 'Article A' })
+    const profileLinks = screen
+      .getAllByRole('link')
+      .filter((el) => el.getAttribute('href') === '/country/KR')
+    expect(profileLinks).toHaveLength(1)
+    expect(profileLinks[0].closest('.article-story-links')).toBeTruthy()
   })
 
   // Mockup gate G2 — approved 2026-09-05.

@@ -94,6 +94,35 @@ describe('fetchPolicyIndex', () => {
     expect(spy).toHaveBeenCalledTimes(1)
   })
 
+  // PR #80 review Major 2 — ArticleStoryLinks and ArticleEvidenceBlock
+  // (via fetchCountryPolicyImpact) both call this independently on the same
+  // article page; before either's fetch resolves, `_indexCache` is still
+  // empty for both, so only an in-flight promise cache (not the resolved-
+  // value cache alone) collapses them to one network call.
+  it('shares one in-flight request when called concurrently before either resolves', async () => {
+    // Arrange
+    const spy = mockFetch({ 'policy-impact/index.json': INDEX })
+    // Act
+    const [a, b] = await Promise.all([fetchPolicyIndex(), fetchPolicyIndex()])
+    // Assert
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(a).toBe(b)
+    expect(a).toHaveLength(2)
+  })
+
+  it('does not permanently cache a failed read — a later call retries', async () => {
+    // Arrange
+    const spy = mockFetch({}) // index.json 404s -> []
+    await expect(fetchPolicyIndex()).resolves.toEqual([])
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockImplementation(async () => ({ ok: true, status: 200, json: async () => INDEX }) as unknown as Response)
+    // Act
+    const index = await fetchPolicyIndex()
+    // Assert
+    expect(index).toHaveLength(2)
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
   it('returns an empty list — never throws — when the index is missing', async () => {
     mockFetch({})
     await expect(fetchPolicyIndex()).resolves.toEqual([])

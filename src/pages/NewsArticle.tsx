@@ -131,7 +131,7 @@ export default function NewsArticle({ slug }: NewsArticleProps) {
         ) : null}
       </section>
 
-      <NewsCrossLinks article={article} className="article-cross-links fluid-enter" />
+      <NewsCrossLinks article={article} className="article-cross-links fluid-enter" hideCountryChip />
 
       <ArticleStoryLinks article={article} className="fluid-enter" />
 

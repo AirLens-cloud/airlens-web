@@ -4,6 +4,15 @@ import type { NewsArticle } from '../../types/news'
 export interface NewsCrossLinksProps {
   article: Pick<NewsArticle, 'countryCode' | 'sourceName'>
   className?: string
+  /**
+   * Suppresses the country chip. The article detail page's `ArticleStoryLinks`
+   * band (mockup gate G2) owns the country->profile link surface there — without
+   * this, the two components render two links to the same `/country/:code`
+   * destination back to back (PR #80 review, Major 1). The evidence chip is
+   * unaffected; the Dispatch card (no `ArticleStoryLinks`) omits this prop and
+   * keeps its country chip.
+   */
+  hideCountryChip?: boolean
 }
 
 /**
@@ -26,8 +35,8 @@ export interface NewsCrossLinksProps {
  * Country Profile page directly (`/country/:code`) rather than the
  * Insights deep-dive `ArticleEvidenceBlock` links to.
  */
-export default function NewsCrossLinks({ article, className }: NewsCrossLinksProps) {
-  const name = countryName(article.countryCode)
+export default function NewsCrossLinks({ article, className, hideCountryChip }: NewsCrossLinksProps) {
+  const name = hideCountryChip ? null : countryName(article.countryCode)
   const classes = ['news-chips']
   if (className) classes.push(className)
 
