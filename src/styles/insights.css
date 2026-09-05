@@ -46,6 +46,10 @@
   align-items: center;
   gap: var(--sp-2);
   color: var(--ink-2);
+  /* Flex item of `.ins-picker`; without this its default `min-width: auto`
+     floors it at the select's preferred (not shrunk) content size — see the
+     `.ins-picker-select` comment below for the measured overflow this caused. */
+  min-width: 0;
 }
 
 .ins-picker-select,
@@ -59,6 +63,13 @@
   font-size: 12px;
   padding: 0 var(--sp-2);
   max-width: 320px;
+  /* `.ins-picker-label` is a flex row (COUNTRY tag + select); a `<select>`'s
+     default flex `min-width: auto` floors it at its longest-option content
+     size, which wins over `max-width` and pushes the row past a narrow
+     viewport (measured: 320px rendered vs ~270px available at 390px width,
+     causing document-level horizontal overflow on /insights). `min-width: 0`
+     lets it actually shrink and truncate instead. */
+  min-width: 0;
 }
 
 .ins-picker-stamp { color: var(--ink-2); }

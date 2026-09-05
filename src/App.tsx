@@ -70,9 +70,13 @@ interface RouteRender {
  * Route table for `matchRoute` (`./app/router`) — a ~40-line regex matcher,
  * not react-router-dom (not installed in this repo; adding one wasn't part
  * of the design-system porting brief). Matched in order; the first hit wins.
- * FluidChrome (and the AQI capsule it mounts) wraps only the immersive
- * surfaces — /landing, /globe, /insights — every other page (briefing
- * surfaces and static content alike) renders unwrapped, same as Home/Today.
+ * FluidChrome (and the AQI capsule it mounts) wraps only /globe, /today and
+ * /insights — every other page (briefing surfaces and static content alike)
+ * renders unwrapped, same as Home. /landing is deliberately excluded too
+ * (P1 fix, 2026-09-05 audit): it is its own bare cinematic snapshot world
+ * (LandingFlight owns its own chrome, per the 'bare' chrome variant below),
+ * and the live capsule's real-time reading clashed with that world and
+ * covered the Chapter 4 hero typography mid-scroll.
  *
  * Named export (not just used locally) so `nav.test.ts` can verify every
  * nav/footer href resolves here, and that no `chrome: 'site'` route is
@@ -81,17 +85,7 @@ interface RouteRender {
 // eslint-disable-next-line react-refresh/only-export-components -- route data, not a component
 export const routes: Array<Route<RouteRender>> = [
   { path: '/design', render: () => ({ element: <DesignGallery />, chrome: 'bare' }) },
-  {
-    path: '/landing',
-    render: () => ({
-      element: (
-        <FluidChrome>
-          <LandingFlight />
-        </FluidChrome>
-      ),
-      chrome: 'bare',
-    }),
-  },
+  { path: '/landing', render: () => ({ element: <LandingFlight />, chrome: 'bare' }) },
   // G2: Chapter 5's CTA now lands on the real observation deck (the WebGL
   // globe + its observatory chrome). GlobePlaceholder, which stood in while
   // the engine was unported, is retired — Globe falls back to GlobeFallback

@@ -36,6 +36,19 @@ const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000
 const ALERT_AUTOCLOSE_MS = 4000
 const ALERT_SESSION_KEY = 'airlens-capsule-alert-shown'
 
+// P1 fix (2026-09-05 audit): the capsule is `position: fixed` near the top
+// of every surface it mounts on, so on a tall page whatever content scrolls
+// into that band gets covered (measured on /today: the Instruments section
+// heading, mid-scroll). Rather than shrinking the pill itself (its two-row
+// idle layout is a deliberate earlier fix — see the COLLAPSED_H comment
+// above), it slides off-screen while the visitor scrolls down through
+// content and returns the instant they scroll back up or land near the top
+// — same "hide while reading, reappear on demand" pattern as a browser's
+// own collapsing toolbar. Never hides while open or mid-alert (both checked
+// at the `hidden &&` call site below).
+const HIDE_NEAR_TOP_PX = 40
+const HIDE_SCROLL_DELTA_PX = 8
+
 function hasShownAlert(): boolean {
   try {
     return sessionStorage.getItem(ALERT_SESSION_KEY) === '1'
@@ -99,10 +112,11 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   // neither means this is the feed's thickest-air pick.
   const locationSource: 'user' | 'approx' | 'none' = choice ? 'user' : approx ? 'approx' : 'none'
   const data = useCapsuleData(personalizedLocation)
-  useReducedMotion()
+  const reducedMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [pulsing, setPulsing] = useState(false)
   const [nowTick, setNowTick] = useState(() => Date.now())
+  const [scrolledAway, setScrolledAway] = useState(false)
 
   const panelId = useId()
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -210,6 +224,34 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     return () => clearInterval(id)
   }, [data.status])
 
+  // Hide-on-scroll-down (see the HIDE_* constants' header comment). Skipped
+  // under reduced motion — the capsule simply stays put rather than
+  // sliding, same call other spring-driven UI in this codebase makes.
+  useEffect(() => {
+    if (reducedMotion || typeof window === 'undefined') return
+    let lastY = window.scrollY
+    let ticking = false
+
+    function evaluate(): void {
+      const y = window.scrollY
+      const delta = y - lastY
+      if (y <= HIDE_NEAR_TOP_PX) setScrolledAway(false)
+      else if (delta > HIDE_SCROLL_DELTA_PX) setScrolledAway(true)
+      else if (delta < -HIDE_SCROLL_DELTA_PX) setScrolledAway(false)
+      lastY = y
+      ticking = false
+    }
+
+    function onScroll(): void {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(evaluate)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [reducedMotion])
+
   useEffect(() => {
     if (!open) return
 
@@ -250,6 +292,9 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
 
   const radius = open ? 20 : COLLAPSED_H / 2
   const phase = pulsing ? 'alerting' : open ? 'open' : 'idle'
+  // Never actually hide while it's open or announcing an alert — only the
+  // idle collapsed pill slides away.
+  const hidden = scrolledAway && !open && phase !== 'alerting'
 
   let idle: ReactNode
   let ariaLabel: string
@@ -292,6 +337,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
       ref={rootRef}
       className="aq-capsule"
       data-phase={phase}
+      data-hidden={hidden || undefined}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
     >

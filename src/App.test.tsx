@@ -1,8 +1,9 @@
 // Route-level check: FluidChrome (and the AQI capsule it mounts) wraps only
-// /landing and /globe, never /design or the default DataProbe. Heavy page
-// internals (LandingFlight's chapter scenes, AqiCapsule's own data/motion
-// wiring) are stubbed out here — they have their own dedicated coverage —
-// so this test stays scoped to App.tsx's routing decision.
+// /globe, /today and /insights, never /design, /landing, or the default
+// DataProbe. Heavy page internals (LandingFlight's chapter scenes,
+// AqiCapsule's own data/motion wiring) are stubbed out here — they have
+// their own dedicated coverage — so this test stays scoped to App.tsx's
+// routing decision.
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { matchRoute } from './app/router'
@@ -106,13 +107,16 @@ describe('App — FluidChrome routing', () => {
     expect(queryByTestId('page-not-found')).not.toBeNull()
   })
 
-  it('mounts the fluid chrome overlay on /landing', () => {
-    // Arrange
+  it('does not mount the fluid chrome overlay (or its live capsule) on /landing', () => {
+    // Arrange — P1 fix (2026-09-05 audit): /landing is a bare cinematic
+    // snapshot world; the live AQI capsule clashed with it and covered the
+    // Chapter 4 hero typography mid-scroll.
     setPath('/landing')
     // Act
     const { queryByTestId } = render(<App />)
     // Assert
-    expect(queryByTestId('fluid-chrome-overlay')).not.toBeNull()
+    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
+    expect(queryByTestId('mock-capsule')).toBeNull()
     expect(queryByTestId('page-landing')).not.toBeNull()
   })
 
@@ -173,9 +177,10 @@ describe('App — FluidChrome routing', () => {
     expect(await findByTestId('page-insights')).not.toBeNull()
   })
 
-  it('renders the capsule in its day variant on /today and /insights, night on /landing', () => {
+  it('renders the capsule in its day variant on /today and /insights, night (default) on /globe', () => {
     // Arrange / Act — /today and /insights keep the light Paper-Ink day
-    // tint; /landing keeps the default night variant unchanged.
+    // tint; /globe keeps the default night variant, unchanged. /landing no
+    // longer mounts a capsule at all (covered by the test above).
     // render() queries default to document.body, so each render must be
     // cleaned up before the next to avoid picking up both mock capsules.
     setPath('/today')
@@ -188,14 +193,14 @@ describe('App — FluidChrome routing', () => {
     const insightsVariant = insights.getByTestId('mock-capsule').getAttribute('data-variant')
     cleanup()
 
-    setPath('/landing')
-    const landing = render(<App />)
-    const landingVariant = landing.getByTestId('mock-capsule').getAttribute('data-variant')
+    setPath('/globe')
+    const globe = render(<App />)
+    const globeVariant = globe.getByTestId('mock-capsule').getAttribute('data-variant')
 
     // Assert
     expect(todayVariant).toBe('day')
     expect(insightsVariant).toBe('day')
-    expect(landingVariant).toBe('night')
+    expect(globeVariant).toBe('night')
   })
 })
 
