@@ -34,7 +34,8 @@ const PAD_B = 36
 const MAX_SERIES = 4
 // An endpoint label is two stacked 10px text lines (value + flag); the group
 // needs this much vertical room before it collides with its neighbour.
-const LABEL_GAP = 26
+// Exported for the de-overlap tests, so their gap assertions track this value.
+export const LABEL_GAP = 26
 
 export default function PolicyTrendLines({
   panels,

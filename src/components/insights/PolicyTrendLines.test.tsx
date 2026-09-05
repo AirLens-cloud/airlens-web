@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import PolicyTrendLines from './PolicyTrendLines'
+import PolicyTrendLines, { LABEL_GAP } from './PolicyTrendLines'
 import type { CountryPanel, CountryPanelPoint } from '../../types/policy'
 
 afterEach(cleanup)
@@ -148,7 +148,6 @@ describe('PolicyTrendLines — the spread band', () => {
 
 // The de-overlap contract: endpoint TEXT moves to keep a minimum gap, the dot
 // never does. Value texts render at labelTextY - 5, dots at the true labelY.
-const LABEL_GAP = 26
 const PLOT_BOTTOM = 320 - 36 // VB_H - PAD_B
 
 function sortedYs(container: HTMLElement, selector: string, attr: string): number[] {
