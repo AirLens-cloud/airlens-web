@@ -23,19 +23,9 @@ export default function AirLensMark({ size = 32, className }: { size?: number; c
       className={className}
       aria-hidden="true"
     >
-      <style>{`
-        @keyframes alm-breathe {
-          0%, 100% { transform: scaleY(1); }
-          50% { transform: scaleY(1.08); }
-        }
-        @keyframes alm-pulse {
-          0%, 100% { transform: scale(1); opacity: .85; }
-          50% { transform: scale(1.15); opacity: 1; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .alm-bar, .alm-dot { animation: none !important; }
-        }
-      `}</style>
+      {/* alm-breathe / alm-pulse keyframes + reduced-motion override live in
+          src/styles/motion.css — not an inline <style> here, which would
+          leak "@keyframes alm-breathe…" into this SVG's textContent. */}
       <line x1="16" y1="5" x2="16" y2="27" stroke="currentColor" strokeWidth=".5" opacity=".25" />
       {BARS.map((b, i) => (
         <rect

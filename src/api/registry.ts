@@ -13,11 +13,16 @@
  * constant: each entry's `status`/`lastSuccess`/`coverage` comes from an
  * actual fetch run at call time.
  *
- * `license` is `LICENSE_NOT_PUBLISHED` for every entry on purpose — grepping
- * this codebase's data layer for a license field turns up nothing (see the
- * spec's own "소스 사실이 코드 상수에 분산" diagnosis). Inventing a plausible
- * license string would be exactly the fabrication the spec's "비협상 원칙"
- * exists to forbid.
+ * `license` is looked up from `LICENSE_BY_PROVIDER` below, keyed on each feed's
+ * `provider` string. That map is not invented here — it transcribes
+ * `ATTRIBUTION.md`'s researched, cited license table (2026-09-05 live-render
+ * audit: the page rendered "Not published — no source registry exists yet"
+ * for every row, while the repo already carried a correct answer one file
+ * over). A provider not present in that map renders `LICENSE_UNVERIFIED`
+ * rather than inheriting a neighbour's or guessing — e.g. the wind feed's
+ * plain NOAA/NCEP GFS is a distinct product from the GEFS-Aerosols one
+ * `ATTRIBUTION.md` documents, so it stays unverified until someone checks it,
+ * per the spec's "비협상 원칙" against fabricating a source fact.
  *
  * Last-good rule: a poll that fails to reach a feed does not overwrite what
  * the previous successful poll established — ported from
@@ -33,7 +38,19 @@ import { fetchWindField } from './weather'
 import { fetchForecast } from '../lib/today/forecastSource'
 import { feedPipeline, PHENOMENA, FIRE_FRESHNESS_SLA_H } from '../lib/config/globeOntology'
 
-const LICENSE_NOT_PUBLISHED = 'Not published — no source registry exists yet'
+const LICENSE_UNVERIFIED = 'Unverified — not documented in ATTRIBUTION.md'
+
+/**
+ * Transcribed from `ATTRIBUTION.md`'s "Live measurement and model data"
+ * table — not re-derived here, so the two cannot drift into disagreeing
+ * about the same source. Keyed on the exact `provider` string each `FeedDef`
+ * below declares.
+ */
+const LICENSE_BY_PROVIDER: Readonly<Record<string, string>> = {
+  'NOAA GEFS-Aerosols': 'Public Domain (U.S. Government work)',
+  'NASA FIRMS (VIIRS/MODIS)': 'Public Domain (U.S. Government work)',
+  'Open-Meteo CAMS': 'CC BY 4.0',
+}
 
 export type FeedStatus = 'ready' | 'stale' | 'unavailable'
 
@@ -198,7 +215,7 @@ async function pollFeed(def: FeedDef, nowMs: number): Promise<FeedRegistryEntry>
     label: def.label,
     provider: def.provider,
     tier: def.tier,
-    license: LICENSE_NOT_PUBLISHED,
+    license: LICENSE_BY_PROVIDER[def.provider] ?? LICENSE_UNVERIFIED,
     attribution: def.attribution ?? null,
     cadence: def.cadence,
   }
