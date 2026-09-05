@@ -4,7 +4,7 @@
  * rather than silently doing nothing when clicked.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, cleanup, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { useGlobeStore } from '../store/globeStore'
 import type { TimelineData } from '../api/timeline'
 
@@ -27,8 +27,21 @@ vi.mock('../lib/webgl', async (importOriginal) => {
 
 // The engine and the 2D fallback are lazy chunks with their own coverage; the
 // stage renders `null` for both under Suspense here, which is what we want —
-// these tests are about the chrome's gating decisions.
-vi.mock('../components/globe/three/Globe3DScene', () => ({ default: () => null, orbitControlsRef: { current: null } }))
+// these tests are about the chrome's gating decisions. `engineBehavior` lets
+// the loading-gate/error-boundary tests below simulate the two states a real
+// import() can be stuck in that `default: () => null` can't: still-pending
+// ('suspend', via the manual-Suspense throw-a-promise trick) and rejected
+// ('error', a synchronous throw an Error Boundary must catch).
+type EngineBehavior = 'ready' | 'suspend' | 'error'
+let engineBehavior: EngineBehavior = 'ready'
+vi.mock('../components/globe/three/Globe3DScene', () => ({
+  default: () => {
+    if (engineBehavior === 'suspend') throw new Promise<never>(() => {})
+    if (engineBehavior === 'error') throw new Error('mock engine chunk failure')
+    return null
+  },
+  orbitControlsRef: { current: null },
+}))
 vi.mock('../components/globe/GlobeFallback', () => ({ default: () => <div data-testid="globe-fallback" /> }))
 // Map/Table have their own data-fetching coverage (GlobeTableView.test.tsx) —
 // stubbed here so these page-level tests never issue a real grid-snapshot fetch.
@@ -52,6 +65,7 @@ beforeEach(() => {
   useGlobeStore.setState(INITIAL, true)
   fetchTimelineManifest.mockResolvedValue(null)
   isWebGLSupportedMock.mockReturnValue(true)
+  engineBehavior = 'ready'
   // jsdom ships no matchMedia; usePlatform needs one to answer touch/motion.
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
@@ -70,8 +84,14 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+// Role-scoped, not `getByText(label).closest('button')`: PM2.5 is now the
+// default field (P0, 01-ux-audit.md §2 #3), so the evidence card's honest
+// provenance row renders an "FORECAST" tag alongside "ANALYSIS"/"OBSERVATION"
+// (PHENOMENA.pm25.provenance) whenever a mode's own label is also "FORECAST"
+// — a second plain-text match `getByText` can't disambiguate from the mode
+// rail's button. The accessible name (`aria-label`) stays unique to the rail.
 function modeButton(label: string): HTMLButtonElement {
-  return screen.getByText(label).closest('button') as HTMLButtonElement
+  return screen.getByRole('button', { name: new RegExp(`^${label}\\b`) }) as HTMLButtonElement
 }
 
 describe('Globe — mode gating', () => {
@@ -235,5 +255,80 @@ describe('Globe — view mode switch', () => {
     await waitFor(() => expect(useGlobeStore.getState().globeViewMode).toBe('map'))
     expect(screen.getByTestId('globe-map-view')).toBeTruthy()
     expect(viewButton('GLOBE').disabled).toBe(true)
+  })
+})
+
+describe('Globe — engine loading gate', () => {
+  // 01-ux-audit.md §2 #1: the outer Suspense used to render `fallback={null}`,
+  // so a chunk stuck mid-fetch left the stage a literal blank void. These
+  // pin the honest-loading skeleton, the 8s patience window's "Open Map
+  // view" escape hatch, and that the escape hatch is a click, not a timer.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }) })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('shows the loading skeleton immediately, with no escape-hatch CTA yet', () => {
+    // Arrange
+    engineBehavior = 'suspend'
+    // Act
+    render(<Globe />)
+    // Assert
+    expect(screen.getByText('Loading globe engine…')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /open map view/i })).toBeNull()
+  })
+
+  it('reveals "Open Map view" once the chunk is still pending past the 8s patience window', async () => {
+    // Arrange
+    engineBehavior = 'suspend'
+    render(<Globe />)
+    // Act
+    await act(async () => { vi.advanceTimersByTime(8000) })
+    // Assert
+    expect(screen.getByRole('button', { name: /open map view/i })).toBeTruthy()
+    // A stuck chunk is not a hard failure — the deck stays on Globe until asked.
+    expect(useGlobeStore.getState().globeViewMode).toBe('globe')
+  })
+
+  it('switches to Map (reason: slow-load) only once that CTA is clicked, never automatically', async () => {
+    // Arrange
+    engineBehavior = 'suspend'
+    render(<Globe />)
+    await act(async () => { vi.advanceTimersByTime(8000) })
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /open map view/i }))
+    // Assert
+    expect(useGlobeStore.getState().globeViewMode).toBe('map')
+  })
+})
+
+describe('Globe — engine chunk failure', () => {
+  // Item 3 of the same audit finding: a rejected import() throws past
+  // `<Suspense>` rather than resolving into its fallback, so only an Error
+  // Boundary can turn it into a state the HUD can report honestly instead of
+  // an unhandled render crash.
+  it('reports UNAVAILABLE with a reason in the HUD and evidence card when the engine chunk fails to load', () => {
+    // Arrange
+    engineBehavior = 'error'
+    // Act
+    render(<Globe />)
+    // Assert — HUD identity dot + primary readout, and the evidence card's
+    // own status pill, both carry the failure instead of a data-freshness one.
+    const hud = document.querySelector('.gobs-hud')
+    expect(hud?.querySelector('.gobs-live-dot')?.className).toContain('is-unavailable')
+    expect(hud?.textContent).toContain('UNAVAILABLE · mock engine chunk failure')
+    // Both the HUD strip and the evidence card's own status pill carry the
+    // reason — two independent surfaces, hence *All*By rather than a single
+    // getByText (which throws on more than one match).
+    expect(screen.getAllByText(/UNAVAILABLE · mock engine chunk failure/).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('still offers "Open Map view" so a failed engine is not a dead end', () => {
+    // Arrange
+    engineBehavior = 'error'
+    // Act
+    render(<Globe />)
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /open map view/i }))
+    // Assert
+    expect(useGlobeStore.getState().globeViewMode).toBe('map')
   })
 })

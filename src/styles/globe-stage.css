@@ -393,6 +393,48 @@
 .obs-surface .gl-ctx-lost-title { margin: 0; color: var(--obs-ink); font: 700 11px/1 var(--obs-mono); letter-spacing: .14em; text-transform: uppercase; }
 .obs-surface .gl-ctx-lost-desc { margin: 0; color: var(--obs-hud); font: 500 12px/1.5 var(--obs-display); }
 
+/* ── Globe engine loading/failure gate (outer Suspense, above the Canvas) ──
+   01-ux-audit.md §2 #1 — `fallback={null}` on this boundary is what made the
+   stage read as broken instead of busy. The orb is a CSS approximation of
+   `Globe3DScene`'s own inner `LoadingFallback` wireframe mesh (same spin
+   period, 04-motion-system.md loading scene) since no WebGL context exists
+   yet to draw the real one into. */
+
+.obs-surface .globe-engine-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  justify-items: center;
+  background: var(--obs-void);
+}
+
+.obs-surface .globe-engine-fallback-orb {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 1px solid rgba(37, 226, 244, .35);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(37, 226, 244, .12), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(232, 236, 244, .12) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgba(232, 236, 244, .12) 0 1px, transparent 1px 12px);
+  animation: globe-engine-fallback-spin 3.2s linear infinite;
+}
+
+.obs-surface .globe-engine-fallback-label {
+  margin: 0;
+  color: var(--obs-hud);
+  font: 700 9px/1 var(--obs-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+@keyframes globe-engine-fallback-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── ViewModeSwitch ──────────────────────────────────────────────────────── */
 
 .obs-surface .view-mode-switch {
@@ -847,4 +889,5 @@
   .obs-surface .gl-switch,
   .obs-surface .gt-frame,
   .obs-surface .vms-btn { transition: none; }
+  .obs-surface .globe-engine-fallback-orb { animation: none; }
 }

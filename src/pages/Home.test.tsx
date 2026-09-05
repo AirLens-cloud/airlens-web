@@ -173,15 +173,18 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-strip__band')).toBeNull()
   })
 
-  it('shows explicit stale wording and a muted value when generated_at is older than the refresh cadence', () => {
+  it('shows explicit stale wording and a stale chip — never a muted value — when generated_at is older than the refresh cadence', () => {
     // Arrange — 7h old, past the 6h STALE_THRESHOLD_MS
     const staleUpdatedAt = new Date(NOW.getTime() - 7 * 3600_000).toISOString()
     mockData(readyFixture({ updatedAt: staleUpdatedAt }))
     // Act
     const { container } = render(<Home />)
-    // Assert
+    // Assert — the value itself stays full-ink (design-audit 2026-09-05 §1 #1:
+    // opacity on the number read as "broken", not "stale"). The state moves to
+    // a chip next to it instead.
     expect(container.querySelector('.home-hero--stale')).not.toBeNull()
-    expect(container.querySelector('.home-hero__value--muted')).not.toBeNull()
+    expect(container.querySelector('.home-hero__value--muted')).toBeNull()
+    expect(container.querySelector('.home-hero__chip--stale')?.textContent).toMatch(/STALE\s*7h/)
     expect(container.querySelector('.home-hero__meta')?.textContent).toMatch(/Stale/i)
   })
 
@@ -192,6 +195,8 @@ describe('Home page — ready state', () => {
     const { container } = render(<Home />)
     // Assert
     expect(container.querySelector('.home-hero--stale')).toBeNull()
+    expect(container.querySelector('.home-hero__chip--stale')).toBeNull()
+    expect(container.querySelector('.home-hero__chip--forecast')).not.toBeNull()
     expect(container.querySelector('.home-hero__meta')?.textContent).not.toMatch(/Stale/i)
   })
 
