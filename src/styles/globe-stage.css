@@ -273,6 +273,11 @@
 
 .obs-surface .gl-switches-groups { display: grid; }
 .obs-surface .gl-switches { display: grid; gap: 3px; }
+/* 저자 display 룰(flex/grid)이 UA 의 [hidden]{display:none} 보다 우선해 그룹
+   접기가 시각적으로 무력화된다 — DOM 속성 단언 테스트는 통과하는데 실렌더는
+   전부 펼쳐져 있던 버그(2026-09-05 실렌더 게이트 실측). 명시 가드가 정본. */
+.obs-surface .gl-group-panel[hidden],
+.obs-surface .gl-switches[hidden] { display: none; }
 
 .obs-surface .gl-switch {
   display: grid;
