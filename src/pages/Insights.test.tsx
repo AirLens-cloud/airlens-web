@@ -159,6 +159,17 @@ async function renderPage(path = '/insights') {
   return render(<Insights />)
 }
 
+/**
+ * Picks a country through the combobox: typing its ISO code narrows the
+ * filtered list to exactly that one row (the code is unambiguous even when
+ * the country name is not a substring of the query), then clicks it.
+ */
+function pickCountry(code: string): void {
+  const input = screen.getByRole('combobox')
+  fireEvent.change(input, { target: { value: code } })
+  fireEvent.click(screen.getByRole('option'))
+}
+
 beforeEach(() => {
   vi.unstubAllGlobals()
   stub.mapMounts.length = 0
@@ -208,8 +219,10 @@ describe('Insights — country selection', () => {
   it('lists unestimated countries in the picker, marked as such', async () => {
     // Arrange — hiding them would misrepresent the batch's coverage.
     mockFetch(FULL_FEED)
-    // Act
     await renderPage()
+    await waitFor(() => screen.getByRole('combobox'))
+    // Act — the row list is a popup; open it before reading its content.
+    fireEvent.focus(screen.getByRole('combobox'))
     // Assert
     await waitFor(() =>
       expect(screen.getByText(/United Arab Emirates — not estimated/)).toBeTruthy(),
@@ -341,11 +354,10 @@ describe('Insights — the map on a country switch', () => {
   it('never carries one map instance across two countries', async () => {
     // Arrange
     mockFetch(FULL_FEED)
-    const { container } = await renderPage()
+    await renderPage()
     await waitFor(() => expect(stub.mapMounts).toEqual(['KR']))
     // Act
-    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
-    fireEvent.change(select, { target: { value: 'JP' } })
+    pickCountry('JP')
     // Assert — a fresh mount for JP, not the KR instance re-rendered.
     await waitFor(() => expect(stub.mapMounts).toEqual(['KR', 'JP']))
   })
@@ -354,11 +366,10 @@ describe('Insights — the map on a country switch', () => {
     // Arrange — this is the mechanism the property above currently rests on, so
     // it is worth asserting directly rather than inferring.
     mockFetch(FULL_FEED)
-    const { container } = await renderPage()
+    await renderPage()
     await waitFor(() => expect(screen.getByTestId('band-map')).toBeTruthy())
     // Act
-    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
-    fireEvent.change(select, { target: { value: 'JP' } })
+    pickCountry('JP')
     // Assert
     expect(screen.queryByTestId('band-map')).toBeNull()
     await waitFor(() =>
@@ -385,19 +396,20 @@ describe('Insights — switching country faster than the network answers', () =>
       },
       ['policy-impact/JP.json'],
     )
-    const { container } = await renderPage()
+    await renderPage()
     await waitFor(() => expect(treatmentText()).toBe('Fine Dust Act'))
-    const select = container.querySelector('.ins-picker-select') as HTMLSelectElement
 
     // Act — away to JP while it hangs, then straight back to KR, then JP lands.
-    fireEvent.change(select, { target: { value: 'JP' } })
-    fireEvent.change(select, { target: { value: 'KR' } })
+    pickCountry('JP')
+    pickCountry('KR')
     // The in-flight request has to be real, or this test asserts nothing.
     expect(spy.mock.calls.some(([u]) => String(u).includes('policy-impact/JP.json'))).toBe(true)
     release()
 
     // Assert — the late JP payload is keyed to a request nobody is looking at.
-    await waitFor(() => expect(select.value).toBe('KR'))
+    await waitFor(() =>
+      expect((screen.getByRole('combobox') as HTMLInputElement).value).toBe('South Korea'),
+    )
     expect(treatmentText()).toBe('Fine Dust Act')
     expect(document.getElementById('ins-headline-title')?.textContent).toContain('South Korea')
   })

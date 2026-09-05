@@ -4,6 +4,7 @@ import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
 import AqiDot from '../wireframe/AqiDot'
 import TrustLine from '../wireframe/TrustLine'
+import StateChip from '../content/StateChip'
 import Materialize from '../fluid/Materialize'
 import CitySearch from '../weather/CitySearch'
 import { dataState } from '../../types/dataState'
@@ -168,11 +169,9 @@ export default function HomeHero({
             <AqiDot tier={data.tier} size={14} />
             <span className="home-hero__tier-label">{tierLabel}</span>
             {isStale && (
-              <span className="home-hero__chip home-hero__chip--stale">
-                ◷ STALE {formatElapsed(elapsedMs)?.replace(/ ago$/, '')}
-              </span>
+              <StateChip variant="stale" detail={formatElapsed(elapsedMs)?.replace(/ ago$/, '')} index={0} />
             )}
-            <span className="home-hero__chip home-hero__chip--forecast">Forecast</span>
+            <StateChip variant="forecast" index={isStale ? 1 : 0} />
           </div>
         </div>
 

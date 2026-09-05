@@ -413,7 +413,21 @@ canvas.cursor-trail { z-index: 2; }
   width: 220px;
 }
 .obs-surface .atmos-mode-kicker { display: block; padding: 3px 7px 10px; color: var(--obs-hud-dim); font: 700 8px/1 var(--obs-mono); letter-spacing: .18em; }
-.obs-surface .atmos-mode-list { display: grid; gap: 4px; }
+.obs-surface .atmos-mode-list { position: relative; display: grid; gap: 4px; }
+/* Single sliding selection indicator (04-motion-system.md "모드 레일") —
+   replaces the old per-button ::before accent bar with one shared element
+   whose top/height AtmosphericModeRail measures and sets inline; the
+   left/-11px/2px geometry below is this vertical layout's static half. */
+.obs-surface .atmos-mode-indicator {
+  position: absolute;
+  left: -11px;
+  width: 2px;
+  background: var(--obs-cyan);
+  border-radius: 1px;
+  pointer-events: none;
+  transition: top 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1)), height 360ms var(--ease-spring-soft, cubic-bezier(.22, 1.2, .36, 1));
+}
+.obs-surface .atmos-mode-glyph-icon { width: 15px; height: 15px; fill: none; stroke: currentColor; }
 .obs-surface .atmos-mode {
   position: relative;
   display: grid;
@@ -431,19 +445,10 @@ canvas.cursor-trail { z-index: 2; }
   cursor: pointer;
   transition: transform 120ms ease-out, color 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
 }
-.obs-surface .atmos-mode::before {
-  content: '';
-  position: absolute;
-  left: -11px; top: 8px; bottom: 8px; width: 2px;
-  background: var(--obs-cyan);
-  opacity: 0; transform: scaleY(.2);
-  transition: opacity 180ms ease-out, transform 280ms var(--obs-ez);
-}
 .obs-surface .atmos-mode:hover:not(:disabled) { color: var(--obs-ink); background: rgba(255, 255, 255, .045); }
 .obs-surface .atmos-mode:active:not(:disabled) { transform: scale(.975); transition-duration: 80ms; }
 .obs-surface .atmos-mode:focus-visible { outline: 2px solid var(--obs-cyan); outline-offset: 2px; }
 .obs-surface .atmos-mode.is-active { color: var(--obs-ink); background: rgba(37, 226, 244, .075); border-color: rgba(37, 226, 244, .2); }
-.obs-surface .atmos-mode.is-active::before { opacity: 1; transform: scaleY(1); }
 .obs-surface .atmos-mode:disabled { opacity: .32; cursor: not-allowed; }
 .obs-surface .atmos-mode-number,
 .obs-surface .atmos-mode-state { color: var(--obs-hud-dim); font: 400 8px/1 var(--obs-mono); letter-spacing: .08em; }
@@ -559,6 +564,6 @@ canvas.cursor-trail { z-index: 2; }
 
 @media (prefers-reduced-motion: reduce) {
   .obs-surface .atmos-mode,
-  .obs-surface .atmos-mode::before { transition: none; }
+  .obs-surface .atmos-mode-indicator { transition: none; }
   .obs-surface .atmos-mode:active:not(:disabled) { transform: none; }
 }

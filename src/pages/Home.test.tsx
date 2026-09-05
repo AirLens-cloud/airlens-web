@@ -184,7 +184,7 @@ describe('Home page — ready state', () => {
     // a chip next to it instead.
     expect(container.querySelector('.home-hero--stale')).not.toBeNull()
     expect(container.querySelector('.home-hero__value--muted')).toBeNull()
-    expect(container.querySelector('.home-hero__chip--stale')?.textContent).toMatch(/STALE\s*7h/)
+    expect(container.querySelector('.state-chip--stale')?.textContent).toMatch(/Stale\s*7h/)
     expect(container.querySelector('.home-hero__meta')?.textContent).toMatch(/Stale/i)
   })
 
@@ -195,8 +195,8 @@ describe('Home page — ready state', () => {
     const { container } = render(<Home />)
     // Assert
     expect(container.querySelector('.home-hero--stale')).toBeNull()
-    expect(container.querySelector('.home-hero__chip--stale')).toBeNull()
-    expect(container.querySelector('.home-hero__chip--forecast')).not.toBeNull()
+    expect(container.querySelector('.state-chip--stale')).toBeNull()
+    expect(container.querySelector('.state-chip--forecast')).not.toBeNull()
     expect(container.querySelector('.home-hero__meta')?.textContent).not.toMatch(/Stale/i)
   })
 

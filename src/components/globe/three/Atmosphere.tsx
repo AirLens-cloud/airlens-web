@@ -3,7 +3,10 @@
  *
  * Single BackSide sphere at 1.04x scale.
  * Uses world-space coordinates (modelMatrix, not modelViewMatrix).
- * Day/twilight color blend based on sun direction.
+ * Day/twilight color blend based on sun direction, sourced from a 1×256
+ * vertical LUT (`lut/atmosphere-rim.png`, globe-kit §교체 순서 6) rather than
+ * a 2-color uniform mix — same transition curve (smoothstep(-0.5, 1.0, ...)),
+ * richer authored gradient than a flat day/twilight lerp.
  */
 import { useMemo } from 'react';
 import * as THREE from 'three';
@@ -11,7 +14,7 @@ import { useFrame } from '@react-three/fiber';
 import { getSunDirection } from '../utils/sun';
 import { useGlobeStore } from '../../../store/globeStore';
 import { GLOBE_THEME_PRESETS } from '../../../lib/config/globe';
-import { GLOBE_COLORS } from '../../../lib/config/globe-v2';
+import { getLut } from './systems/spriteKit';
 
 const vertShader = /* glsl */ `
   varying vec3 vNormal;
@@ -28,8 +31,7 @@ const vertShader = /* glsl */ `
 
 const fragShader = /* glsl */ `
   uniform vec3 uSunDirection;
-  uniform vec3 uAtmosphereDayColor;
-  uniform vec3 uAtmosphereTwilightColor;
+  uniform sampler2D uRimLut;
 
   varying vec3 vNormal;
   varying vec3 vPosition;
@@ -49,9 +51,11 @@ const fragShader = /* glsl */ `
     // Wavelength-dependent scattering — blue scatters more (λ⁻⁴)
     vec3 rayleighColor = vec3(0.15, 0.35, 0.65) * rayleighPhase * 0.3;
 
-    // Day/twilight base color blend
+    // Day/twilight base color — same curve as before (smoothstep(-0.5, 1.0, ...))
+    // but sourced from the authored night→twilight→day LUT instead of a flat
+    // 2-color mix (globe-kit atmosphere-rim.png, 1×256 vertical ramp).
     float atmosphereDayMix = smoothstep(-0.5, 1.0, sunOrientation);
-    vec3 atmosphereColor = mix(uAtmosphereTwilightColor, uAtmosphereDayColor, atmosphereDayMix);
+    vec3 atmosphereColor = texture2D(uRimLut, vec2(0.5, atmosphereDayMix)).rgb;
 
     // Combine: base atmosphere + Rayleigh tint
     float rayleighStrength = smoothstep(-0.2, 0.8, sunOrientation);
@@ -100,8 +104,7 @@ const Atmosphere = () => {
 
   const uniforms = useMemo(() => ({
     uSunDirection: { value: getSunDirection() },
-    uAtmosphereDayColor: { value: new THREE.Color(GLOBE_COLORS.ATMOSPHERE_DAY) },
-    uAtmosphereTwilightColor: { value: new THREE.Color(GLOBE_COLORS.ATMOSPHERE_TWILIGHT) },
+    uRimLut: { value: getLut('atmosphere-rim') },
   }), []);
 
   const haloUniforms = useMemo(() => ({

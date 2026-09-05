@@ -3,16 +3,19 @@
  *
  * Spawns particles at fire locations, advects them along wind vectors
  * sampled from the shared wind DataTexture. Particles fade and grow
- * as they drift away from the source.
+ * as they drift away from the source. Billboarded `smoke-puff.png` sprite
+ * quads (globe-kit §교체 순서 4) replace the untextured SphereGeometry —
+ * a soft radial falloff reads as smoke; a flat-shaded sphere read as a dot.
  */
 import { useRef, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useGlobeStore } from '../../../../store/globeStore'
 import { GLOBE_CONFIG } from '../../../../lib/config/globe'
 import { useWindTexture } from '../../../../hooks/useWindTexture'
 import { useFireSources } from '../../../../hooks/useFireSources'
 import { latLonToVec3 } from '../systems/geoUtils'
+import { getSprite } from '../systems/spriteKit'
 
 const CFG = GLOBE_CONFIG.SMOKE_EMITTER
 const WIND = GLOBE_CONFIG.GLOBE_V2.WIND_TEXTURE
@@ -41,8 +44,11 @@ const SmokeEmitter = () => {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const windTex = useWindTexture()
   const fires = useFireSources()
+  const { camera } = useThree()
   const particlesRef = useRef<SmokeParticle[]>([])
   const maxCount = getSmokeCount(qualityPreset.tier)
+  // spriteKit 의 공유 캐시 소유 — 여기서 dispose 안 함(disposeSpriteKit()이 전체 정리).
+  const texture = useMemo(() => getSprite('smoke-puff'), [])
 
   useEffect(() => {
     if (fires.length === 0) return
@@ -61,7 +67,7 @@ const SmokeEmitter = () => {
     particlesRef.current = particles
   }, [fires, maxCount])
 
-  const geometry = useMemo(() => new THREE.SphereGeometry(1, 4, 4), [])
+  const geometry = useMemo(() => new THREE.PlaneGeometry(1, 1), [])
 
   useFrame(() => {
     const mesh = meshRef.current
@@ -108,6 +114,7 @@ const SmokeEmitter = () => {
 
       _dummy.position.copy(pos)
       _dummy.scale.setScalar(scale)
+      _dummy.lookAt(camera.position)
       _dummy.updateMatrix()
       mesh.setMatrixAt(i, _dummy.matrix)
 
@@ -131,10 +138,12 @@ const SmokeEmitter = () => {
       frustumCulled={false}
     >
       <meshBasicMaterial
+        map={texture}
         transparent
         opacity={CFG.OPACITY_START}
         depthWrite={false}
         blending={THREE.NormalBlending}
+        side={THREE.DoubleSide}
         vertexColors
       />
     </instancedMesh>
