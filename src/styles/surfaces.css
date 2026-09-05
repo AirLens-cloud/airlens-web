@@ -54,11 +54,15 @@
   color: #ffffff;
 }
 /* AQI-tint backdrop the glass card sits on. Ink pairing is measured (see header) —
-   unhealthy keeps dark ink (white fails AA at 3.59:1); hazard alone flips to white. */
-.glass-card[data-aqi="good"] { background-color: var(--tint-good); --glass-card-ink: var(--tint-ink-dark); }
-.glass-card[data-aqi="moderate"] { background-color: var(--tint-moderate); --glass-card-ink: var(--tint-ink-dark); }
-.glass-card[data-aqi="unhealthy"] { background-color: var(--tint-unhealthy); --glass-card-ink: var(--tint-ink-dark); }
-.glass-card[data-aqi="hazard"] { background-color: var(--tint-hazard); --glass-card-ink: #ffffff; }
+   unhealthy keeps dark ink (white fails AA at 3.59:1); hazard alone flips to white.
+   `--glass-card-ink-contrast` is the label color for anything FILLED with the ink
+   (e.g. the hero's primary CTA): it must ride this same AQI-tint axis, never the
+   site theme — a site-theme token (`--bg-0`) on a tint-axis fill goes dark-on-dark
+   when site=dark meets a light tint (measured 1.06:1, 2026-09-05 audit F2). */
+.glass-card[data-aqi="good"] { background-color: var(--tint-good); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
+.glass-card[data-aqi="moderate"] { background-color: var(--tint-moderate); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
+.glass-card[data-aqi="unhealthy"] { background-color: var(--tint-unhealthy); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
+.glass-card[data-aqi="hazard"] { background-color: var(--tint-hazard); --glass-card-ink: #ffffff; --glass-card-ink-contrast: var(--tint-ink-dark); }
 @media (prefers-reduced-transparency: reduce) {
   .glass-card {
     background: var(--glass-opaque);

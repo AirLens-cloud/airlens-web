@@ -169,8 +169,13 @@ const AQ_MARKS: readonly string[] = ['0', '12', '35', '55', '150', '250'];
 const PM10_MARKS: readonly string[] = ['0', '54', '154', '254', '354', '424'];
 const POLLEN_MARKS: readonly string[] = ['0', '30', '100', '300'];
 
-/** data-collect-hourly.yml cron = 3시간. 격자 피드 4종이 같은 주기를 공유한다. */
+/** data-collect-hourly.yml cron = 3시간 (weather/marine + GEFS pm25/pm10). */
 const CADENCE_3H = '3h';
+
+/** Open-Meteo AQ 호스트 피드(가스 o3/no2/co + pollen)는 2026-09-05 부터 일일 예산
+ *  게이트 뒤에서 00Z·12Z run 만 수집한다 — 무료 티어가 좌표 수 가중으로 미터링해
+ *  3h 주기는 오전에 일일 쿼터를 소진했다(온종일 429). */
+const CADENCE_12H = '12h';
 
 /** Open-Meteo AQ 격자 — 수집 스텝(AQ_STEP=5)·경로는 워크플로 실측치. */
 /**
@@ -219,7 +224,8 @@ const aqPipeline = (id: 'pm25' | 'pm10' | 'o3' | 'no2' | 'co', varKey: string): 
     cdnPath: CDN_COVERED_AQ_IDS.includes(id) ? `current-${id}-grid.json` : undefined,
     staticPath: `/data/current-${id}-grid.json`,
     source: provenance.source,
-    cadence: CADENCE_3H,
+    // 가스 3종은 AQ 호스트 예산 게이트(12h) — pm25/pm10 은 GEFS 경로라 3h 그대로.
+    cadence: GEFS_AEROSOL_AQ_IDS.includes(id) ? CADENCE_3H : CADENCE_12H,
     resolution: provenance.resolution,
     freshnessSlaH: null,
   };
@@ -257,7 +263,7 @@ const pollenPipeline = (varKey: string): PhenomenonPipeline => ({
   storagePath: 'aq-data/pollen-grid.json',
   staticPath: '/data/pollen-grid.json',
   source: 'Open-Meteo CAMS pollen',
-  cadence: CADENCE_3H,
+  cadence: CADENCE_12H,
   resolution: '2°',
   freshnessSlaH: null,
   coverage: '유럽 한정 (CAMS 도메인) — 도메인 밖은 격자가 비어 아무것도 안 그려진다',
