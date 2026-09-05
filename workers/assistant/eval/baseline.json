@@ -1,8 +1,8 @@
 {
   "routing_accuracy": 1.0,
-  "retrieval_recall_at_3": null,
-  "quality_grounding": null,
-  "quality_grounding_generated": null,
+  "retrieval_recall_at_3": 0.833,
+  "quality_grounding": 1.0,
+  "quality_grounding_generated": 1.0,
   "guardrail_block_rate": 1.0,
-  "adversarial_refusal_rate": null
+  "adversarial_refusal_rate": 1.0
 }

@@ -1,5 +1,22 @@
 # baseline.json — 각 숫자가 어디서 나왔는가
 
+## 2026-09-06 — 잔여 4지표 확정 (사람 승인 커밋, 6/6 완성)
+
+사용자가 CI 실측값 4종을 검토·승인해 커밋했다. 값의 출처는 전부 GitHub Actions
+런 로그의 `[eval-gate]` 라인 — 로컬 재측정이 아니라 시크릿이 실재하는 CI 환경
+실측이다.
+
+| metric | 확정값 | 측정 근거 |
+|---|---|---|
+| `retrieval_recall_at_3` | **0.833** | run 33718107194 (model-ab, 09-03) 과 run 33949721817 (generation-smoke, 09-05) **2회 독립 측정 일치** — 라이브 Vectorize 코퍼스 대상 |
+| `adversarial_refusal_rate` | **1.000** | run 33949721817 (09-05), layer 2 — 정규식 가드를 합법 통과하는 프로브를 실 CHAT_MODEL 에 투입 |
+| `quality_grounding` | **1.000** | run 33718107194 (09-03), reference 답변 grounding 5/5. **judge 변별력 동시 확인** — 같은 런의 control(고의 나쁜 답변)은 grounding 1점 |
+| `quality_grounding_generated` | **1.000** | run 33718107194 (09-03), 배포 CHAT_MODEL(`@cf/google/gemma-4-26b-a4b-it`) 생성 답변 grounding 5/5 |
+
+**게이트 효력**: MARGIN 0.1 → recall floor 0.733 (6문항 중 recall 4/6=0.667 부터 red),
+나머지 3지표 floor 0.9. quality 2종은 judge n=1 문항 기반이라 포화값(1.0) —
+회귀 감지기로는 유효하나 품질 상승은 측정 못 한다(케이스 확장이 후속).
+
 ## 2026-09-03 — 안전·라우팅 2지표 확정 (사람 승인 커밋)
 
 **이 문서가 "4 지표"라고 쓴 것은 stale이다** — adversarial 하네스가 나중에 들어오며
