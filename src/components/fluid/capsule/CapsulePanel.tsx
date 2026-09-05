@@ -178,7 +178,7 @@ export default function CapsulePanel({
                 )}
                 <button
                   type="button"
-                  className="aq-capsule-panel__location-cta"
+                  className="aq-capsule-panel__location-cta t-micro"
                   onClick={onRequestLocation}
                   disabled={requestingLocation}
                 >

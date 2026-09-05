@@ -99,11 +99,14 @@ export interface AqiCapsuleProps {
  * reading here on Today/Globe/Insights/Landing, not a second prompt. Before
  * that opt-in it falls back to the same `approx` (edge IP) point Home uses,
  * so the two surfaces never disagree about where the visitor is. Idle state
- * always shows a location label, badged by how the point was obtained:
- * a "NEAREST TO YOU" distance for an opt-in geolocation choice, nothing
- * extra for a searched city, "APPROXIMATE" for the IP guess, and "NEAREST
- * FEED CITY — NOT YOUR LOCATION" for the feed's "thickest air" fallback
- * pick — that last number is very unlikely to be the visitor's own air.
+ * always shows a location label, badged by how the point was obtained: a
+ * "NEAREST TO YOU" distance for an opt-in geolocation choice, nothing extra
+ * for a searched city, "APPROXIMATE" for the IP guess, and "NOT YOUR
+ * LOCATION" for the feed's "thickest air" fallback pick — that last number
+ * is very unlikely to be the visitor's own air. The idle pill keeps that
+ * short form (COLLAPSED_W is 220px — the fuller wording below doesn't fit);
+ * the expanded panel spells it out as "NEAREST FEED CITY — NOT YOUR
+ * LOCATION" where there's room.
  *
  * UI G1 (2026-09-05, approved mockup): the fallback/approximate states also
  * carry their own "Use my location" CTA directly on the expanded panel —
@@ -335,9 +338,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
         <span className="aq-capsule__loc-row t-micro">
           <span className="aq-capsule__loc">{data.city}</span>
           {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
-          {locationSource === 'none' && (
-            <span className="aq-capsule__warn">NEAREST FEED CITY — NOT YOUR LOCATION</span>
-          )}
+          {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
           {locationSource === 'user' && distanceKm !== null && (
             <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
           )}

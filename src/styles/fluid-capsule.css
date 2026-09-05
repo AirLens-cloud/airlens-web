@@ -266,24 +266,29 @@
    /today, /globe, /insights too, where home.css may never have loaded.
    Redeclaring the same values here (self-contained in this globally-loaded
    stylesheet) keeps the visual language identical without a cross-page
-   stylesheet dependency. `currentColor` already resolves to the capsule's
-   own `--capsule-ink` (set on `.aq-capsule__glass`), so no color override
-   is needed here either — same reason the Home version works. */
+   stylesheet dependency. Sizing rides `.t-micro` (mono, 10px, uppercase —
+   applied via the `t-micro` class in CapsulePanel.tsx, not a literal
+   `font-size` here) instead of a one-off value. */
 .aq-capsule-panel__location-cta {
   align-self: flex-start;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
   padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-0);
   border: 1px solid currentColor;
   background: transparent;
-  color: inherit;
   cursor: pointer;
 }
 .aq-capsule-panel__location-cta:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+/* Same compound-override idiom as `.aq-capsule-panel__location-note.t-micro`
+   above: `.t-micro` supplies size/family/weight/case, this keeps full
+   `--capsule-ink` (not `.t-micro`'s own muted `--ink-2`) so the border's
+   `currentColor` and the label text both stay legible on the capsule's own
+   glass tiers — same reasoning as the day-glass P1 fix further up. */
+.aq-capsule-panel__location-cta.t-micro {
+  letter-spacing: 0.05em;
+  color: var(--capsule-ink);
 }
 
 .aq-capsule-panel__spark {

@@ -195,13 +195,15 @@ describe('AqiCapsule', () => {
     expect(within(container).getByText('NO FEED')).toBeTruthy()
   })
 
-  it('shows the location label and an honest fallback warning for the fallback pick', () => {
+  it('shows the location label and a NOT YOUR LOCATION warning for the fallback pick', () => {
     // Arrange — no choice, no approx (default mock): the feed's thickest-air pick
-    // Act
+    // Act — idle pill only (panel closed): the short form, COLLAPSED_W has no
+    // room for the fuller "NEAREST FEED CITY —" wording (see the panel test
+    // below for that one).
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).getByText('Seoul')).toBeTruthy()
-    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
+    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
   })
 
   it('badges an IP-approximate reading as APPROXIMATE rather than as the visitor’s own', () => {
@@ -290,8 +292,10 @@ describe('AqiCapsule — G1 location personalization', () => {
     // Act
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
-    // Assert — the idle bar and the now-open panel both carry the fallback note
-    expect(within(container).getAllByText('NEAREST FEED CITY — NOT YOUR LOCATION').length).toBe(2)
+    // Assert — idle keeps the short form, the now-open panel spells out the
+    // fuller wording (see the header comment on why they differ)
+    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
+    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
     expect(within(container).getByText('LOCATION DENIED — SHOWING FEED FALLBACK')).toBeTruthy()
   })
 
