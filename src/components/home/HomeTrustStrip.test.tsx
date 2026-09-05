@@ -52,6 +52,19 @@ describe('HomeTrustStrip', () => {
     expect(screen.getByText('Updated')).toBeTruthy()
   })
 
+  it('marks DATA QUALITY as the nearest station\'s grade, not an aggregate (design-review Major #1)', () => {
+    useDQSSDataMock.mockReturnValue(cache())
+    render(<HomeTrustStrip coords={HERO_COORDS} updatedAt={UPDATED_AT} nowMs={NOW_MS} />)
+    expect(screen.getByText('Nearest ground station')).toBeTruthy()
+  })
+
+  it('gives every value an aria-label matching its title, so a "—" cell is not silent to a screen reader (Minor #1)', () => {
+    useDQSSDataMock.mockReturnValue(cache({ provenance: 'seed' }))
+    render(<HomeTrustStrip coords={HERO_COORDS} updatedAt={UPDATED_AT} nowMs={NOW_MS} />)
+    const link = screen.getByTitle(/withheld/i)
+    expect(link.getAttribute('aria-label')).toBe(link.getAttribute('title'))
+  })
+
   it('shows the declared graded count when meta declares it', () => {
     useDQSSDataMock.mockReturnValue(
       cache({ stationCounts: { graded: 493, total: 512, declared: true } }),
@@ -102,6 +115,19 @@ describe('HomeTrustStrip', () => {
     render(<HomeTrustStrip coords={HERO_COORDS} updatedAt={UPDATED_AT} nowMs={NOW_MS} />)
     const link = screen.getByTitle(/no ground station within range/i)
     expect(link.textContent).toBe('—')
+  })
+
+  it('distinguishes a not-yet-published feed from a range miss (design-review Minor #2)', () => {
+    // stations:[] means the DQSS feed hasn't published anything yet — a
+    // different honest reason than "this location has no nearby station",
+    // which implies the feed exists but doesn't cover this spot.
+    useDQSSDataMock.mockReturnValue(
+      cache({ stations: [], stationCounts: { graded: 0, total: null, declared: false } }),
+    )
+    render(<HomeTrustStrip coords={HERO_COORDS} updatedAt={UPDATED_AT} nowMs={NOW_MS} />)
+    const link = screen.getByTitle(/not yet published/i)
+    expect(link.textContent).toBe('—')
+    expect(screen.queryByTitle(/no ground station within range/i)).toBeNull()
   })
 
   it('never hides a missing cell — GROUND STATIONS renders "—" with a title reason when the cache has no data', () => {

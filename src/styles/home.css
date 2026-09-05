@@ -239,6 +239,14 @@
   letter-spacing: 0.12em;
   color: var(--ink-2);
 }
+/* design-review 2026-09-05 (PR #82) Major #1: clarifies DATA QUALITY as one
+   nearest station's grade, not an aggregate. Inherits the container's
+   text-transform:none/letter-spacing:normal (only `__label` re-declares
+   uppercase+tracking), so this needs no case/tracking overrides of its own. */
+.home-trust-strip__sublabel {
+  color: var(--ink-2);
+  opacity: 0.75;
+}
 .home-trust-strip__value {
   display: inline-flex;
   align-items: center;

@@ -55,14 +55,23 @@ export default function HomeTrustStrip({ coords, updatedAt, nowMs }: HomeTrustSt
   const grade = isGraded ? dqssScoreToGrade(score) : null
   const isPartial = isGraded && provenance === 'partial'
   const partialDetail = dqssCache?.partialDetail ?? null
+  // design-review 2026-09-05 (PR #82) Minor #2: `score === null` covers two
+  // honestly different situations — the feed has published no stations at
+  // all yet (not-yet-published/withheld) vs. it has stations, just none near
+  // *this* location (range miss) — and conflating them as one "no station
+  // within range" reason misdescribes the withheld case as a location
+  // problem when it's a feed problem.
+  const feedIsEmpty = dqssCache != null && dqssCache.stations.length === 0
   const qualityTitle = !coords
     ? 'No location for this reading yet'
     : score === null
-      ? 'No ground station within range of this location'
+      ? feedIsEmpty
+        ? 'DQSS feed not yet published — no ground stations available'
+        : 'No ground station within range of this location'
       : !isGraded
-        ? "Nearest station's DQSS score is withheld — not yet measured (demo/seed value)"
+        ? "Nearest ground station's DQSS score is withheld — not yet measured (demo/seed value)"
         : isPartial
-          ? 'Some DQSS components are measured, others are not yet available'
+          ? "Nearest ground station's DQSS grade — some components measured, others are not yet available"
           : `Nearest ground station's DQSS grade (score ${Math.round(score)}/100)`
 
   const elapsedMs = nowMs - new Date(updatedAt).getTime()
@@ -78,7 +87,7 @@ export default function HomeTrustStrip({ coords, updatedAt, nowMs }: HomeTrustSt
         {dqssLoading ? (
           <WfSkeleton width={64} height={16} />
         ) : (
-          <a className="home-trust-strip__value" href="/globe" title={stationsTitle}>
+          <a className="home-trust-strip__value" href="/globe" title={stationsTitle} aria-label={stationsTitle}>
             {stationsValue ?? '—'}
           </a>
         )}
@@ -86,10 +95,20 @@ export default function HomeTrustStrip({ coords, updatedAt, nowMs }: HomeTrustSt
 
       <div className="home-trust-strip__cell">
         <span className="home-trust-strip__label">Data quality</span>
+        {/* design-review 2026-09-05 (PR #82) Major #1: this grade is a single
+            nearest station's, not an aggregate — a sibling span (not nested
+            inside `__label`, which would fold its text into the label's own
+            textContent) so the two texts stay independently matchable. */}
+        <span className="home-trust-strip__sublabel">Nearest ground station</span>
         {dqssLoading ? (
           <WfSkeleton width={64} height={16} />
         ) : (
-          <a className="home-trust-strip__value" href="/methodology#dqss" title={qualityTitle}>
+          <a
+            className="home-trust-strip__value"
+            href="/methodology#dqss"
+            title={qualityTitle}
+            aria-label={qualityTitle}
+          >
             {grade ? (
               <>
                 <DqssBadge dqss={grade} variant="compact" />
@@ -106,7 +125,11 @@ export default function HomeTrustStrip({ coords, updatedAt, nowMs }: HomeTrustSt
 
       <div className="home-trust-strip__cell">
         <span className="home-trust-strip__label">Updated</span>
-        <span className="home-trust-strip__value home-trust-strip__value--static" title={updatedTitle}>
+        <span
+          className="home-trust-strip__value home-trust-strip__value--static"
+          title={updatedTitle}
+          aria-label={updatedTitle}
+        >
           {ageText ?? '—'}
         </span>
       </div>
