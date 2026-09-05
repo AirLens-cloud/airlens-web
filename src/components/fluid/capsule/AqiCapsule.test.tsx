@@ -290,8 +290,8 @@ describe('AqiCapsule — G1 location personalization', () => {
     // Act
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
-    // Assert
-    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
+    // Assert — the idle bar and the now-open panel both carry the fallback note
+    expect(within(container).getAllByText('NEAREST FEED CITY — NOT YOUR LOCATION').length).toBe(2)
     expect(within(container).getByText('LOCATION DENIED — SHOWING FEED FALLBACK')).toBeTruthy()
   })
 
