@@ -112,6 +112,16 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     relatedTermIds: ['p10-p90', 'dqss'],
   },
   {
+    sectionId: 'sdid',
+    title: 'SDID — estimating what a policy changed',
+    what: 'Synthetic Difference-in-Differences, the causal-inference method behind Insights. A treated area — one that actually experienced a policy — is compared against a synthetic control: a weighted blend of untreated areas built to track the treated area’s pre-policy trend as closely as possible. The gap that opens after the policy start date is reported as the ATT (average treatment effect on the treated), always with a p10–p90 range rather than a single number.',
+    why: '"Pollution fell after the policy" is not evidence the policy caused the fall — weather, economic cycles, and regional trends move pollution on their own. The synthetic control is an explicit attempt to answer "what would this area have looked like without the policy?", so the reported effect is a difference against that counterfactual rather than against the area’s own past.',
+    limitations: 'The estimate is only as good as its synthetic control: when no weighted blend of untreated areas tracks the pre-policy trend closely enough, the counterfactual is unreliable and AirLens declines to publish an ATT — showing the reason instead of a number it cannot stand behind. SDID also cannot separate a policy from anything else that began at the same time in the same place.',
+    relatedTermIds: ['sdid', 'att', 'synthetic-control', 'p10-p90'],
+    exampleLabel: 'See inference on Insights',
+    exampleHref: '/insights',
+  },
+  {
     sectionId: 'averaging-windows',
     title: 'Averaging windows',
     what: 'The time span a displayed value represents — for example an hourly reading versus a rolling 24-hour average.',
