@@ -1,6 +1,8 @@
 // useCapsuleData — maps the live forecast feed onto the shape
-// AqiCapsule/CapsulePanel need: a featured city's current reading, today's
-// expected range, a 24h series, and a 3-way (never fabricated) alert signal.
+// AqiCapsule/CapsulePanel need: the nearest feed city's current reading,
+// today's expected range, a 24h series, and a 3-way (never fabricated)
+// alert signal, for a caller-resolved location (W1a — `useResolvedLocation`
+// resolves *where*; this hook only resolves *what the feed says there*).
 //
 // Source: `fetchForecast` (HF `aq-data/forecast.json`, cron-refreshed, with a
 // bundled static fallback). It used to read `loadTft` — the landing chapters'
@@ -17,8 +19,9 @@
 import { useEffect, useState } from 'react'
 import { fetchForecast } from '../../../lib/today/forecastSource'
 import { pickNearestCity } from '../../../lib/today/nearestCity'
-import type { ForecastCity, ForecastHourly } from '../../../types/forecast'
+import type { ForecastHourly } from '../../../types/forecast'
 import type { AqiTier } from '../../wireframe/AqiDot'
+import type { ResolvedLocation } from '../../../lib/location/resolveLocation'
 
 export type CapsuleAlert = 'worsening' | 'steady' | 'unknown'
 
@@ -57,14 +60,6 @@ export interface CapsuleDataReady {
   series24h: CapsuleSeriesPoint[]
   updatedAt: string
   alert: CapsuleAlert
-  /** True whenever ANY coordinate personalized this reading — a real
-   * viewer choice (`useLocationPersonalization`'s `choice`) OR the edge's
-   * IP-approximate location (`approxLocation.ts`) a caller passed in its
-   * place — rather than the feed's "thickest air" fallback pick. Which of
-   * the two it was is not carried here: `Home.tsx` tracks that itself
-   * (`choice` vs. `approx`) since only it needs the finer distinction
-   * (`HomeHero`'s "MY LOCATION" vs. "~ approximate" wording). */
-  isPersonalized: boolean
 }
 
 export type CapsuleDataState = { status: 'loading' } | CapsuleDataReady | { status: 'missing' }
@@ -93,20 +88,6 @@ const TIER_RANK: Record<AqiTier, number> = {
   unknown: -1,
 }
 
-/** Same "thickest air first" selection as Ch4's `useDawnBriefingData`
- * (`forecastRowAt48h`) — highest first-hour PM2.5 among cities — applied to
- * the current hour instead of +48h. Independent implementation per the wave
- * brief; the chapter-internal helper is not promoted/shared. */
-function pickFeaturedCity(cities: ForecastCity[]): ForecastCity | null {
-  let city: ForecastCity | null = null
-  for (const c of cities) {
-    const now = c.hourly[0]
-    if (!now || !Number.isFinite(now.pm25)) continue
-    if (city === null || now.pm25 > (city.hourly[0]?.pm25 ?? -Infinity)) city = c
-  }
-  return city
-}
-
 function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAlert {
   if (hourly.length < 2 || currentTier === 'unknown') return 'unknown'
   const currentRank = TIER_RANK[currentTier]
@@ -121,14 +102,13 @@ function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAle
 }
 
 /**
- * @param personalizedLocation When set, resolves to the nearest feed city to
- * that point instead of the feed-wide "thickest air" pick — same
- * `pickNearestCity` lookup `useTodayCams` already uses for Today's
- * location-specific reading, so this adds no new fetch or scoring logic of
- * its own. The caller decides where the point comes from — a real
- * `useLocationPersonalization` `choice`, or (Home.tsx) that `choice`'s
- * `approx` fallback when there is no stored choice yet; either way, this
- * hook just resolves the nearest city to whatever point it's handed.
+ * @param location The resolved location (`useResolvedLocation`'s
+ * `location`) to find the nearest feed city for — same `pickNearestCity`
+ * lookup `useTodayCams` already uses for Today's location-specific reading,
+ * so this adds no new fetch or scoring logic of its own. `null` means the
+ * location hasn't resolved yet (still loading, no choice/approx settled) —
+ * this hook returns its own loading state without fetching, rather than
+ * falling back to any feed-wide pick.
  */
 /** A resolved state plus the point it was resolved for. The point travels
  * with the result so a state left over from the previous point can be told
@@ -139,23 +119,21 @@ interface ResolvedFor {
   lon: number | null
 }
 
-export function useCapsuleData(personalizedLocation?: { lat: number; lon: number } | null): CapsuleDataState {
+export function useCapsuleData(location: ResolvedLocation | null): CapsuleDataState {
   const [resolved, setResolved] = useState<ResolvedFor>({ state: { status: 'loading' }, lat: null, lon: null })
-  const personalizedLat = personalizedLocation?.lat ?? null
-  const personalizedLon = personalizedLocation?.lon ?? null
+  const lat = location?.lat ?? null
+  const lon = location?.lon ?? null
 
   useEffect(() => {
+    // Not resolved yet — no fetch, and the read below already reports
+    // `loading` for a lat/lon mismatch (initial state is lat:null/lon:null).
+    if (lat === null || lon === null) return
     let alive = true
-    const setState = (state: CapsuleDataState) => setResolved({ state, lat: personalizedLat, lon: personalizedLon })
+    const setState = (state: CapsuleDataState) => setResolved({ state, lat, lon })
     fetchForecast()
       .then((forecast) => {
         if (!alive) return
-        const isPersonalized = personalizedLat !== null && personalizedLon !== null
-        const city = forecast
-          ? isPersonalized
-            ? (pickNearestCity(forecast.cities, personalizedLat as number, personalizedLon as number)?.city ?? null)
-            : pickFeaturedCity(forecast.cities)
-          : null
+        const city = forecast ? (pickNearestCity(forecast.cities, lat, lon)?.city ?? null) : null
         const now = city?.hourly[0]
         if (!forecast || !city || !now || !Number.isFinite(now.pm25)) {
           setState({ status: 'missing' })
@@ -197,7 +175,6 @@ export function useCapsuleData(personalizedLocation?: { lat: number; lon: number
           series24h,
           updatedAt: forecast.generated_at,
           alert: detectAlert(city.hourly, tier),
-          isPersonalized,
         })
       })
       .catch(() => {
@@ -206,14 +183,16 @@ export function useCapsuleData(personalizedLocation?: { lat: number; lon: number
     return () => {
       alive = false
     }
-  }, [personalizedLat, personalizedLon])
+  }, [lat, lon])
 
   // A result for a different point is not this point's answer — report
-  // loading until the fetch for the current one lands. Without this, the
-  // city resolved for the previous point (or the un-personalized
-  // "thickest air" pick) would sit under the caller's already-updated
-  // location label, reading "~ Riyadh · APPROXIMATE (IP-BASED)" — exactly
-  // the mislabel this chain exists to remove.
-  if (resolved.lat !== personalizedLat || resolved.lon !== personalizedLon) return { status: 'loading' }
+  // loading until the fetch for the current one lands (or, if `location`
+  // is `null`, forever loading — the initial state's lat/lon are both
+  // `null` too, so this also covers "never resolved yet" for free).
+  // Without this, the city resolved for the previous point would sit under
+  // the caller's already-updated location label, reading "~ Riyadh ·
+  // APPROXIMATE (IP-BASED)" — exactly the mislabel this chain exists to
+  // remove.
+  if (resolved.lat !== lat || resolved.lon !== lon) return { status: 'loading' }
   return resolved.state
 }

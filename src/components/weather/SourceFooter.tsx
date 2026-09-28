@@ -1,8 +1,9 @@
-import type { GeoSource } from '../../hooks/useGeolocation'
+import type { LocationSource } from '../../lib/location/resolveLocation'
 
 export interface SourceFooterProps {
   fetchedAt: number | null
-  locationSource: GeoSource
+  /** `null` while the location is still resolving — the disclosure line is omitted. */
+  locationSource: LocationSource | null
 }
 
 function formatFetchedAt(ts: number | null): string {
@@ -14,12 +15,15 @@ function formatFetchedAt(ts: number | null): string {
   }
 }
 
-const LOCATION_DISCLOSURE: Record<GeoSource, string> = {
-  user: 'Location is only used to fetch this forecast — coordinates are not stored on any server.',
+const LOCATION_DISCLOSURE: Record<LocationSource, string> = {
+  geolocation:
+    'Location access is opt-in. Your device location is used only to fetch this forecast, for this browser session — it is never stored.',
+  search:
+    'The city you chose is remembered in this browser only (localStorage) — it is never sent to a server.',
   approx:
     'Location access is opt-in. Until you grant it, this page starts from an IP-based approximate location — the edge network resolving a rough area from your connection and handing it back to your browser, never logged or stored — with Seoul as the fallback if that lookup fails too.',
   default:
-    'Location access is opt-in. Without permission, this page shows Seoul as a default — no coordinates are collected or stored.',
+    'Location access is opt-in. Seoul is shown because no location was chosen and the approximate lookup was unavailable — no coordinates are collected or stored.',
 }
 
 /**
@@ -34,7 +38,7 @@ export default function SourceFooter({ fetchedAt, locationSource }: SourceFooter
     <footer className="wx-footer" aria-label="Data sources">
       <span className="wx-footer__line">SOURCE — Open-Meteo, via the AirLens community proxy (30-min cache)</span>
       <span className="wx-footer__line">FETCHED — {formatFetchedAt(fetchedAt)}</span>
-      <span className="wx-footer__line">{LOCATION_DISCLOSURE[locationSource]}</span>
+      {locationSource && <span className="wx-footer__line">{LOCATION_DISCLOSURE[locationSource]}</span>}
     </footer>
   )
 }

@@ -15,12 +15,12 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
   return { ...actual, useCapsuleData: vi.fn() }
 })
 
-// The hero's location-source wording (MY LOCATION / approximate / fallback)
-// is driven by this hook's own `choice`/`approx`, independently of the
-// mocked capsule data above — mocked here so each test controls it directly
-// instead of depending on the real (localStorage-backed) store + a real
-// `fetch('/edge-geo')` call.
-vi.mock('../hooks/useLocationPersonalization', () => ({ useLocationPersonalization: vi.fn() }))
+// The hero's location-source wording (MY LOCATION / a searched city /
+// approximate / Seoul default) is driven by this hook's own resolved
+// `location`, independently of the mocked capsule data above — mocked here
+// so each test controls it directly instead of depending on the real
+// (localStorage-backed) store + a real `fetch('/edge-geo')` call.
+vi.mock('../hooks/useResolvedLocation', () => ({ useResolvedLocation: vi.fn() }))
 
 // HomeStoriesResearch (below-the-fold, renders regardless of hero status) has
 // its own fetch/state coverage in HomeStoriesResearch.test.tsx — mocked here
@@ -40,7 +40,7 @@ vi.mock('../hooks/useGlobeData', async () => {
 })
 
 import { useCapsuleData, type CapsuleDataState, type CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
-import { useLocationPersonalization } from '../hooks/useLocationPersonalization'
+import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { fetchBlogFeed } from '../api/blog'
 import { useDQSSData } from '../hooks/useGlobeData'
 import type { DQSSCache } from '../types/globe'
@@ -72,7 +72,6 @@ function readyFixture(overrides: Partial<Extract<CapsuleDataState, { status: 're
     series24h: Array.from({ length: 24 }, (_, i) => seriesPoint(i, 42 + i)),
     updatedAt: NOW.toISOString(),
     alert: 'steady',
-    isPersonalized: false,
     ...overrides,
   }
 }
@@ -103,14 +102,16 @@ function mockDQSS(cache: DQSSCache | null) {
   vi.mocked(useDQSSData).mockReturnValue(cache)
 }
 
-type LocationPersonalizationResult = ReturnType<typeof useLocationPersonalization>
+type ResolvedLocationResult = ReturnType<typeof useResolvedLocation>
 
-/** Defaults to the unpersonalized state (no choice, no approx) — matches
- * `readyFixture()`'s own `isPersonalized: false` default below. */
-function mockLocation(overrides: Partial<LocationPersonalizationResult> = {}) {
-  vi.mocked(useLocationPersonalization).mockReturnValue({
+/** Defaults to nothing resolved (no choice, no approx) — the fixed Seoul
+ * default, honestly labeled. Matches `readyFixture()`'s own Seoul/KR default
+ * below, since a mocked `useCapsuleData` never actually reads `location`. */
+function mockResolvedLocation(overrides: Partial<ResolvedLocationResult> = {}) {
+  vi.mocked(useResolvedLocation).mockReturnValue({
+    location: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'default' },
     choice: null,
-    approx: null,
+    approx: { status: 'failed' },
     requesting: false,
     denied: false,
     requestGeolocation: vi.fn(),
@@ -132,7 +133,7 @@ beforeEach(() => {
   // Never resolves — these tests assert synchronously and don't care about
   // HomeStoriesResearch's own states (covered in its own test file).
   vi.mocked(fetchBlogFeed).mockReturnValue(new Promise(() => {}))
-  mockLocation()
+  mockResolvedLocation()
   mockDQSS(dqssFixture())
 })
 
@@ -258,22 +259,27 @@ describe('Home page — ready state', () => {
     expect(note?.textContent).toMatch(/feasibility review/i)
   })
 
-  it('shows the fallback band and both location CTAs with no choice and no approx (thickest-air reading)', () => {
-    // Arrange — mockLocation() default (choice: null, approx: null) already applies.
-    mockData(readyFixture({ isPersonalized: false }))
+  it('shows the Seoul-default fallback band and both location CTAs when nothing is resolved (no choice, approx failed)', () => {
+    // Arrange — mockResolvedLocation() default (Seoul, source 'default') already applies.
+    mockData(readyFixture())
     // Act
-    const { container, getByText } = render(<Home />)
-    // Assert
+    const { container, getByText, queryByText } = render(<Home />)
+    // Assert — the retired worldwide "thickest air" pick never appears again.
     expect(container.querySelector('.home-hero__fallback-band')).not.toBeNull()
+    expect(container.querySelector('.home-hero__fallback-band')?.textContent).toMatch(/Showing Seoul by default/)
     expect(getByText('See air quality near me')).not.toBeNull()
     expect(getByText('Search a location')).not.toBeNull()
-    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/FALLBACK: THICKEST AIR/)
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/DEFAULT LOCATION — NOT YOURS/)
+    expect(queryByText(/THICKEST AIR/)).toBeNull()
   })
 
-  it('hides the fallback band and CTA pair once a real choice personalizes the reading', () => {
+  it('hides the fallback band and shows "Not you?" once geolocation personalizes the reading', () => {
     // Arrange
-    mockLocation({ choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' } })
-    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    mockResolvedLocation({
+      location: { lat: 48.8566, lon: 2.3522, label: 'My location', source: 'geolocation' },
+      choice: { lat: 48.8566, lon: 2.3522, label: 'My location', source: 'geolocation' },
+    })
+    mockData(readyFixture({ city: 'Paris', countryCode: 'FR' }))
     // Act
     const { container, getByText, queryByText } = render(<Home />)
     // Assert
@@ -283,14 +289,35 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · Paris, FR/)
   })
 
+  it('shows a plain "{city}, {cc}" eyebrow (not "MY LOCATION") and keeps the CTAs for a searched city', () => {
+    // Arrange — a typed-in city is the visitor's own intent, but not a
+    // geolocation grant, so the CTAs (still offering "near me") stay up.
+    mockResolvedLocation({
+      location: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' },
+      choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' },
+    })
+    mockData(readyFixture({ city: 'Paris', countryCode: 'FR' }))
+    // Act
+    const { container, getByText, queryByText } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero__fallback-band')).toBeNull()
+    expect(getByText('See air quality near me')).not.toBeNull()
+    expect(getByText('Search a location')).not.toBeNull()
+    expect(queryByText('Not you? Search again')).toBeNull()
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toBe('Paris, FR')
+  })
+
   it('shows the approximate-location eyebrow (still with location CTAs) when only approx resolved', () => {
     // Arrange — no stored choice, but the IP-approximate lookup found one.
-    mockLocation({ approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' } })
-    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    mockResolvedLocation({
+      location: { lat: 48.8566, lon: 2.3522, label: 'Paris', source: 'approx' },
+      approx: { status: 'ready', location: { lat: 48.8566, lon: 2.3522, city: 'Paris' } },
+    })
+    mockData(readyFixture({ city: 'Paris', countryCode: 'FR' }))
     // Act
     const { container, getByText, queryByText } = render(<Home />)
     // Assert — approximate, not a real choice: the fallback band is gone
-    // (a nearby reading, not the global worst), but the opt-in CTAs stay up.
+    // (a nearby reading, not the Seoul default), but the opt-in CTAs stay up.
     expect(container.querySelector('.home-hero__fallback-band')).toBeNull()
     expect(getByText('See air quality near me')).not.toBeNull()
     expect(getByText('Search a location')).not.toBeNull()
@@ -298,36 +325,45 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/~ Paris · APPROXIMATE \(IP-BASED\)/)
   })
 
-  it('tells a visitor who denied permission which fallback they are looking at', () => {
+  it('tells a visitor who denied permission which fallback they are looking at (Seoul default)', () => {
     // Arrange — permission denied, nothing else resolved.
-    mockLocation({ denied: true })
-    mockData(readyFixture({ isPersonalized: false }))
+    mockResolvedLocation({ denied: true })
+    mockData(readyFixture())
     // Act
     const { getByText } = render(<Home />)
     // Assert
-    expect(getByText('Location permission was not granted — showing the global fallback.')).not.toBeNull()
+    expect(
+      getByText('Location permission was not granted — showing the default location (Seoul).'),
+    ).not.toBeNull()
   })
 
-  it('names the approximate location (not the global fallback) when permission was denied but approx resolved', () => {
+  it('names the approximate location (not the Seoul default) when permission was denied but approx resolved', () => {
     // Arrange
-    mockLocation({ denied: true, approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' } })
-    mockData(readyFixture({ isPersonalized: true, city: 'Paris', countryCode: 'FR' }))
+    mockResolvedLocation({
+      denied: true,
+      location: { lat: 48.8566, lon: 2.3522, label: 'Paris', source: 'approx' },
+      approx: { status: 'ready', location: { lat: 48.8566, lon: 2.3522, city: 'Paris' } },
+    })
+    mockData(readyFixture({ city: 'Paris', countryCode: 'FR' }))
     // Act
     const { getByText, queryByText } = render(<Home />)
     // Assert
     expect(
       getByText('Location permission was not granted — showing an approximate (IP-based) location instead.'),
     ).not.toBeNull()
-    expect(queryByText('Location permission was not granted — showing the global fallback.')).toBeNull()
+    expect(
+      queryByText('Location permission was not granted — showing the default location (Seoul).'),
+    ).toBeNull()
   })
 
   it('prefers a real choice over approx when both are present', () => {
     // Arrange
-    mockLocation({
-      choice: { lat: 51.5074, lon: -0.1278, label: 'London, GB', source: 'geolocation' },
-      approx: { lat: 48.8566, lon: 2.3522, city: 'Paris' },
+    mockResolvedLocation({
+      location: { lat: 51.5074, lon: -0.1278, label: 'My location', source: 'geolocation' },
+      choice: { lat: 51.5074, lon: -0.1278, label: 'My location', source: 'geolocation' },
+      approx: { status: 'ready', location: { lat: 48.8566, lon: 2.3522, city: 'Paris' } },
     })
-    mockData(readyFixture({ isPersonalized: true, city: 'London', countryCode: 'GB' }))
+    mockData(readyFixture({ city: 'London', countryCode: 'GB' }))
     // Act
     const { container } = render(<Home />)
     // Assert

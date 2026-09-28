@@ -1,12 +1,12 @@
 /**
  * useTodayCams — CAMS forecast (`fetchForecast()`) resolved to the city
- * nearest the viewer's chosen location. Unlike `useCapsuleData` (Home,
- * always the feed's "thickest air" city), Today is location-specific: the
- * fetch itself carries no location parameter (the feed returns every city
- * at once), so this hook fetches once and re-derives the nearest match
+ * nearest the viewer's chosen location. Independent implementation from
+ * `useCapsuleData` (Home/capsule's own nearest-city lookup): the fetch
+ * itself carries no location parameter (the feed returns every city at
+ * once), so this hook fetches once and re-derives the nearest match
  * whenever lat/lon changes rather than re-fetching.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchForecast } from '../lib/today/forecastSource'
 import { pickNearestCity } from '../lib/today/nearestCity'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
@@ -52,10 +52,20 @@ interface FetchedPayload {
 
 type PayloadState = 'loading' | FetchedPayload | null
 
-export function useTodayCams(lat: number, lon: number): TodayCamsState {
+export function useTodayCams(lat: number | null, lon: number | null): TodayCamsState {
   const [payload, setPayload] = useState<PayloadState>('loading')
+  // The feed fetch itself carries no location parameter (see the header
+  // comment) — this guard only defers its FIRST fetch until a location has
+  // resolved at least once, per `useResolvedLocation`'s "no fetch while
+  // still resolving" contract. Once fetched, it stays fetched — a later
+  // lat/lon change (a different city chosen) re-derives the nearest match
+  // via the `useMemo` below rather than re-fetching the whole feed again.
+  const hasFetchedRef = useRef(false)
 
   useEffect(() => {
+    if (lat === null || lon === null) return
+    if (hasFetchedRef.current) return
+    hasFetchedRef.current = true
     let alive = true
     fetchForecast()
       .then((p) => {
@@ -68,9 +78,10 @@ export function useTodayCams(lat: number, lon: number): TodayCamsState {
     return () => {
       alive = false
     }
-  }, [])
+  }, [lat, lon])
 
   return useMemo(() => {
+    if (lat === null || lon === null) return { status: 'loading' }
     if (payload === 'loading') return { status: 'loading' }
     if (!payload) return { status: 'missing' }
     const { payload: forecast, stale } = payload

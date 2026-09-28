@@ -42,7 +42,6 @@ function readyData(updatedAgoMs: number): CapsuleDataState {
     series24h: [],
     updatedAt: new Date(NOW - updatedAgoMs).toISOString(),
     alert: 'steady',
-    isPersonalized: false,
   }
 }
 
@@ -53,7 +52,7 @@ function renderHero(updatedAgoMs: number) {
       nowMs={NOW}
       requestingLocation={false}
       locationDenied={false}
-      locationSource="none"
+      locationSource="default"
       onRequestLocation={() => {}}
       onSelectCity={() => {}}
     />,

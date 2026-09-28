@@ -31,7 +31,7 @@ export interface WeatherPageData {
   retry: () => void
 }
 
-export function useWeatherPageData(lat: number, lon: number): WeatherPageData {
+export function useWeatherPageData(lat: number | null, lon: number | null): WeatherPageData {
   const [status, setStatus] = useState<WeatherPageStatus>('loading')
   const [weather, setWeather] = useState<OpenMeteoWeatherHourly | null>(null)
   const [aq, setAq] = useState<OpenMeteoAqHourly | null>(null)
@@ -42,6 +42,19 @@ export function useWeatherPageData(lat: number, lon: number): WeatherPageData {
 
   useEffect(() => {
     let alive = true
+    // Not resolved yet (`useResolvedLocation`'s `location` is still null) —
+    // stay loading without fetching, rather than requesting a bogus point.
+    // Deferred to a microtask rather than called synchronously in the effect
+    // body — same reasoning as the ready branch just below
+    // (react-hooks/set-state-in-effect).
+    if (lat === null || lon === null) {
+      Promise.resolve().then(() => {
+        if (alive) setStatus('loading')
+      })
+      return () => {
+        alive = false
+      }
+    }
     // Deferred to a microtask rather than called synchronously in the effect
     // body — same reasoning as `useCapsuleData.ts`'s fetch effect: setState
     // belongs in the callback that reacts to something, not the effect body

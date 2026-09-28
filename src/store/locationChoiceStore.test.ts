@@ -39,6 +39,9 @@ beforeEach(() => {
 afterEach(() => {
   if (originalDescriptor) Object.defineProperty(window, 'localStorage', originalDescriptor)
   else delete (window as { localStorage?: Storage }).localStorage
+  // Some tests below `vi.doMock` the approx module for a single import —
+  // undo it here so it never leaks into a later test's fresh import.
+  vi.doUnmock('../lib/geo/approxLocation')
   vi.resetModules()
 })
 
@@ -223,5 +226,208 @@ describe('locationChoiceStore', () => {
     const { useLocationChoiceStore } = await import('./locationChoiceStore')
     // Assert
     expect(useLocationChoiceStore.getState().choice).toBeNull()
+  })
+
+  describe('legacy migration (airlens-weather-location -> airlens-location-choice)', () => {
+    it('an existing valid new-key record wins — the legacy key is discarded untouched', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      storage.setItem(
+        'airlens-location-choice',
+        JSON.stringify({ lat: 10, lon: 20, label: 'Existing, XX', source: 'search' }),
+      )
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: 48.8566, lon: 2.3522, source: 'user', label: 'Paris, FR' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert — new key's own record wins...
+      expect(useLocationChoiceStore.getState().choice).toEqual({
+        lat: 10,
+        lon: 20,
+        label: 'Existing, XX',
+        source: 'search',
+      })
+      // ...and the legacy key is gone either way
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
+    it('a legacy city-search pick (source "user", "<Name>, <CC>" label) is migrated to the new key', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: 51.5074, lon: -0.1278, source: 'user', label: 'London, GB' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert
+      expect(useLocationChoiceStore.getState().choice).toEqual({
+        lat: 51.5074,
+        lon: -0.1278,
+        label: 'London, GB',
+        source: 'search',
+      })
+      expect(JSON.parse(storage.getItem('airlens-location-choice')!)).toEqual({
+        lat: 51.5074,
+        lon: -0.1278,
+        label: 'London, GB',
+        source: 'search',
+      })
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
+    it('a legacy geolocation pick ("My location") is discarded, never migrated', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: 37.5, lon: 127.0, source: 'user', label: 'My location' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert
+      expect(useLocationChoiceStore.getState().choice).toBeNull()
+      expect(storage.getItem('airlens-location-choice')).toBeNull()
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
+    it.each(['default', 'approx'] as const)(
+      'a legacy %s-source record is discarded, never migrated',
+      async (source) => {
+        // Arrange
+        const storage = createMemoryStorage()
+        storage.setItem(
+          'airlens-weather-location',
+          JSON.stringify({ lat: 1, lon: 2, source, label: 'Somewhere, XX' }),
+        )
+        Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+        // Act
+        const { useLocationChoiceStore } = await import('./locationChoiceStore')
+        // Assert
+        expect(useLocationChoiceStore.getState().choice).toBeNull()
+        expect(storage.getItem('airlens-weather-location')).toBeNull()
+      },
+    )
+
+    it('a legacy record with non-numeric coordinates is discarded without throwing', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: 'not-a-number', lon: 2, source: 'user', label: 'Broken, XX' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert
+      expect(useLocationChoiceStore.getState().choice).toBeNull()
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
+    it('an unparsable (non-JSON) legacy payload is discarded without throwing', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      storage.setItem('airlens-weather-location', 'not json at all')
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert
+      expect(useLocationChoiceStore.getState().choice).toBeNull()
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
+    it('privacy: migrating a discarded "My location" record never lands that fix\'s coordinates in any stored key', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      const FIX_LAT = 37.123456
+      const FIX_LON = 127.654321
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: FIX_LAT, lon: FIX_LON, source: 'user', label: 'My location' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      await import('./locationChoiceStore')
+      // Assert — scan every remaining key, not just the ones this test expects
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i)
+        const value = key ? storage.getItem(key) : null
+        if (value === null) continue
+        expect(value).not.toContain(String(FIX_LAT))
+        expect(value).not.toContain(String(FIX_LON))
+      }
+    })
+  })
+
+  describe('approx / loadApprox / requesting / denied', () => {
+    it('starts pending, and loadApprox() resolves it to ready on a successful lookup', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      const mockGetApprox = vi.fn().mockResolvedValue({ lat: 1, lon: 2, city: 'Testville' })
+      vi.doMock('../lib/geo/approxLocation', () => ({ getApproxLocation: mockGetApprox }))
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert — pending before any load
+      expect(useLocationChoiceStore.getState().approx).toEqual({ status: 'pending' })
+      // Act
+      useLocationChoiceStore.getState().loadApprox()
+      await mockGetApprox.mock.results[0]!.value
+      // Assert
+      expect(useLocationChoiceStore.getState().approx).toEqual({
+        status: 'ready',
+        location: { lat: 1, lon: 2, city: 'Testville' },
+      })
+    })
+
+    it('resolves to failed when the lookup fails (resolves null)', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      const mockGetApprox = vi.fn().mockResolvedValue(null)
+      vi.doMock('../lib/geo/approxLocation', () => ({ getApproxLocation: mockGetApprox }))
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Act
+      useLocationChoiceStore.getState().loadApprox()
+      await mockGetApprox.mock.results[0]!.value
+      // Assert
+      expect(useLocationChoiceStore.getState().approx).toEqual({ status: 'failed' })
+    })
+
+    it('loadApprox() is idempotent — calling it repeatedly only fetches once (shared across mounted consumers)', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      const mockGetApprox = vi.fn().mockResolvedValue(null)
+      vi.doMock('../lib/geo/approxLocation', () => ({ getApproxLocation: mockGetApprox }))
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Act — simulates two consumers (Home's hero + the floating capsule) mounting together
+      useLocationChoiceStore.getState().loadApprox()
+      useLocationChoiceStore.getState().loadApprox()
+      useLocationChoiceStore.getState().loadApprox()
+      // Assert
+      expect(mockGetApprox).toHaveBeenCalledTimes(1)
+      await mockGetApprox.mock.results[0]!.value
+      expect(useLocationChoiceStore.getState().approx).toEqual({ status: 'failed' })
+    })
+
+    it('setRequesting and setDenied update their respective flags', async () => {
+      // Arrange
+      const storage = createMemoryStorage()
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      expect(useLocationChoiceStore.getState().requesting).toBe(false)
+      expect(useLocationChoiceStore.getState().denied).toBe(false)
+      // Act
+      useLocationChoiceStore.getState().setRequesting(true)
+      useLocationChoiceStore.getState().setDenied(true)
+      // Assert
+      expect(useLocationChoiceStore.getState().requesting).toBe(true)
+      expect(useLocationChoiceStore.getState().denied).toBe(true)
+    })
   })
 })

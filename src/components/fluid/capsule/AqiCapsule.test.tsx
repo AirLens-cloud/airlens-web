@@ -7,23 +7,22 @@ vi.mock('./useCapsuleData', () => ({
   useCapsuleData: vi.fn(),
 }))
 
-vi.mock('../../../hooks/useLocationPersonalization', () => ({
-  useLocationPersonalization: vi.fn(),
+vi.mock('../../../hooks/useResolvedLocation', () => ({
+  useResolvedLocation: vi.fn(),
 }))
 
 import { useCapsuleData } from './useCapsuleData'
-import {
-  useLocationPersonalization,
-  type UseLocationPersonalizationResult,
-} from '../../../hooks/useLocationPersonalization'
+import { useResolvedLocation, type UseResolvedLocationResult } from '../../../hooks/useResolvedLocation'
 
-/** Default = no stored choice and no resolved approx: the state a first-time
- * visitor is in before any opt-in, where the capsule falls back to the feed's
- * thickest-air pick. */
-function mockPersonalization(overrides: Partial<UseLocationPersonalizationResult> = {}) {
-  vi.mocked(useLocationPersonalization).mockReturnValue({
+/** Default = no stored choice and no resolved approx (the lookup already
+ * failed): the state a first-time visitor is in before any opt-in, where
+ * every surface resolves to the honestly-labeled Seoul default (W1a — the
+ * old feed-wide "thickest air" fallback is retired). */
+function mockResolvedLocation(overrides: Partial<UseResolvedLocationResult> = {}) {
+  vi.mocked(useResolvedLocation).mockReturnValue({
+    location: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'default' },
     choice: null,
-    approx: null,
+    approx: { status: 'failed' },
     requesting: false,
     denied: false,
     requestGeolocation: () => {},
@@ -52,12 +51,11 @@ const READY: CapsuleDataReady = {
   })),
   updatedAt: new Date().toISOString(),
   alert: 'steady',
-  isPersonalized: false,
 }
 
 beforeEach(() => {
   vi.mocked(useCapsuleData).mockReturnValue(READY)
-  mockPersonalization()
+  mockResolvedLocation()
   // jump-mode reduced motion — same rationale as Materialize.test.tsx: jsdom
   // has no matchMedia, and forcing reduced=true makes useSpring jump instead
   // of animate, so assertions don't depend on rAF timing.
@@ -202,32 +200,33 @@ describe('AqiCapsule', () => {
     expect(within(container).getByText('NO FEED')).toBeTruthy()
   })
 
-  it('shows the location label and a NOT YOUR LOCATION warning for the fallback pick', () => {
-    // Arrange — no choice, no approx (default mock): the feed's thickest-air pick
+  it('shows the location label and a DEFAULT · NOT YOURS warning for the Seoul default', () => {
+    // Arrange — no choice, no approx (default mock): the fixed Seoul default
     // Act — idle pill only (panel closed): the short form, COLLAPSED_W has no
-    // room for the fuller "NEAREST FEED CITY —" wording (see the panel test
-    // below for that one).
+    // room for the fuller "DEFAULT LOCATION (SEOUL) —" wording (see the panel
+    // test below for that one).
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).getByText('Seoul')).toBeTruthy()
-    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
+    expect(within(container).getByText('DEFAULT · NOT YOURS')).toBeTruthy()
   })
 
   it('badges an IP-approximate reading as APPROXIMATE rather than as the visitor’s own', () => {
     // Arrange — no stored choice yet, but the edge resolved a rough point
-    mockPersonalization({ approx: { lat: 37.5665, lon: 126.978, city: 'Seoul' } })
-    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    mockResolvedLocation({ location: { lat: 37.5665, lon: 126.978, label: 'Seoul', source: 'approx' } })
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).getByText('APPROXIMATE')).toBeTruthy()
-    expect(within(container).queryByText('NOT YOUR LOCATION')).toBeNull()
+    expect(within(container).queryByText('DEFAULT · NOT YOURS')).toBeNull()
   })
 
   it('drops the badge entirely once a real opt-in choice personalizes the reading', () => {
     // Arrange
-    mockPersonalization({ choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'geolocation' } })
-    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    mockResolvedLocation({
+      location: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'geolocation' },
+      choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'geolocation' },
+    })
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert
@@ -240,7 +239,7 @@ describe('AqiCapsule — G1 location personalization', () => {
   it('never requests geolocation on mount — only a click fires the permission prompt', () => {
     // Arrange
     const requestGeolocation = vi.fn()
-    mockPersonalization({ requestGeolocation })
+    mockResolvedLocation({ requestGeolocation })
     // Act
     render(<AqiCapsule />)
     // Assert
@@ -250,7 +249,7 @@ describe('AqiCapsule — G1 location personalization', () => {
   it('offers a "Use my location" CTA on the fallback panel that requests geolocation on click', () => {
     // Arrange
     const requestGeolocation = vi.fn()
-    mockPersonalization({ requestGeolocation })
+    mockResolvedLocation({ requestGeolocation })
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
     // Act
@@ -262,7 +261,7 @@ describe('AqiCapsule — G1 location personalization', () => {
 
   it('shows "Locating…" and disables the CTA while a request is in flight', () => {
     // Arrange
-    mockPersonalization({ requesting: true })
+    mockResolvedLocation({ requesting: true })
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
     // Assert
@@ -272,8 +271,10 @@ describe('AqiCapsule — G1 location personalization', () => {
 
   it('shows a NEAREST TO YOU distance once a geolocation pick personalizes the reading', () => {
     // Arrange — a real GPS/Wi-Fi fix, not an exact match to the resolved city
-    mockPersonalization({ choice: { lat: 37.5, lon: 127.0, label: 'My location', source: 'geolocation' } })
-    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    mockResolvedLocation({
+      location: { lat: 37.5, lon: 127.0, label: 'My location', source: 'geolocation' },
+      choice: { lat: 37.5, lon: 127.0, label: 'My location', source: 'geolocation' },
+    })
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert — idle bar
@@ -285,37 +286,43 @@ describe('AqiCapsule — G1 location personalization', () => {
 
   it('does not show a distance for a typed-in search pick — already an exact match', () => {
     // Arrange
-    mockPersonalization({ choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' } })
-    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    mockResolvedLocation({
+      location: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' },
+      choice: { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' },
+    })
     // Act
     const { container } = render(<AqiCapsule />)
     // Assert
     expect(within(container).queryByText(/NEAREST TO YOU/)).toBeNull()
   })
 
-  it('keeps the fallback label and surfaces a denial note when permission was refused', () => {
+  it('keeps the Seoul default label and surfaces a denial note when permission was refused', () => {
     // Arrange — no choice, no approx, denied
-    mockPersonalization({ denied: true })
+    mockResolvedLocation({ denied: true })
     // Act
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
     // Assert — idle keeps the short form, the now-open panel spells out the
     // fuller wording (see the header comment on why they differ)
-    expect(within(container).getByText('NOT YOUR LOCATION')).toBeTruthy()
-    expect(within(container).getByText('NEAREST FEED CITY — NOT YOUR LOCATION')).toBeTruthy()
-    expect(within(container).getByText('LOCATION DENIED — SHOWING FEED FALLBACK')).toBeTruthy()
+    expect(within(container).getByText('DEFAULT · NOT YOURS')).toBeTruthy()
+    expect(within(container).getByText('DEFAULT LOCATION (SEOUL) — NOT YOURS')).toBeTruthy()
+    expect(
+      within(container).getByText('Location permission was not granted — showing the default location (Seoul).'),
+    ).toBeTruthy()
   })
 
   it('hides the CTA and fallback note once a real choice personalizes the reading', () => {
     // Arrange
-    mockPersonalization({ choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'search' } })
-    vi.mocked(useCapsuleData).mockReturnValue({ ...READY, isPersonalized: true })
+    mockResolvedLocation({
+      location: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'search' },
+      choice: { lat: 37.5665, lon: 126.978, label: 'Seoul, KR', source: 'search' },
+    })
     // Act
     const { container } = render(<AqiCapsule />)
     fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
     // Assert
     expect(within(container).queryByText('Use my location')).toBeNull()
-    expect(within(container).queryByText(/NOT YOUR LOCATION/)).toBeNull()
+    expect(within(container).queryByText(/DEFAULT LOCATION|NOT YOURS/)).toBeNull()
   })
 })
 

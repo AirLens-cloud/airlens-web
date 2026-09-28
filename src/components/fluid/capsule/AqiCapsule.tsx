@@ -13,7 +13,7 @@ import LiquidGlass, { type LiquidGlassProps } from '../LiquidGlass'
 import AqiDot from '../../wireframe/AqiDot'
 import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
-import { useLocationPersonalization } from '../../../hooks/useLocationPersonalization'
+import { useResolvedLocation } from '../../../hooks/useResolvedLocation'
 import { formatElapsed } from '../../../lib/home/whyNow'
 import { haversineKm } from '../../../lib/today/nearestCity'
 import { formatCountdown } from './formatCountdown'
@@ -100,40 +100,33 @@ const MINIMAL_COLLAPSED_H = 56
  * hover/click/keyboard, plus a one-shot session alert when the forecast
  * worsens in the next 24h.
  *
- * UI Tier-1 P1: reads the shared `useLocationPersonalization` choice (set
- * from the Home hero's "see air quality near me" / "search a location"
- * CTAs) so a visitor who personalizes on Home sees the same personalized
- * reading here on Today/Globe/Insights/Landing, not a second prompt. Before
- * that opt-in it falls back to the same `approx` (edge IP) point Home uses,
- * so the two surfaces never disagree about where the visitor is. Idle state
- * always shows a location label, badged by how the point was obtained: a
- * "NEAREST TO YOU" distance for an opt-in geolocation choice, nothing extra
- * for a searched city, "APPROXIMATE" for the IP guess, and "NOT YOUR
- * LOCATION" for the feed's "thickest air" fallback pick — that last number
- * is very unlikely to be the visitor's own air. The idle pill keeps that
- * short form (COLLAPSED_W is 220px — the fuller wording below doesn't fit);
- * the expanded panel spells it out as "NEAREST FEED CITY — NOT YOUR
- * LOCATION" where there's room.
+ * W1a (`useResolvedLocation`): reads the same store-backed hook Home's hero
+ * CTAs write to, so a visitor who opts in on Home sees the same resolved
+ * location here on Today/Globe/Insights/Landing, not a second prompt.
+ * Before that opt-in it falls back to the same IP-approximate point Home
+ * uses, or a fixed Seoul default if that lookup also fails — the two
+ * surfaces never disagree about where the visitor is. Idle state always
+ * shows a location label, badged by how the point was obtained: a "NEAREST
+ * TO YOU" distance for an opt-in geolocation choice, nothing extra for a
+ * searched city, "APPROXIMATE" for the IP guess, and "DEFAULT · NOT YOURS"
+ * for the Seoul fallback. The idle pill keeps that short form (COLLAPSED_W
+ * is 220px — the fuller wording below doesn't fit); the expanded panel
+ * spells it out where there's room.
  *
  * UI G1 (2026-09-05, approved mockup): the fallback/approximate states also
  * carry their own "Use my location" CTA directly on the expanded panel —
- * `requestGeolocation` from the same shared `useLocationPersonalization`
- * hook Home's hero CTA already calls, so a pick made here and a pick made
- * on Home write to (and read from) the identical store; there is no second,
+ * `requestGeolocation` from the same shared `useResolvedLocation` hook
+ * Home's hero CTA already calls, so a pick made here and a pick made on
+ * Home write to (and read from) the identical store; there is no second,
  * capsule-only location state. No auto-prompt: the browser permission
  * dialog only fires from this button's own click, never on mount.
  */
 export default function AqiCapsule({ variant = 'night', locationDisplay = 'full' }: AqiCapsuleProps = {}): ReactNode {
   const collapsedW = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_W : COLLAPSED_W
   const collapsedH = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_H : COLLAPSED_H
-  const { choice, approx, requesting, denied, requestGeolocation } = useLocationPersonalization()
-  const point = choice ?? approx
-  const personalizedLocation = point ? { lat: point.lat, lon: point.lon } : null
-  // Same three-way honesty as the Home hero: an opt-in choice is the
-  // visitor's own location, the edge's IP guess is only approximate, and
-  // neither means this is the feed's thickest-air pick.
-  const locationSource: 'user' | 'approx' | 'none' = choice ? 'user' : approx ? 'approx' : 'none'
-  const data = useCapsuleData(personalizedLocation)
+  const { location, choice, requesting, denied, requestGeolocation } = useResolvedLocation()
+  const locationSource = location?.source ?? 'default'
+  const data = useCapsuleData(location)
   // Distance from the visitor's own geolocation pick to the feed city it
   // resolved to — only meaningful for a real GPS/Wi-Fi fix (`source ===
   // 'geolocation'`), not a typed-in search pick (already an exact match to
@@ -358,8 +351,8 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
           <span className="aq-capsule__loc-row t-micro">
             <span className="aq-capsule__loc">{data.city}</span>
             {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
-            {locationSource === 'none' && <span className="aq-capsule__warn">NOT YOUR LOCATION</span>}
-            {locationSource === 'user' && distanceKm !== null && (
+            {locationSource === 'default' && <span className="aq-capsule__warn">DEFAULT · NOT YOURS</span>}
+            {locationSource === 'geolocation' && distanceKm !== null && (
               <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
             )}
           </span>
@@ -375,11 +368,11 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
       </>
     )
     ariaLabel =
-      locationSource === 'user'
-        ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
-        : locationSource === 'approx'
-          ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — approximate location, expand for details`
-          : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
+      locationSource === 'approx'
+        ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — approximate location, expand for details`
+        : locationSource === 'default'
+          ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
+          : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
   }
 
   return (

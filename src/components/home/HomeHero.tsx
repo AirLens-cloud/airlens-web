@@ -14,6 +14,7 @@ import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
 import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
 import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
 import type { WeatherCity } from '../../lib/cityCatalog'
+import { DENIED_NOTICE, type LocationSource } from '../../lib/location/resolveLocation'
 import { useSpring } from '../../motion/useSpring'
 import type { SpringConfig } from '../../motion/spring'
 
@@ -25,14 +26,10 @@ export interface HomeHeroProps {
   nowMs: number
   requestingLocation: boolean
   locationDenied: boolean
-  /** Where the shown location came from — a real opt-in choice, the edge's
-   * IP-approximate location (no opt-in yet), or neither (the feed's
-   * "thickest air" fallback). Governs the eyebrow text, the fallback band,
-   * and CTA visibility below. Deliberately separate from `data.isPersonalized`
-   * (which only says "was any coordinate used", approx included) — the
-   * caller (`Home.tsx`) already tracks its own `choice`/`approx` state and
-   * is the only place that can tell these two apart. */
-  locationSource: 'user' | 'approx' | 'none'
+  /** Where `data`'s location came from (W1a — `useResolvedLocation`'s
+   * priority chain: opt-in choice > IP-approximate > Seoul default).
+   * Governs the eyebrow text, the fallback band, and CTA visibility below. */
+  locationSource: LocationSource
   onRequestLocation: () => void
   onSelectCity: (city: WeatherCity) => void
 }
@@ -43,23 +40,21 @@ const VALUE_SPRING: SpringConfig = { damping: 1.0, response: 0.5 }
 
 /**
  * HomeHero — the "Instrument Band" (approved mockup variant A): a full-width
- * AQI-tinted band showing the featured city's current reading, its 24h-
+ * AQI-tinted band showing the resolved location's current reading, its 24h-
  * forecast valid time, freshness, and one plain-language action sentence.
  *
- * UI Tier-1 P1-B (uiux-evaluation-manyfast-2026-09-02 §4 G1): until the
- * visitor personalizes, the featured city is the "thickest air" pick
- * `useCapsuleData` already makes (highest current PM2.5 among the forecast's
- * cities) — very unlikely to be the visitor's own air. The eyebrow, a
- * fallback band, and two CTAs ("see air quality near me" / "search a
- * location") say so explicitly and offer a way out, rather than implying
- * this is "your" air. Once personalized (`locationSource === 'user'`), the
- * band and CTAs drop and the eyebrow reads as a plain observation location.
- *
- * First visit, before any opt-in, `locationSource === 'approx'` covers the
- * middle ground: the edge's IP-approximate location resolved a nearby city,
- * which is closer than the fallback but still not exact — the eyebrow says
- * so ("~ CITY · APPROXIMATE (IP-BASED)") and the CTAs stay up, since the
- * visitor hasn't actually chosen anything yet.
+ * W1a (`useResolvedLocation`'s priority chain): until the visitor opts in,
+ * the shown location is either the edge's IP-approximate lookup
+ * (`locationSource === 'approx'`) or, failing that, a fixed Seoul default
+ * (`'default'`) — never the old "thickest air" worldwide pick, which has
+ * been retired. The eyebrow, a fallback band (default only), and two CTAs
+ * ("see air quality near me" / "search a location") say so explicitly and
+ * offer a way out, rather than implying this is "your" air. Once
+ * personalized via geolocation (`locationSource === 'geolocation'`), the
+ * band and primary CTA drop and the eyebrow reads as a plain observation
+ * location; a `'search'` choice (a city picked by hand) is already the
+ * visitor's own intent, so it also reads as a plain location, but the CTAs
+ * stay up since geolocation itself hasn't been granted.
  */
 export default function HomeHero({
   data,
@@ -155,12 +150,14 @@ export default function HomeHero({
       <div className="home-hero__inner">
         <div className="home-hero__main">
         <div className="home-hero__eyebrow">
-          {locationSource === 'user' ? (
+          {locationSource === 'geolocation' ? (
             <>MY LOCATION · {data.city}, {data.countryCode}</>
+          ) : locationSource === 'search' ? (
+            <>{data.city}, {data.countryCode}</>
           ) : locationSource === 'approx' ? (
             <>~ {data.city} · APPROXIMATE (IP-BASED)</>
           ) : (
-            <>NOW · {data.city}, {data.countryCode} · FALLBACK: THICKEST AIR</>
+            <>{data.city}, {data.countryCode} · DEFAULT LOCATION — NOT YOURS</>
           )}
         </div>
 
@@ -191,14 +188,14 @@ export default function HomeHero({
           </div>
         </div>
 
-        {locationSource === 'none' && (
+        {locationSource === 'default' && (
           <div className="home-hero__fallback-band t-caption">
-            <b>Showing Earth's thickest air right now</b> — not your local reading.
+            <b>Showing Seoul by default</b> — not your location.
           </div>
         )}
 
         <div className="home-hero__location-ctas">
-          {locationSource !== 'user' ? (
+          {locationSource !== 'geolocation' ? (
             <>
               <button
                 type="button"
@@ -229,15 +226,8 @@ export default function HomeHero({
           )}
         </div>
 
-        {locationDenied && locationSource === 'none' && (
-          <p className="home-hero__location-note t-caption">
-            Location permission was not granted — showing the global fallback.
-          </p>
-        )}
-        {locationDenied && locationSource === 'approx' && (
-          <p className="home-hero__location-note t-caption">
-            Location permission was not granted — showing an approximate (IP-based) location instead.
-          </p>
+        {locationDenied && (
+          <p className="home-hero__location-note t-caption">{DENIED_NOTICE[locationSource]}</p>
         )}
 
         <Materialize show={searchOpen} origin="top left">

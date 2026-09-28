@@ -16,13 +16,14 @@
  * backward compatibility.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
-import { useGeolocation } from '../hooks/useGeolocation'
+import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { useTodayGrid } from '../hooks/useTodayGrid'
 import { useTodayCams } from '../hooks/useTodayCams'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
 import { computeSourceAgreement } from '../lib/today/sourceAgreement'
 import { isReportable } from '../lib/config/gridPlausibility'
+import { LOCATING_LABEL, SEOUL_DEFAULT } from '../lib/location/resolveLocation'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import TrustLine from '../components/wireframe/TrustLine'
 import WeatherHero from '../components/weather/WeatherHero'
@@ -36,7 +37,6 @@ import InstrumentGrid from '../components/weather/InstrumentGrid'
 import AirQualityLine from '../components/weather/AirQualityLine'
 import WindMinimap from '../components/weather/WindMinimap'
 import SourceFooter from '../components/weather/SourceFooter'
-import type { WeatherCity } from '../lib/cityCatalog'
 import '../styles/weather.css'
 import '../styles/today.css'
 
@@ -58,14 +58,10 @@ export default function Today() {
   // directly in the render body, which the purity lint rule rejects — same
   // pattern as `Home.tsx`'s `renderedAtMs`.
   const [nowMs] = useState(() => Date.now())
-  const { location, requesting, denied, requestLocation, setLocation } = useGeolocation()
-  const weatherData = useWeatherPageData(location.lat, location.lon)
-  const grid = useTodayGrid(location.lat, location.lon)
-  const cams = useTodayCams(location.lat, location.lon)
-
-  function handleSelectCity(city: WeatherCity): void {
-    setLocation({ lat: city.lat, lon: city.lon, label: `${city.name}, ${city.countryCode}` })
-  }
+  const { location, requesting, denied, requestGeolocation, selectCity } = useResolvedLocation()
+  const weatherData = useWeatherPageData(location?.lat ?? null, location?.lon ?? null)
+  const grid = useTodayGrid(location?.lat ?? null, location?.lon ?? null)
+  const cams = useTodayCams(location?.lat ?? null, location?.lon ?? null)
 
   // A GRID cell the model could not plausibly have produced (the live
   // artifact ships 1° cells in the thousands of µg/m³ over boreal fire
@@ -128,7 +124,8 @@ export default function Today() {
       ? nowMs - new Date(cams.updatedAt).getTime()
       : null
   const natureLabel = usableGrid ? '[ANALYSIS]' : cams.status === 'ready' ? '[FORECAST]' : '[NO DATA]'
-  const primaryCity = usableGrid ? location.label : cams.status === 'ready' ? cams.cityName : location.label
+  const placeLabel = location?.label ?? LOCATING_LABEL
+  const primaryCity = usableGrid ? placeLabel : cams.status === 'ready' ? cams.cityName : placeLabel
   const primaryCountryCode = cams.status === 'ready' ? cams.countryCode : null
   const primaryDistanceKm = usableGrid ? usableGrid.distanceKm : cams.status === 'ready' ? cams.distanceKm : null
   const validTimeIso = usableGrid
@@ -168,8 +165,8 @@ export default function Today() {
           location={location}
           requestingLocation={requesting}
           locationDenied={denied}
-          onRequestLocation={requestLocation}
-          onSelectCity={handleSelectCity}
+          onRequestLocation={requestGeolocation}
+          onSelectCity={selectCity}
           status={weatherData.status}
           configured={weatherData.configured}
           weather={weatherData.weather}
@@ -258,11 +255,13 @@ export default function Today() {
             configured={weatherData.configured}
             wind={weatherData.wind}
             mslp={weatherData.mslp}
-            lat={location.lat}
-            lon={location.lon}
+            // Only read once wind data is ready, which needs a resolved location;
+            // the Seoul numbers are never drawn while `location` is null.
+            lat={location?.lat ?? SEOUL_DEFAULT.lat}
+            lon={location?.lon ?? SEOUL_DEFAULT.lon}
             onRetry={weatherData.retry}
           />
-          <SourceFooter fetchedAt={weatherData.fetchedAt} locationSource={location.source} />
+          <SourceFooter fetchedAt={weatherData.fetchedAt} locationSource={location?.source ?? null} />
         </div>
       )}
     </main>

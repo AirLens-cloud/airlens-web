@@ -8,12 +8,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent } from '@testing-library/react'
 
-vi.mock('../hooks/useGeolocation', () => ({ useGeolocation: vi.fn() }))
+vi.mock('../hooks/useResolvedLocation', () => ({ useResolvedLocation: vi.fn() }))
 vi.mock('../hooks/useWeatherPageData', () => ({ useWeatherPageData: vi.fn() }))
 vi.mock('../hooks/useTodayGrid', () => ({ useTodayGrid: vi.fn() }))
 vi.mock('../hooks/useTodayCams', () => ({ useTodayCams: vi.fn() }))
 
-import { useGeolocation } from '../hooks/useGeolocation'
+import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { useTodayGrid } from '../hooks/useTodayGrid'
 import { useTodayCams } from '../hooks/useTodayCams'
@@ -21,15 +21,18 @@ import Today from './Today'
 import type { TodayGridState } from '../hooks/useTodayGrid'
 import type { TodayCamsState } from '../hooks/useTodayCams'
 
-const SEOUL = { lat: 37.5665, lon: 126.978, source: 'default' as const, label: 'Seoul (default)' }
+const SEOUL = { lat: 37.5665, lon: 126.978, source: 'default' as const, label: 'Seoul, KR' }
 
-function mockGeo(overrides: Partial<ReturnType<typeof useGeolocation>> = {}) {
-  vi.mocked(useGeolocation).mockReturnValue({
+function mockGeo(overrides: Partial<ReturnType<typeof useResolvedLocation>> = {}) {
+  vi.mocked(useResolvedLocation).mockReturnValue({
     location: SEOUL,
+    choice: null,
+    approx: { status: 'failed' },
     requesting: false,
     denied: false,
-    requestLocation: vi.fn(),
-    setLocation: vi.fn(),
+    requestGeolocation: vi.fn(),
+    selectCity: vi.fn(),
+    clearChoice: vi.fn(),
     ...overrides,
   })
 }

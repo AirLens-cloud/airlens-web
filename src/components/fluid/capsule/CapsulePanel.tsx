@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { projectMomentum, rubberband } from '../../../motion/spring'
 import { useSpring } from '../../../motion/useSpring'
 import AqiDot from '../../wireframe/AqiDot'
+import { DENIED_NOTICE, type LocationSource } from '../../../lib/location/resolveLocation'
 import type { CapsuleDataReady } from './useCapsuleData'
 
 export interface CapsulePanelProps {
@@ -10,11 +11,11 @@ export interface CapsulePanelProps {
   contentWidth: number
   /** Where the shown reading's location came from — governs the fallback
    * note and "Use my location" CTA below the city line (UI G1). */
-  locationSource: 'user' | 'approx' | 'none'
+  locationSource: LocationSource
   /** Distance from the visitor's own geolocation pick to the resolved feed
-   * city, in km — null unless `locationSource === 'user'` via an actual
-   * geolocation fix (never for a searched city or the IP-approximate guess;
-   * see `AqiCapsule`'s computation). */
+   * city, in km — null unless `locationSource === 'geolocation'` via an
+   * actual GPS/Wi-Fi fix (never for a searched city, the IP-approximate
+   * guess, or the Seoul default; see `AqiCapsule`'s computation). */
   distanceKm: number | null
   requestingLocation: boolean
   locationDenied: boolean
@@ -164,16 +165,16 @@ export default function CapsulePanel({
                 : 'No uncertainty band published for this forecast'}
             </p>
             <p className="aq-capsule-panel__meta">{data.city}</p>
-            {locationSource === 'user' && distanceKm !== null && (
+            {locationSource === 'geolocation' && distanceKm !== null && (
               <p className="aq-capsule-panel__location-note t-micro">
                 NEAREST TO YOU · {Math.round(distanceKm)} KM
               </p>
             )}
-            {locationSource !== 'user' && (
+            {locationSource !== 'geolocation' && locationSource !== 'search' && (
               <div className="aq-capsule-panel__location">
-                {locationSource === 'none' && (
+                {locationSource === 'default' && (
                   <p className="aq-capsule-panel__location-note t-micro">
-                    NEAREST FEED CITY — NOT YOUR LOCATION
+                    DEFAULT LOCATION (SEOUL) — NOT YOURS
                   </p>
                 )}
                 <button
@@ -184,15 +185,8 @@ export default function CapsulePanel({
                 >
                   {requestingLocation ? 'Locating…' : 'Use my location'}
                 </button>
-                {locationDenied && locationSource === 'none' && (
-                  <p className="aq-capsule-panel__location-note t-micro">
-                    LOCATION DENIED — SHOWING FEED FALLBACK
-                  </p>
-                )}
-                {locationDenied && locationSource === 'approx' && (
-                  <p className="aq-capsule-panel__location-note t-micro">
-                    LOCATION DENIED — SHOWING APPROXIMATE (IP-BASED)
-                  </p>
+                {locationDenied && (
+                  <p className="aq-capsule-panel__location-note t-micro">{DENIED_NOTICE[locationSource]}</p>
                 )}
               </div>
             )}

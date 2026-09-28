@@ -33,11 +33,24 @@ export type TodayGridState =
     }
   | { status: 'missing' }
 
-export function useTodayGrid(lat: number, lon: number): TodayGridState {
+export function useTodayGrid(lat: number | null, lon: number | null): TodayGridState {
   const [state, setState] = useState<TodayGridState>({ status: 'loading' })
 
   useEffect(() => {
     let alive = true
+    // Not resolved yet (`useResolvedLocation`'s `location` is still null) —
+    // stay loading without fetching, rather than requesting a bogus point.
+    // Deferred to a microtask rather than called synchronously in the effect
+    // body — same reasoning as the ready branch just below
+    // (react-hooks/set-state-in-effect).
+    if (lat === null || lon === null) {
+      Promise.resolve().then(() => {
+        if (alive) setState({ status: 'loading' })
+      })
+      return () => {
+        alive = false
+      }
+    }
     // Deferred to a microtask rather than called synchronously in the effect
     // body — same reasoning as `useWeatherPageData.ts`'s fetch effect
     // (react-hooks/set-state-in-effect).
