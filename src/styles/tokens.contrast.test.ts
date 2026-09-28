@@ -347,3 +347,93 @@ describe('W0b — notes moved from --ink-3 to --ink-2 pass AA on --bg-0', () => 
     expect(pairContrast('--ink-2', '--bg-0', darkExplicitMap)).toBeGreaterThanOrEqual(AA)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Sky phases (weather.css) — every text ink × every gradient stop, per phase.
+// The .wx-sky hero keeps one judgment point: dark ink by default, white ink
+// for the phases listed in the flip block. A text line can sit anywhere on
+// the gradient (hero height varies with viewport and state), so the check is
+// worst-stop, not the stop under a particular element — the same rule the
+// render probe measures. The `::before` light/dark wash is ignored here: it
+// only ever helps the phase's own ink, so leaving it out is the safe side.
+// Before 2026-09-28 this failed at dawn/dusk/drizzle tops (#0b1a2e on #2a3a6a
+// = 1.59:1) and the rain bottom (white on #94a1ae = 2.64:1).
+// ---------------------------------------------------------------------------
+
+const WEATHER_CSS = stripComments(fs.readFileSync(path.join(path.resolve(__dirname), 'weather.css'), 'utf8'))
+const SKY_TEXT_INKS = ['--wx-ink-1', '--wx-ink-2', '--wx-ink-3', '--ink-0', '--ink-1', '--ink-2', '--ink-3']
+
+function skyGradients(css: string): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  for (const m of css.matchAll(/--sky-grad-([a-z]+):\s*linear-gradient\(([^;]+)\);/g)) {
+    out[m[1]] = Array.from(m[2].matchAll(/#[0-9a-fA-F]{6}\b/g)).map((x) => x[0])
+  }
+  return out
+}
+
+function skyInkBlock(css: string, selector: RegExp): TokenMap {
+  const body = selector.exec(css)?.[1] ?? ''
+  const map: TokenMap = {}
+  for (const m of body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) map[m[1]] = m[2].trim()
+  return map
+}
+
+const SKY_GRADS = skyGradients(WEATHER_CSS)
+const SKY_DARK_INKS = skyInkBlock(WEATHER_CSS, /\n\.wx-sky\s*\{([^}]*)\}/)
+const flipMatch = /((?:\.wx-sky\[data-sky-phase='[a-z]+'\],?\s*)+)\{([^}]*--wx-ink-1[^}]*)\}/.exec(WEATHER_CSS)
+const SKY_FLIP_PHASES = flipMatch ? Array.from(flipMatch[1].matchAll(/'([a-z]+)'/g)).map((m) => m[1]) : []
+const SKY_LIGHT_INKS = skyInkBlock(WEATHER_CSS, /\.wx-sky\[data-sky-phase='thunder'\]\s*\{([^}]*)\}/)
+
+describe('sky phases — parser sanity', () => {
+  it('found all 11 phase gradients with 4 stops each', () => {
+    expect(Object.keys(SKY_GRADS).sort()).toEqual(
+      ['cloudy', 'dawn', 'drizzle', 'dusk', 'fog', 'morning', 'night', 'noon', 'rain', 'snow', 'thunder'],
+    )
+    for (const stops of Object.values(SKY_GRADS)) expect(stops).toHaveLength(4)
+  })
+  it('found both ink blocks with every text ink, and the flip phases', () => {
+    expect(SKY_FLIP_PHASES.sort()).toEqual(['night', 'rain', 'thunder'])
+    for (const t of SKY_TEXT_INKS) {
+      expect(SKY_DARK_INKS[t]).toBeDefined()
+      expect(SKY_LIGHT_INKS[t]).toBeDefined()
+    }
+  })
+})
+
+const skyCases = Object.entries(SKY_GRADS).flatMap(([phase, stops]) =>
+  SKY_TEXT_INKS.map((ink) => ({ phase, ink, stops })),
+)
+
+describe('sky phases — every text ink passes AA on every gradient stop', () => {
+  it.each(skyCases)('$phase · $ink', ({ phase, ink, stops }) => {
+    const inks = SKY_FLIP_PHASES.includes(phase) ? SKY_LIGHT_INKS : SKY_DARK_INKS
+    const worst = Math.min(...stops.map((stop) => contrastOf(inks[ink], stop)))
+    expect(worst).toBeGreaterThanOrEqual(AA)
+  })
+})
+
+// Glass controls on the sky (hero action pills, search panel) sit on
+// --glass-fill composited over the gradient. The site theme's own fill is a
+// navy wash in dark theme — dark phase ink on it measured 3.37:1 (dusk) —
+// so the fill is part of the phase's paired set and must be pinned in both
+// ink blocks, never inherited from the site theme.
+function compositeValue(top: string, under: string): string {
+  const c = compositeOver(parseColor(top), parseColor(under))
+  return `rgb(${c.r}, ${c.g}, ${c.b})`
+}
+
+const glassCases = Object.entries(SKY_GRADS).flatMap(([phase, stops]) =>
+  ['--glass-fill', '--glass-fill-lift'].map((fill) => ({ phase, fill, stops })),
+)
+
+describe('sky phases — glass controls carry the phase ink', () => {
+  it.each(['--glass-fill', '--glass-fill-lift', '--glass-border'])('%s is pinned in both ink blocks', (token) => {
+    expect(SKY_DARK_INKS[token]).toBeDefined()
+    expect(SKY_LIGHT_INKS[token]).toBeDefined()
+  })
+  it.each(glassCases)('$phase · --wx-ink-1 on $fill', ({ phase, fill, stops }) => {
+    const inks = SKY_FLIP_PHASES.includes(phase) ? SKY_LIGHT_INKS : SKY_DARK_INKS
+    const worst = Math.min(...stops.map((stop) => contrastOf(inks['--wx-ink-1'], compositeValue(inks[fill], stop))))
+    expect(worst).toBeGreaterThanOrEqual(AA)
+  })
+})
