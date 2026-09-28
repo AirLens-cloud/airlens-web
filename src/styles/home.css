@@ -241,8 +241,15 @@
     width: clamp(280px, 30vw, 340px);
   }
 }
+/* F03 (2026-09-28): `.t-micro`/`.t-caption` set their own `color:var(--ink-2)`
+   (typography.css), which beat this rail's inherited `--glass-card-ink`
+   (the hero's AQI-tint ink axis, set on `.home-hero__rail` above) by
+   selector specificity — opacity:0.72 on top of that mismatched ink then
+   measured as low as 1.01-1.16:1 on hazard/very-unhealthy tints. Hierarchy
+   between label/value/sub now comes from weight+size only (already
+   distinct via t-micro/t-caption/rail-tile-value), not opacity. */
 .home-hero__rail-head.t-micro {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .home-hero__rail-svg {
   width: 100%;
@@ -263,8 +270,8 @@
 .home-hero__rail-dot {
   fill: var(--orange);
 }
-.home-hero__rail-empty {
-  opacity: 0.72;
+.home-hero__rail-empty.t-caption {
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 /* DRAW verb (Wave 2A entrance vocabulary, motion.css) — same left-to-right
  * hairline grow as WeatherHeroRail's divider. `.motion-draw` is applied
@@ -287,7 +294,7 @@
   border-top: 1px solid color-mix(in srgb, currentColor 24%, transparent);
 }
 .home-hero__rail-tile-label.t-micro {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .home-hero__rail-tile-value {
   font-family: var(--mono);
@@ -296,7 +303,7 @@
   font-variant-numeric: tabular-nums;
 }
 .home-hero__rail-tile-sub.t-caption {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 
 /* ============================= G8 trust strip ============================= */
@@ -560,9 +567,11 @@ a.home-trust-strip__value:hover {
 .home-story-card__title {
   color: var(--ink-0);
 }
+/* F13 — same paper-surface text-contrast fix as composites.css's
+   `.np-action--primary`/`.cite-open`. */
 .home-story-card__link:hover .home-story-card__title,
 .home-story-card__link:focus-visible .home-story-card__title {
-  color: var(--orange);
+  color: var(--orange-ink);
 }
 .home-story-card__meta {
   color: var(--ink-2);

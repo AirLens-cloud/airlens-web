@@ -67,12 +67,20 @@
      dark-ink-default here — independent of the site's own light/dark
      theme, which would otherwise cascade in the wrong ink for this
      backdrop — and flip them alongside wx-ink below. Single
-     data-sky-phase-scoped judgment, no per-component luminance math. */
+     data-sky-phase-scoped judgment, no per-component luminance math.
+     GSKY1 (2026-09-28): a material override must move every token in a
+     "paired" set together, never just one. `--ink-0` was flipped here but
+     its pair `--bg-0` (WfDataState's retry button uses
+     `border/color:var(--ink-0); background:var(--bg-0)`) kept the site
+     theme's own --bg-0 — dark UI theme + this day-phase dark ink collapsed
+     to ~1.09:1. --bg-0 now moves as a pair with --ink-0 in both this block
+     and the night/rain/thunder block below. */
   --ink-0: #0b1a2e;
   --ink-1: rgba(11, 26, 46, 0.85);
   --ink-2: rgba(11, 26, 46, 0.68);
   --ink-3: rgba(11, 26, 46, 0.55);
   --rule: rgba(11, 26, 46, 0.18);
+  --bg-0: #ffffff;
   --bg-1: rgba(11, 26, 46, 0.08);
   border-radius: var(--r-0);
   overflow: hidden;
@@ -98,6 +106,9 @@
   --ink-2: rgba(255, 255, 255, 0.68);
   --ink-3: rgba(255, 255, 255, 0.55);
   --rule: rgba(255, 255, 255, 0.24);
+  /* GSKY1 — --bg-0 paired with the flipped white --ink-0 above (same rule
+     as the day-phase block). */
+  --bg-0: #0b1a2e;
   --bg-1: rgba(255, 255, 255, 0.14);
 }
 .wx-sky::before {

@@ -144,7 +144,9 @@ describe('AqiCapsule', () => {
     const { container } = render(<AqiCapsule />)
     // Assert
     const countdown = container.querySelector('.aq-capsule__countdown')
-    expect(countdown?.textContent).toMatch(/^\d+:\d{2}$/)
+    // F51: remaining is close to the full 6h REFRESH_INTERVAL_MS here, so
+    // formatCountdown renders "Xh Ym" (>=60min), not raw "m:ss".
+    expect(countdown?.textContent).toMatch(/^\d+h \d+m$/)
     expect(countdown?.hasAttribute('data-stale')).toBe(false)
   })
 
@@ -173,7 +175,12 @@ describe('AqiCapsule', () => {
     const { container } = render(<AqiCapsule />)
     // Assert
     const countdown = container.querySelector('.aq-capsule__countdown')
-    expect(countdown?.textContent).toMatch(/^\d+:\d{2}$/)
+    // F51: remaining here is ~1h — right at formatCountdown's 60-minute
+    // carry boundary, so a few ms of test-execution time can tip it either
+    // side ("1h 0m" vs "59:59"). This test's point is the 6h-vs-3h window
+    // (data-stale below), not the exact format — formatCountdown.test.ts
+    // covers the format boundary precisely — so accept either shape here.
+    expect(countdown?.textContent).toMatch(/^(\d+h \d+m|\d+:\d{2})$/)
     expect(countdown?.hasAttribute('data-stale')).toBe(false)
   })
 

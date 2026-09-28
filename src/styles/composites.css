@@ -204,7 +204,9 @@
 .np-item-desc { font-size: var(--fs-caption); color: var(--ink-2); margin-top: 2px; }
 .np-item-time { font-size: var(--fs-caption); color: var(--ink-2); flex-shrink: 0; }
 .np-action { background: none; border: none; font-family: var(--mono); font-size: var(--fs-tag); cursor: pointer; padding: 0; }
-.np-action--primary { color: var(--orange); }
+/* F13 (2026-09-28): text on the NotificationPanel's paper `--bg-0` — `--orange`
+   itself is only ~3.1:1 there (see `--orange-ink`'s definition, tokens.css). */
+.np-action--primary { color: var(--orange-ink); }
 .np-action--primary:hover { text-decoration: underline; }
 .np-action--muted { color: var(--ink-2); }
 .np-action--muted:hover { color: var(--ink-1); }
@@ -371,7 +373,8 @@
    overrides only the color to ink-1, per the readable-labels rule (design-taxonomy.md
    News/Dispatch Surface Contract #4) — a citation's title is a label, not a decoration. */
 .cite-title { color: var(--ink-1); }
-.cite-open { color: var(--orange); justify-self: end; }
+/* F13 — same paper-surface text-contrast fix as `.np-action--primary` above. */
+.cite-open { color: var(--orange-ink); justify-self: end; }
 
 @media (max-width: 768px) {
   .chat-dock { right: var(--sp-3); bottom: var(--sp-3); left: var(--sp-3); align-items: stretch; }

@@ -74,6 +74,20 @@ describe('SiteFooter — NAV_GROUPS columns', () => {
   })
 })
 
+describe('SiteFooter — Beta badge (F27)', () => {
+  it('keeps the Beta badge as its own element, not glued text ("LabBeta")', () => {
+    // Arrange / Act
+    render(<SiteFooter />)
+    // Assert — a literal space between the label and the badge keeps the
+    // accessible name/textContent as two words, not one ("LabBeta").
+    const labLink = screen.getByRole('link', { name: 'Lab Beta' })
+    expect(labLink.textContent).toBe('Lab Beta')
+    const badge = labLink.querySelector('.chrome-nav__beta')
+    expect(badge).not.toBeNull()
+    expect(badge?.textContent).toBe('Beta')
+  })
+})
+
 describe('SiteFooter — brand column', () => {
   it('links the logo to home and shows the AirLens wordmark', () => {
     // Arrange / Act

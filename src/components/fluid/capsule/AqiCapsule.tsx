@@ -16,6 +16,7 @@ import { useCapsuleData } from './useCapsuleData'
 import { useLocationPersonalization } from '../../../hooks/useLocationPersonalization'
 import { formatElapsed } from '../../../lib/home/whyNow'
 import { haversineKm } from '../../../lib/today/nearestCity'
+import { formatCountdown } from './formatCountdown'
 
 const CAPSULE_SPRING = { damping: 0.68, response: 0.38 }
 const COLLAPSED_W = 220
@@ -64,13 +65,6 @@ function markAlertShown(): void {
   } catch {
     return
   }
-}
-
-function formatCountdown(ms: number): string {
-  const totalSec = Math.max(0, Math.floor(ms / 1000))
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 function getFocusable(container: HTMLElement): HTMLElement[] {

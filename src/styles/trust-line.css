@@ -32,6 +32,14 @@
 
 .trust-line__item {
   white-space: nowrap;
+  /* F25 (2026-09-28): a flex item's default `min-width:auto` sizes it to its
+     content's min-content width, which can overflow the 375px viewport
+     before `.trust-line`'s own `flex-wrap:wrap` ever gets a chance to break
+     the item onto a new line (measured: the withheld reason's rect.right
+     landed 14.2px past a 375px viewport). `min-width:0` lets the item
+     shrink so the wrapping `.trust-line__na`/`.trust-line__item--band`
+     content inside it can actually reflow. */
+  min-width: 0;
 }
 
 .trust-line__k {
@@ -51,6 +59,11 @@
      reason IS the Glass-box contract this component exists for — so it wraps
      instead. The key run stays nowrap, so nothing splits mid-pair. */
   white-space: normal;
+  /* F25 — belt-and-suspenders with `.trust-line__item`'s `min-width:0`
+     above: lets an unbreakable run inside the reason (a long word, not
+     just word-boundaries) wrap rather than force the item back out to its
+     min-content width. */
+  overflow-wrap: anywhere;
 }
 
 /* AQI 틴트 glass 카드 안에서는 사이트 테마 축(--ink-*)이 아니라 틴트 축을
@@ -74,6 +87,17 @@
   text-decoration: underline;
 }
 
+/* F03 (2026-09-28): inside the hero's AQI-tint glass card, `--orange-ink`
+   resolves to the raw `--orange` in dark theme (tokens.css) — measured
+   1.16-1.35:1 for "Why this number? →" against the tint. Same ink axis
+   as `.trust-line`/`.trust-line__k`/`.trust-line__na` above: the link
+   itself needs its own rule because `.trust-line a`'s element selector
+   always wins over an inherited color, regardless of the ancestor rule's
+   specificity. */
+.glass-card .trust-line a {
+  color: var(--glass-card-ink, var(--tint-ink-dark));
+}
+
 /* design-audit 2026-09-05 §1 #4: "Why this number?" promoted from a trailing
    footnote link to a title-weight one — same position, heavier read. */
 .trust-line__why {
@@ -84,6 +108,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
+  /* F25 — same reasoning as `.trust-line__item` above: this inline-flex
+     wrapper sits between the item and `.trust-line__na`'s wrapping text,
+     and needs its own `min-width:0` so it doesn't reintroduce a min-content
+     floor at this layer. */
+  min-width: 0;
 }
 
 /* BandSlot renders its own two-row block (track/bracket + label) — this item

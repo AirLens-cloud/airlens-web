@@ -223,9 +223,17 @@
 }
 
 .chrome-nav__beta {
+  /* F27 (2026-09-28): the badge used to sit glued to its label text (no
+     margin, and the two render as adjacent text nodes with no space
+     between them in the JSX — 'LabBeta'). */
+  margin-left: var(--sp-1);
   padding: 1px var(--sp-2);
   border-radius: var(--r-pill);
-  background: var(--accent);
+  /* F26: white-on-`--accent` measured ~3.1:1 (AA fails). `--brand-notice-bg`
+     (tokens.css) is the theme-invariant dark-orange pair already documented
+     for exactly this case ("white text ~4.8:1 AA") — badges on a fixed fill
+     don't get to flip with light/dark theme the way inline text does. */
+  background: var(--brand-notice-bg);
   color: var(--ink-on-accent);
   font-size: var(--fs-micro);
   font-weight: 700;
@@ -554,12 +562,19 @@
   font-family: var(--mono);
   font-size: var(--fs-micro);
   line-height: 1.6;
-  color: var(--ink-3);
+  /* F26 (2026-09-28): `--ink-3` on `--bg-1` measured 3.35:1 in dark theme
+     (AA fails). `--ink-2` clears AA in both themes (dark 4.90:1 / light
+     5.02:1) while staying a step down from the body ink scale. */
+  color: var(--ink-2);
 }
 
 .chrome-footer__base a {
   color: inherit;
   text-decoration: none;
+  /* F26 — vertical padding raises the link's hit height to >=24px (was
+     ~15px, the line's own font-metrics height). */
+  display: inline-block;
+  padding: var(--sp-1) 0;
 }
 
 .chrome-footer__base a:hover {

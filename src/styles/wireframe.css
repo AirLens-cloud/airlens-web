@@ -606,7 +606,7 @@
 .dqss-badge[data-dqss="B"] .dqss-badge-prefix,
 .dqss-badge[data-dqss="B"] .dqss-badge-range { color: var(--dqss-b-badge-ink); }
 .dqss-badge[data-dqss="C"] { background: var(--dqss-c-badge-bg); border-color: var(--dqss-c-badge-border); }
-.dqss-badge[data-dqss="C"] .dqss-badge-letter { color: #c45a14; }
+.dqss-badge[data-dqss="C"] .dqss-badge-letter { color: var(--dqss-c-badge-ink); }
 .dqss-badge[data-dqss="C"] .dqss-badge-prefix,
 .dqss-badge[data-dqss="C"] .dqss-badge-range { color: var(--dqss-c-badge-ink); }
 .dqss-badge[data-dqss="D"] { background: var(--dqss-d-badge-bg); border-color: var(--dqss-d-badge-border); }
