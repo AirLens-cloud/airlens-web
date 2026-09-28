@@ -126,10 +126,23 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-/* State chips (stale/forecast) render via the shared `<StateChip>` component
-   now (design-audit 2026-09-05 §7 #1) — visual rules live in state-chip.css,
-   not here. Nothing hero-local to add: `.home-hero__tier`'s flex+gap above
-   already lays the chips out inline with the tier label. */
+/* State chips (stale/forecast/analysis) render via the shared `<StateChip>`
+   component now (design-audit 2026-09-05 §7 #1) — visual rules live in
+   state-chip.css, not here. Nothing hero-local to add: `.home-hero__tier`'s
+   flex+gap above already lays the chips out inline with the tier label. */
+
+/* Where the number comes from (W1b commit ②) — `color: inherit` rides the
+   hero's own AQI-tint ink axis (`--glass-card-ink`), same reasoning as
+   `.home-hero__fallback-band.t-caption` below: `.t-caption`'s own `--ink-2`
+   under-contrasts against a tinted glass card. No opacity knock on the
+   secondary line — the unhealthy tint already dropped `.home-hero__meta` to
+   4.25:1 that way once (F03 root cause, comment further down). */
+.home-hero__source {
+  margin: var(--sp-1) 0 0;
+}
+.home-hero__source.t-caption {
+  color: inherit;
+}
 
 .home-hero__meta {
   display: flex;

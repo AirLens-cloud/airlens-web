@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 
 /**
  * StateChip — a badge for an honest freshness/scope state (stale, forecast,
- * approximate, withheld, experimental), always rendered next to a value —
+ * analysis, approximate, withheld, experimental), always rendered next to a
+ * value —
  * never as an opacity knock on the value itself (design-audit
  * 2026-09-05 §7 #1, promoted from `home.css`'s hero-only `.home-hero__chip`).
  *
@@ -10,11 +11,12 @@ import type { CSSProperties } from 'react'
  * nothing: border style (solid/dashed/dotted) plus icon presence differ per
  * variant — see `state-chip.css` for the exact mapping.
  */
-export type StateChipVariant = 'stale' | 'forecast' | 'approximate' | 'withheld' | 'experimental'
+export type StateChipVariant = 'stale' | 'forecast' | 'analysis' | 'approximate' | 'withheld' | 'experimental'
 
 const VARIANT_LABEL: Record<StateChipVariant, string> = {
   stale: 'Stale',
   forecast: 'Forecast',
+  analysis: 'Model analysis',
   approximate: 'Approximate',
   withheld: 'Withheld',
   experimental: 'Experimental',

@@ -147,17 +147,6 @@
   letter-spacing: 0.05em;
 }
 
-/* Positive confirmation, not a warning — deliberately NOT `.aq-capsule__warn`
-   (the solid orange-ink badge means "this isn't your location"; a real
-   geolocation pick is the opposite of that). Muted text like the rest of
-   the idle bar's secondary copy. */
-.aq-capsule__distance {
-  flex-shrink: 0;
-  color: var(--capsule-ink-muted);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
 .aq-capsule__reading-row {
   display: flex;
   align-items: center;
@@ -233,7 +222,8 @@
 }
 
 .aq-capsule-panel__range,
-.aq-capsule-panel__meta {
+.aq-capsule-panel__meta,
+.aq-capsule-panel__source {
   margin: 0;
   font-size: 12px;
   color: var(--capsule-ink-muted);

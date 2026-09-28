@@ -6,7 +6,7 @@
  * once), so this hook fetches once and re-derives the nearest match
  * whenever lat/lon changes rather than re-fetching.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchForecast } from '../lib/today/forecastSource'
 import { pickNearestCity } from '../lib/today/nearestCity'
 import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
@@ -55,17 +55,18 @@ type PayloadState = 'loading' | FetchedPayload | null
 export function useTodayCams(lat: number | null, lon: number | null): TodayCamsState {
   const [payload, setPayload] = useState<PayloadState>('loading')
   // The feed fetch itself carries no location parameter (see the header
-  // comment) — this guard only defers its FIRST fetch until a location has
-  // resolved at least once, per `useResolvedLocation`'s "no fetch while
-  // still resolving" contract. Once fetched, it stays fetched — a later
-  // lat/lon change (a different city chosen) re-derives the nearest match
-  // via the `useMemo` below rather than re-fetching the whole feed again.
-  const hasFetchedRef = useRef(false)
+  // comment), so the effect keys on "has a location resolved at all", not on
+  // lat/lon: the first fetch waits for a location (`useResolvedLocation`'s
+  // "no fetch while still resolving" contract), and a later lat/lon change
+  // re-derives the nearest match via the `useMemo` below without cancelling
+  // an in-flight fetch. A lat/lon-keyed effect with a has-fetched ref used to
+  // leave `payload` stuck at 'loading' for good when the location changed
+  // mid-fetch (cleanup dropped the result, the re-run skipped refetching) —
+  // and under StrictMode's mount/unmount/mount on every dev load.
+  const hasLocation = lat !== null && lon !== null
 
   useEffect(() => {
-    if (lat === null || lon === null) return
-    if (hasFetchedRef.current) return
-    hasFetchedRef.current = true
+    if (!hasLocation) return
     let alive = true
     fetchForecast()
       .then((p) => {
@@ -78,7 +79,7 @@ export function useTodayCams(lat: number | null, lon: number | null): TodayCamsS
     return () => {
       alive = false
     }
-  }, [lat, lon])
+  }, [hasLocation])
 
   return useMemo(() => {
     if (lat === null || lon === null) return { status: 'loading' }

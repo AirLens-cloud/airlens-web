@@ -8,11 +8,6 @@ export interface FluidChromeProps {
    * match its light sky-glass hero (position stays the site-standard
    * top-center float; this only changes the glass tint). */
   capsuleVariant?: AqiCapsuleProps['variant']
-  /** UI G4 (2026-09-05 design audit): /today passes 'minimal' — its own
-   * `WeatherHero` already shows the visitor's location (place name + source
-   * badge), so the floating capsule drops its own duplicate location row.
-   * Defaults to 'full' (unchanged for /globe, /insights). */
-  capsuleLocationDisplay?: AqiCapsuleProps['locationDisplay']
 }
 
 /**
@@ -21,12 +16,12 @@ export interface FluidChromeProps {
  * untouched, then mounts the floating AQI capsule in a fixed top-center
  * overlay above them.
  */
-export default function FluidChrome({ children, capsuleVariant, capsuleLocationDisplay }: FluidChromeProps): ReactNode {
+export default function FluidChrome({ children, capsuleVariant }: FluidChromeProps): ReactNode {
   return (
     <>
       {children}
       <div className="fluid-chrome__overlay" data-testid="fluid-chrome-overlay">
-        <AqiCapsule variant={capsuleVariant} locationDisplay={capsuleLocationDisplay} />
+        <AqiCapsule variant={capsuleVariant} />
       </div>
     </>
   )

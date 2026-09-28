@@ -20,8 +20,8 @@ export const GRID_REFRESH_MS = 3 * 60 * 60 * 1000
  * Open-Meteo CAMS PM2.5 forecast. `lib/today/forecastSource.ts`'s own header
  * comment: "GitHub Actions cron fetches the Open-Meteo CAMS PM2.5 forecast"
  * plus its source-list comment "cron refreshes the CAMS forecast every 6h" —
- * the same figure `AqiCapsule.tsx`'s own `REFRESH_INTERVAL_MS` countdown
- * constant already assumes (that file's comment: "the HF CAMS forecast
- * refreshes every 6h").
+ * the same figure `AqiCapsule.tsx`'s idle-bar countdown assumes for a
+ * forecast-sourced reading (W1b commit ②: via `reading.refreshMs`, not a
+ * local constant).
  */
 export const CAMS_REFRESH_MS = 6 * 60 * 60 * 1000

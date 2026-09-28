@@ -1,6 +1,9 @@
 /**
  * Home briefing config — tier -> plain-language action sentence, tier -> the
- * hero's AQI-tint band, and the forecast staleness threshold.
+ * hero's AQI-tint band. The staleness threshold this file used to export
+ * (`STALE_THRESHOLD_MS`, a fixed 6h assumption) was retired in W1b commit ②:
+ * the hero now reads the shared resolver's own `reading.stale` verdict, the
+ * same one `/today` shows.
  *
  * The action-sentence map is deliberately separate from `AirQualityLine`'s
  * own `TIER_ACTION` (components/weather/AirQualityLine.tsx) — that one is a
@@ -47,12 +50,3 @@ export const TIER_TINT_BAND: Record<Exclude<AqiTier, 'unknown'>, WfGlassCardAqi>
   'very-unhealthy': 'hazard',
   hazardous: 'hazard',
 }
-
-/**
- * Forecast cadence — same assumption as AqiCapsule's REFRESH_INTERVAL_MS
- * (components/fluid/capsule/AqiCapsule.tsx: the HF CAMS forecast refreshes
- * every 6h). A `generated_at` older than this reads as stale rather than
- * current — this is a display threshold local to the Home hero, not a claim
- * about the fetch pipeline's actual retry/refresh behavior.
- */
-export const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000

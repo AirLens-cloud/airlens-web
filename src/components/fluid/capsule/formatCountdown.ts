@@ -1,8 +1,9 @@
 /**
  * formatCountdown — AqiCapsule's "Next forecast refresh in ..." countdown.
  *
- * F51 (2026-09-28): REFRESH_INTERVAL_MS (AqiCapsule.tsx) is 6h, so `remaining`
- * can be up to 360 minutes — rendering it as a raw `m:ss` (no 60-minute
+ * F51 (2026-09-28): the countdown's own refresh window (CAMS_REFRESH_MS,
+ * `lib/config/readingCadence.ts` — 6h; GRID_REFRESH_MS is 3h) can put
+ * `remaining` up to 360 minutes — rendering it as a raw `m:ss` (no 60-minute
  * carry) produced nonsense like "228:15" that reads as a broken timer, and
  * disagreed with the sibling `formatElapsed` (../../../lib/home/whyNow.ts)
  * which does carry to "Xh". Pulled out of AqiCapsule.tsx (rather than just

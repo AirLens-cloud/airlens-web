@@ -72,7 +72,16 @@ export interface PrimaryReadingReady {
   place: { label: string; countryCode: string | null; distanceKm: number | null }
   validTimeIso: string | null
   validTimeMs: number | null
-  ageMs: number | null
+  /** Always a real number for a ready reading — both branches below compute
+   * it unconditionally from their own source's `updatedAt`, unlike
+   * `validTimeIso`/`validTimeMs` (which can be null on the forecast branch
+   * when CAMS carries no first hourly point). Kept non-nullable so the
+   * capsule's refresh countdown (`refreshMs - ageMs`, W1b commit ②) and the
+   * "Updated … ago" lines need no null-check at every call site. Staleness is
+   * `stale` below, never `ageMs > refreshMs`; `ready?.ageMs ?? null`
+   * at the existing call site (`Today.tsx`) still narrows to TrustLine's own
+   * `number | null` prop just fine. */
+  ageMs: number
   natureLabel: '[ANALYSIS]' | '[FORECAST]'
   /** CAMS city-forecast line under an analysis primary; null when the
    * primary IS the forecast or CAMS isn't ready. */
@@ -86,6 +95,13 @@ export interface PrimaryReadingReady {
   /** How often the source artifact backing this reading is republished
    * upstream — a label, never a staleness judgment (`lib/config/readingCadence.ts`). */
   refreshMs: number
+  /** When the source artifact itself was generated/republished — GRID's
+   * `updatedAt` for an analysis primary, CAMS's `updatedAt` for a forecast
+   * primary. Distinct from `validTimeIso` (a forecast's target hour, not its
+   * publish time) — Home's trust strip and the floating capsule's refresh
+   * countdown both need this "when was this published" timestamp, which
+   * `validTimeIso` only happens to equal for the analysis branch. */
+  updatedAtIso: string
 }
 
 export type PrimaryReading = { status: 'loading' } | { status: 'unavailable' } | PrimaryReadingReady
@@ -158,6 +174,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
       // GRID never publishes a p10/p90 band, regardless of DQSS presence.
       uncertainty: { available: false, reason: 'this data source publishes no uncertainty range' },
       refreshMs: GRID_REFRESH_MS,
+      updatedAtIso: usableGrid.updatedAt,
     }
   }
 
@@ -194,6 +211,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
           ? { available: true, p10: camsP10, p90: camsP90, unit: 'µg/m³' }
           : { available: false, reason: "this forecast doesn't publish a range" },
       refreshMs: CAMS_REFRESH_MS,
+      updatedAtIso: cams.updatedAt,
     }
   }
 

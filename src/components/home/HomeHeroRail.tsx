@@ -1,14 +1,23 @@
 import { buildSparkline } from '../../lib/sparkline'
-import type { CapsuleDataReady } from '../fluid/capsule/useCapsuleData'
+import type { CapsuleDataReady, CapsuleDataState } from '../fluid/capsule/useCapsuleData'
 
 const SPARK_W = 220
 const SPARK_H = 52
 const SPARK_HOURS = 24
 
 export interface HomeHeroRailProps {
-  data: CapsuleDataReady
+  /** The CAMS 24h outlook, independent of whichever source backs the hero's
+   * own headline (W1b commit ② — the hero can now be a grid analysis primary
+   * with no CAMS band of its own). `'loading'`/`'missing'` render an honest
+   * placeholder rather than blocking on the headline's own readiness. */
+  data: CapsuleDataState
   reducedMotion: boolean
 }
+
+/** Glass-box: the hero headline can be a grid analysis while this rail is
+ * always CAMS's own city forecast — the head must say so, or the spark/range/
+ * trend read as the headline number's own outlook. */
+const RAIL_HEAD = 'City forecast (CAMS) · 24h'
 
 const TREND_LABEL: Record<CapsuleDataReady['alert'], string> = {
   worsening: 'Worsening ↑',
@@ -25,6 +34,17 @@ const TREND_LABEL: Record<CapsuleDataReady['alert'], string> = {
  * second fetch.
  */
 export default function HomeHeroRail({ data, reducedMotion }: HomeHeroRailProps) {
+  if (data.status !== 'ready') {
+    return (
+      <div className="home-hero__rail">
+        <span className="home-hero__rail-head t-micro">{RAIL_HEAD}</span>
+        <p className="home-hero__rail-empty t-caption">
+          {data.status === 'loading' ? 'Loading the city forecast…' : 'City forecast (CAMS) unavailable this pass.'}
+        </p>
+      </div>
+    )
+  }
+
   const spark = buildSparkline(
     data.series24h.slice(0, SPARK_HOURS).map((p) => p.p50),
     SPARK_W,
@@ -33,13 +53,13 @@ export default function HomeHeroRail({ data, reducedMotion }: HomeHeroRailProps)
 
   return (
     <div className="home-hero__rail">
-      <span className="home-hero__rail-head t-micro">24H PM2.5</span>
+      <span className="home-hero__rail-head t-micro">{RAIL_HEAD}</span>
       {spark ? (
         <svg
           viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
           className="home-hero__rail-svg"
           role="img"
-          aria-label="24-hour PM2.5 trend"
+          aria-label={`24-hour PM2.5 city forecast (CAMS) for ${data.city}`}
         >
           <polygon points={spark.areaPoints} className="home-hero__rail-area" />
           <polyline points={spark.linePoints} className="home-hero__rail-line" fill="none" />

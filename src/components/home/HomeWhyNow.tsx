@@ -3,16 +3,19 @@ import type { CapsuleSeriesPoint } from '../fluid/capsule/useCapsuleData'
 
 export interface HomeWhyNowProps {
   series: CapsuleSeriesPoint[]
+  /** The CAMS feed city `series` belongs to — named on screen because the
+   * hero's headline can be a grid analysis with a different "now" value. */
+  city: string
 }
 
 /**
  * HomeWhyNow — left column of the below-the-fold row. Every line is a rule
- * derived directly from the 24h series (observed delta, observed peak); the
- * "UNKNOWN" block is the honest complement — driver attribution (weather,
- * traffic, fires) is not computed anywhere in this app, so it says so
- * instead of inferring one.
+ * derived directly from the CAMS city-forecast 24h series (forecast delta,
+ * forecast peak — model values, never observations); the "UNKNOWN" block is
+ * the honest complement — driver attribution (weather, traffic, fires) is not
+ * computed anywhere in this app, so it says so instead of inferring one.
  */
-export default function HomeWhyNow({ series }: HomeWhyNowProps) {
+export default function HomeWhyNow({ series, city }: HomeWhyNowProps) {
   const delta = computeSixHourDelta(series)
   const peak = computePeak(series)
 
@@ -22,6 +25,7 @@ export default function HomeWhyNow({ series }: HomeWhyNowProps) {
   return (
     <div className="home-why-now">
       <h2 className="t-tag">Why now</h2>
+      <p className="home-why-now__source t-caption">From the city forecast (CAMS) for {city}</p>
       <ul className="home-why-now__list">
         {delta && direction ? (
           <li className="home-why-now__item">

@@ -7,7 +7,8 @@ import HomeActOnIt from '../components/home/HomeActOnIt'
 import HomeStoriesResearch from '../components/home/HomeStoriesResearch'
 import { useCapsuleData } from '../components/fluid/capsule/useCapsuleData'
 import { useResolvedLocation } from '../hooks/useResolvedLocation'
-import { STALE_THRESHOLD_MS } from '../lib/config/homeBriefing'
+import { usePrimaryReading } from '../hooks/usePrimaryReading'
+import { LOCATING_LABEL } from '../lib/location/resolveLocation'
 import { track } from '../lib/analytics'
 import '../styles/home.css'
 
@@ -37,48 +38,60 @@ import '../styles/home.css'
 export default function Home() {
   const { location, requesting, denied, requestGeolocation, selectCity } = useResolvedLocation()
   // `location` is `null` only while genuinely still resolving (no choice,
-  // approximate lookup not settled yet) — `useCapsuleData` already reports
-  // its own loading state for that. Once resolved, `location.source` says
-  // which of choice/approx/Seoul-default won, so HomeHero can word the
-  // eyebrow/fallback-band honestly instead of a single "was this
-  // personalized" boolean.
+  // approximate lookup not settled yet) — `useCapsuleData`/`usePrimaryReading`
+  // already report their own loading state for that. Once resolved,
+  // `location.source` says which of choice/approx/Seoul-default won, so
+  // HomeHero can word the eyebrow/fallback-band honestly instead of a single
+  // "was this personalized" boolean.
   const data = useCapsuleData(location)
   // Read once, in a lazy initializer (React's documented escape hatch for a
   // one-time non-deterministic read) rather than calling `Date.now()`
   // directly in the render body, which the purity lint rule rejects.
   const [renderedAtMs] = useState(() => Date.now())
+  // The hero's headline (W1b commit ②) — the same shared resolver `/today`
+  // uses, so Home never shows a different number than /today or the floating
+  // capsule for the same place and moment. `data` above stays wired to the
+  // CAMS-only 24h outlook row (`HomeForecastStrip`/`HomeWhyNow`), which keeps
+  // its own gate below — the outlook is allowed to lag the headline.
+  const { reading } = usePrimaryReading(location, renderedAtMs)
 
   useEffect(() => {
-    if (data.status === 'loading') return
-    if (data.status === 'missing') {
+    if (reading.status === 'loading') return
+    if (reading.status === 'unavailable') {
       track('home_state_shown', { status: 'error' })
       track('home_briefing_ready', { status: 'missing' })
       return
     }
-    const isStale = renderedAtMs - new Date(data.updatedAt).getTime() > STALE_THRESHOLD_MS
-    if (isStale) track('home_state_shown', { status: 'stale' })
-    track('home_briefing_ready', { status: isStale ? 'stale' : 'ready' })
-    // Re-fires only when the hook's status transitions (loading -> ready/missing),
-    // not on every re-render — updatedAt is stable for the life of one ready state.
+    // Same verdict the hero renders (`reading.stale`), never a cadence
+    // compare — telemetry must not report "stale" while the UI shows fresh.
+    if (reading.stale) track('home_state_shown', { status: 'stale' })
+    track('home_briefing_ready', { status: reading.stale ? 'stale' : 'ready', source: reading.source })
+    // Re-fires only when the hook's status transitions (loading -> ready/
+    // unavailable), not on every re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.status])
+  }, [reading.status])
 
-  const coords = data.status === 'ready' ? { lat: data.lat, lon: data.lon } : null
+  // The user's own resolved point — HomeTrustStrip's nearest-station lookup
+  // and HomeActOnIt's Globe deep link both center on where the visitor
+  // actually is, never the CAMS feed city `data` resolves to.
+  const coords = location ? { lat: location.lat, lon: location.lon } : null
+  const placeLabel = location?.label ?? LOCATING_LABEL
 
   return (
     <main className="home-page">
       <div className="fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <HomeHero
+          reading={reading}
           data={data}
-          nowMs={renderedAtMs}
           requestingLocation={requesting}
           locationDenied={denied}
-          locationSource={location?.source ?? 'default'}
+          placeLabel={placeLabel}
+          locationSource={location?.source ?? null}
           onRequestLocation={requestGeolocation}
           onSelectCity={selectCity}
         />
-        {data.status === 'ready' && (
-          <HomeTrustStrip coords={coords} updatedAt={data.updatedAt} nowMs={renderedAtMs} />
+        {reading.status === 'ready' && (
+          <HomeTrustStrip coords={coords} updatedAt={reading.updatedAtIso} nowMs={renderedAtMs} />
         )}
       </div>
 
@@ -86,7 +99,7 @@ export default function Home() {
         <div className="home-shell fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <HomeForecastStrip series={data.series24h} city={data.city} />
           <div className="home-below-fold">
-            <HomeWhyNow series={data.series24h} />
+            <HomeWhyNow series={data.series24h} city={data.city} />
             <HomeActOnIt coords={coords} />
           </div>
         </div>

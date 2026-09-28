@@ -14,8 +14,9 @@ import AqiDot from '../../wireframe/AqiDot'
 import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
 import { useResolvedLocation } from '../../../hooks/useResolvedLocation'
+import { usePrimaryReading } from '../../../hooks/usePrimaryReading'
+import { LOCATING_LABEL } from '../../../lib/location/resolveLocation'
 import { formatElapsed } from '../../../lib/home/whyNow'
-import { haversineKm } from '../../../lib/today/nearestCity'
 import { formatCountdown } from './formatCountdown'
 
 const CAPSULE_SPRING = { damping: 0.68, response: 0.38 }
@@ -28,13 +29,6 @@ const EXPANDED_W = 320
 const EXPANDED_H = 300
 const PANEL_PAD = 20
 
-/** Assumed forecast cadence — matches the publish cron behind the capsule's
- * source (`forecastSource.ts`: the HF CAMS forecast refreshes every 6h). It
- * was 3h while the capsule read the grid-snapshot mirror; leaving it there
- * after the source moved would flip the readout to "Xh ago" (data-stale)
- * halfway through every real refresh window, i.e. half the time on current
- * data. Purely a countdown display; never asserted as a live guarantee. */
-const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000
 const ALERT_AUTOCLOSE_MS = 4000
 const ALERT_SESSION_KEY = 'airlens-capsule-alert-shown'
 
@@ -79,20 +73,7 @@ export interface AqiCapsuleProps {
   /** Glass surface variant — night for the landing hero, day for light
    * surfaces (Today porting). */
   variant?: LiquidGlassProps['variant']
-  /** UI G4 (2026-09-05 design audit): 'full' (default) shows the idle bar's
-   * location line (city name + APPROXIMATE/NOT YOUR LOCATION badge or
-   * NEAREST-TO-YOU distance). 'minimal' drops that row and shows only the
-   * reading — for a host page whose OWN hero already displays the visitor's
-   * location (Today's `WeatherHero` place name + source badge), so the
-   * floating capsule stops repeating it right next to it. The expanded
-   * panel (`CapsulePanel`) is unaffected either way — its fuller location
-   * detail (distance, "Use my location" CTA) is worth the extra room once
-   * the visitor has chosen to open it. */
-  locationDisplay?: 'full' | 'minimal'
 }
-
-const MINIMAL_COLLAPSED_W = 168
-const MINIMAL_COLLAPSED_H = 56
 
 /**
  * AqiCapsule — floating pill that expands into a 2-page glass panel
@@ -105,13 +86,17 @@ const MINIMAL_COLLAPSED_H = 56
  * location here on Today/Globe/Insights/Landing, not a second prompt.
  * Before that opt-in it falls back to the same IP-approximate point Home
  * uses, or a fixed Seoul default if that lookup also fails — the two
- * surfaces never disagree about where the visitor is. Idle state always
- * shows a location label, badged by how the point was obtained: a "NEAREST
- * TO YOU" distance for an opt-in geolocation choice, nothing extra for a
- * searched city, "APPROXIMATE" for the IP guess, and "DEFAULT · NOT YOURS"
- * for the Seoul fallback. The idle pill keeps that short form (COLLAPSED_W
- * is 220px — the fuller wording below doesn't fit); the expanded panel
- * spells it out where there's room.
+ * surfaces never disagree about where the visitor is.
+ *
+ * W1b commit ②: the idle bar and expanded panel's headline both read
+ * `usePrimaryReading` — the same shared resolver `/today` and Home read —
+ * so the capsule never shows a different number than either of them for the
+ * same place and moment. The location row shows the visitor's own resolved
+ * place (same eyebrow rules as `HomeHero`'s), badged by how the point was
+ * obtained: nothing extra for an opt-in choice (geolocation or a searched
+ * city), "APPROXIMATE" for the IP guess, and "DEFAULT · NOT YOURS" for the
+ * Seoul fallback. The expanded panel's 24h chart/range stay CAMS's own
+ * outlook (`useCapsuleData`) regardless of which source backs the headline.
  *
  * UI G1 (2026-09-05, approved mockup): the fallback/approximate states also
  * carry their own "Use my location" CTA directly on the expanded panel —
@@ -121,28 +106,20 @@ const MINIMAL_COLLAPSED_H = 56
  * capsule-only location state. No auto-prompt: the browser permission
  * dialog only fires from this button's own click, never on mount.
  */
-export default function AqiCapsule({ variant = 'night', locationDisplay = 'full' }: AqiCapsuleProps = {}): ReactNode {
-  const collapsedW = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_W : COLLAPSED_W
-  const collapsedH = locationDisplay === 'minimal' ? MINIMAL_COLLAPSED_H : COLLAPSED_H
-  const { location, choice, requesting, denied, requestGeolocation } = useResolvedLocation()
-  const locationSource = location?.source ?? 'default'
+export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}): ReactNode {
+  const { location, requesting, denied, requestGeolocation } = useResolvedLocation()
+  const locationSource = location?.source ?? null
+  const placeLabel = location?.label ?? LOCATING_LABEL
   const data = useCapsuleData(location)
-  // Distance from the visitor's own geolocation pick to the feed city it
-  // resolved to — only meaningful for a real GPS/Wi-Fi fix (`source ===
-  // 'geolocation'`), not a typed-in search pick (already an exact match to
-  // whatever city the visitor chose) or the IP-approximate guess (not an
-  // opt-in). `haversineKm` is the same great-circle helper `pickNearestCity`
-  // already uses to resolve that city in the first place — no second
-  // distance formula.
-  const distanceKm =
-    data.status === 'ready' && choice?.source === 'geolocation'
-      ? haversineKm(choice.lat, choice.lon, data.lat, data.lon)
-      : null
   const reducedMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [pulsing, setPulsing] = useState(false)
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [scrolledAway, setScrolledAway] = useState(false)
+  // `nowTick` ticks every second while a reading is up (below) — the same
+  // clock feeds `usePrimaryReading`'s `ageMs`/countdown math, so the idle
+  // bar's countdown live-updates without a second timer.
+  const { reading } = usePrimaryReading(location, nowTick)
 
   const panelId = useId()
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -150,9 +127,10 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const userInteractedRef = useRef(false)
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const alertKickoffRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const width = useSpring(collapsedW, CAPSULE_SPRING)
-  const height = useSpring(collapsedH, CAPSULE_SPRING)
+  const width = useSpring(COLLAPSED_W, CAPSULE_SPRING)
+  const height = useSpring(COLLAPSED_H, CAPSULE_SPRING)
 
   useEffect(() => {
     const applyW = (v: number) => {
@@ -174,8 +152,8 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
 
   function applyOpen(next: boolean): void {
     setOpen(next)
-    width.set(next ? EXPANDED_W : collapsedW)
-    height.set(next ? EXPANDED_H : collapsedH)
+    width.set(next ? EXPANDED_W : COLLAPSED_W)
+    height.set(next ? EXPANDED_H : COLLAPSED_H)
   }
 
   function clearAutoCloseTimer(): void {
@@ -223,12 +201,24 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
 
   // Alert: 1x per session, sessionStorage-gated. Auto-opens + pulses, then
   // auto-collapses unless the visitor has since interacted deliberately.
+  // Stays wired to `data` (the CAMS 24h outlook), not `reading` — the
+  // "worsening" signal compares forecast hours with each other regardless
+  // of which source backs the headline (same invariant as HomeHeroRail's
+  // trend tile). It also waits for `reading` itself: the panel only renders
+  // once the headline resolves, and CAMS (~180 KB) usually lands well before
+  // the grid (~2.5 MB) — firing on `data` alone opened an empty capsule and
+  // spent the one-per-session alert before there was anything to show.
   useEffect(() => {
     if (data.status !== 'ready' || data.alert !== 'worsening') return
+    if (reading.status !== 'ready') return
     if (hasShownAlert()) return
     markAlertShown()
 
-    const kickoff = setTimeout(() => {
+    // No per-run cleanup on purpose: once marked shown, a dependency change
+    // (or StrictMode's dev re-run) must not cancel the auto-close timer —
+    // that left the capsule open and pulsing for good, or never showed the
+    // alert at all. The timers are cleared on unmount only (effect below).
+    alertKickoffRef.current = setTimeout(() => {
       applyOpen(true)
       setPulsing(true)
       autoCloseTimerRef.current = setTimeout(() => {
@@ -236,19 +226,21 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
         if (!userInteractedRef.current) applyOpen(false)
       }, ALERT_AUTOCLOSE_MS)
     }, 0)
-
-    return () => {
-      clearTimeout(kickoff)
-      clearAutoCloseTimer()
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data])
+  }, [data, reading.status])
 
   useEffect(() => {
-    if (data.status !== 'ready') return
+    return () => {
+      if (alertKickoffRef.current !== null) clearTimeout(alertKickoffRef.current)
+      clearAutoCloseTimer()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (reading.status !== 'ready') return
     const id = setInterval(() => setNowTick(Date.now()), 1000)
     return () => clearInterval(id)
-  }, [data.status])
+  }, [reading.status])
 
   // Hide-on-scroll-down (see the HIDE_* constants' header comment). Skipped
   // under reduced motion — the capsule simply stays put rather than
@@ -318,7 +310,7 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const radius = open ? 20 : collapsedH / 2
+  const radius = open ? 20 : COLLAPSED_H / 2
   const phase = pulsing ? 'alerting' : open ? 'open' : 'idle'
   // Never actually hide while it's open or announcing an alert — only the
   // idle collapsed pill slides away.
@@ -326,53 +318,49 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
 
   let idle: ReactNode
   let ariaLabel: string
-  if (data.status === 'loading') {
+  if (reading.status === 'loading') {
     idle = <span className="aq-capsule__value">···</span>
     ariaLabel = 'Air quality loading, expand for details'
-  } else if (data.status === 'missing') {
+  } else if (reading.status === 'unavailable') {
     idle = <span className="aq-capsule__value">NO FEED</span>
     ariaLabel = 'Air quality feed unavailable, expand for details'
   } else {
-    const elapsed = nowTick - new Date(data.updatedAt).getTime()
-    const remaining = REFRESH_INTERVAL_MS - elapsed
+    const remaining = reading.refreshMs - reading.ageMs
+    const refreshHours = Math.round(reading.refreshMs / (60 * 60 * 1000))
+    const sourceNoun = reading.source === 'analysis' ? 'analysis' : 'forecast'
     // UI G4 (2026-09-05 design audit): the bare `mm:ss` countdown had no
-    // visible label anywhere — its meaning (time to the next 6h forecast
-    // refresh, see REFRESH_INTERVAL_MS above) only exists in this file's own
-    // comments. A `title` attribute surfaces it on hover/focus without
-    // spending any of the idle bar's tight width on a permanent label; the
-    // stale branch gets its own, distinct explanation.
+    // visible label anywhere — its meaning (time to the next refresh, at
+    // this reading's own cadence) only exists in this title. A `title`
+    // attribute surfaces it on hover/focus without spending any of the idle
+    // bar's tight width on a permanent label; the stale branch gets its
+    // own, distinct explanation.
     const countdownTitle =
       remaining > 0
-        ? `Next forecast refresh in ${formatCountdown(remaining)} (updates every 6h)`
-        : 'This forecast is older than its usual 6h refresh window'
+        ? `Next ${sourceNoun} refresh in ${formatCountdown(remaining)} (updates every ${refreshHours}h)`
+        : `This ${sourceNoun} is older than its usual ${refreshHours}h refresh window`
     idle = (
       <>
-        {locationDisplay === 'full' && (
-          <span className="aq-capsule__loc-row t-micro">
-            <span className="aq-capsule__loc">{data.city}</span>
-            {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
-            {locationSource === 'default' && <span className="aq-capsule__warn">DEFAULT · NOT YOURS</span>}
-            {locationSource === 'geolocation' && distanceKm !== null && (
-              <span className="aq-capsule__distance">NEAREST TO YOU · {Math.round(distanceKm)} KM</span>
-            )}
-          </span>
-        )}
+        <span className="aq-capsule__loc-row t-micro">
+          <span className="aq-capsule__loc">{placeLabel}</span>
+          {locationSource === 'approx' && <span className="aq-capsule__warn">APPROXIMATE</span>}
+          {locationSource === 'default' && <span className="aq-capsule__warn">DEFAULT · NOT YOURS</span>}
+        </span>
         <span className="aq-capsule__reading-row">
-          <AqiDot tier={data.tier} size={10} />
-          <span className="aq-capsule__value">{Math.round(data.current)}</span>
+          <AqiDot tier={reading.tier} size={10} />
+          <span className="aq-capsule__value">{Math.round(reading.pm25)}</span>
           <span className="aq-capsule__unit">µg/m³</span>
           <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined} title={countdownTitle}>
-            {remaining > 0 ? formatCountdown(remaining) : formatElapsed(elapsed)}
+            {remaining > 0 ? formatCountdown(remaining) : formatElapsed(reading.ageMs)}
           </span>
         </span>
       </>
     )
     ariaLabel =
       locationSource === 'approx'
-        ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — approximate location, expand for details`
+        ? `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel} — approximate location, expand for details`
         : locationSource === 'default'
-          ? `Air quality ${Math.round(data.current)} PM2.5 in ${data.city} — not your location, expand for details`
-          : `Air quality ${Math.round(data.current)} PM2.5 in ${data.city}, expand for details`
+          ? `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel} — not your location, expand for details`
+          : `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel}, expand for details`
   }
 
   return (
@@ -398,13 +386,14 @@ export default function AqiCapsule({ variant = 'night', locationDisplay = 'full'
           >
             {idle}
           </button>
-          {open && data.status === 'ready' && (
+          {open && reading.status === 'ready' && (
             <div id={panelId} className="aq-capsule__panel">
               <CapsulePanel
+                reading={reading}
                 data={data}
                 contentWidth={EXPANDED_W - PANEL_PAD * 2}
+                placeLabel={placeLabel}
                 locationSource={locationSource}
-                distanceKm={distanceKm}
                 requestingLocation={requesting}
                 locationDenied={denied}
                 onRequestLocation={requestGeolocation}

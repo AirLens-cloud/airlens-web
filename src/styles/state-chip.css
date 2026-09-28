@@ -9,6 +9,9 @@
  * viewer can still tell them apart from shape:
  *   stale         solid border  + ◷ icon + elapsed-time detail
  *   forecast      solid border  (no icon)
+ *   analysis      solid border  (no icon) — a grid-analysis headline
+ *                 (W1b commit ②), sibling of `forecast` rather than a
+ *                 distinct shape: both are source labels, not warnings
  *   approximate   solid border  + ~ icon
  *   withheld      dashed border (no icon)
  *   experimental  dotted border + △ icon

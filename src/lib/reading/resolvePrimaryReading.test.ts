@@ -312,6 +312,34 @@ describe('resolvePrimaryReading', () => {
     expect(reading.agreeCount).toBe(1) // GRID (the primary) always agrees with itself; CAMS does not.
   })
 
+  it('sets updatedAtIso to the GRID publish time for an analysis primary', () => {
+    // Arrange
+    const args = input({ grid: gridReady(), cams: camsReady() })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.updatedAtIso).toBe('2026-08-26T05:00:00Z')
+  })
+
+  it('sets updatedAtIso to the CAMS publish time for a forecast primary — distinct from validTimeIso', () => {
+    // Arrange — CAMS's first-hour time (validTimeIso) differs from its own
+    // generated_at (updatedAtIso), so a leak between the two would show here.
+    const args = input({
+      grid: { status: 'missing' },
+      cams: camsReady({
+        updatedAt: '2026-08-26T05:30:00Z',
+        series24h: [{ time: '2026-08-26T06:00:00Z', p10: null, p50: 22, p90: null }],
+      }),
+    })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.updatedAtIso).toBe('2026-08-26T05:30:00Z')
+    expect(reading.validTimeIso).toBe('2026-08-26T06:00:00Z')
+  })
+
   it('excludes an unusable (beyond-scale) GRID cell from the resolved-source count', () => {
     // Arrange — GRID technically "resolved" but is not usable; only CAMS counts.
     const args = input({ grid: gridBeyondScale(), cams: camsReady() })

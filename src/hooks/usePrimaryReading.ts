@@ -1,8 +1,9 @@
 /**
  * usePrimaryReading — wires `useTodayGrid`/`useTodayCams` (both keyed to a
  * resolved location) into `resolvePrimaryReading` (`lib/reading/`, pure and
- * React-free). `Today.tsx` is this commit's only caller; Home/the floating
- * capsule adopt it in a later commit (W1b commit ②).
+ * React-free). `Today.tsx`, `Home.tsx`, and `AqiCapsule.tsx` all call this
+ * (W1b commit ②) — the one place any surface picks a headline PM2.5 number,
+ * so none of them can show a different reading for the same place and moment.
  */
 import { useMemo } from 'react'
 import { useTodayGrid } from './useTodayGrid'

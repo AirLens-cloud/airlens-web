@@ -4,6 +4,13 @@
 // page" design choice) that reduced-motion has nothing to disable. Routing
 // (`/` -> Home, `/probe` -> DataProbe) is covered at the App level in
 // App.test.tsx, not duplicated here.
+//
+// W1b commit ②: the hero's headline (value/tier/nature badge/valid time/
+// freshness/TrustLine/staleness) now reads the shared `usePrimaryReading`
+// resolver, not `useCapsuleData` — mocked below via `mockReading`/
+// `readingFixture`, alongside the pre-existing `mockData`/`readyFixture` for
+// the CAMS-only 24h outlook row (HomeForecastStrip/HomeWhyNow, still gated on
+// `data.status === 'ready'` and unchanged by this commit).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import Home from './Home'
@@ -22,13 +29,18 @@ vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
 // (localStorage-backed) store + a real `fetch('/edge-geo')` call.
 vi.mock('../hooks/useResolvedLocation', () => ({ useResolvedLocation: vi.fn() }))
 
+// W1b commit ②: Home's own headline reads this hook, which otherwise wires
+// real `useTodayGrid`/`useTodayCams` fetches — mocked so every test controls
+// the resolved reading directly, the same reasoning as `useCapsuleData` above.
+vi.mock('../hooks/usePrimaryReading', () => ({ usePrimaryReading: vi.fn() }))
+
 // HomeStoriesResearch (below-the-fold, renders regardless of hero status) has
 // its own fetch/state coverage in HomeStoriesResearch.test.tsx — mocked here
 // only so this file's hero-focused tests don't trigger a real, unmocked
 // `fetch('.../blog-data/posts.json')` call on every render.
 vi.mock('../api/blog', () => ({ fetchBlogFeed: vi.fn() }))
 
-// HomeTrustStrip (mounted right under the hero whenever `data.status ===
+// HomeTrustStrip (mounted right under the hero whenever `reading.status ===
 // 'ready'`, `Home.tsx`) reads `useDQSSData()` — its own fetch/matching
 // coverage lives in HomeTrustStrip.test.tsx. Mocked here only so this file's
 // hero-focused 'ready' tests don't trigger a real, unmocked HF `fetch`
@@ -39,11 +51,20 @@ vi.mock('../hooks/useGlobeData', async () => {
   return { ...actual, useDQSSData: vi.fn() }
 })
 
+// Home's own analytics effect (`track('home_briefing_ready' | 'home_state_shown', ...)`)
+// — mocked so the two tests below can assert on the exact event/props Home
+// fires, rather than this repo's real no-op sink (`lib/analytics.ts`).
+vi.mock('../lib/analytics', () => ({ track: vi.fn() }))
+
 import { useCapsuleData, type CapsuleDataState, type CapsuleSeriesPoint } from '../components/fluid/capsule/useCapsuleData'
 import { useResolvedLocation } from '../hooks/useResolvedLocation'
+import { usePrimaryReading } from '../hooks/usePrimaryReading'
 import { fetchBlogFeed } from '../api/blog'
 import { useDQSSData } from '../hooks/useGlobeData'
+import { track } from '../lib/analytics'
 import type { DQSSCache } from '../types/globe'
+import type { PrimaryReading, PrimaryReadingReady } from '../lib/reading/resolvePrimaryReading'
+import { CAMS_REFRESH_MS } from '../lib/config/readingCadence'
 
 const NOW = new Date('2026-08-26T12:00:00Z')
 
@@ -78,6 +99,50 @@ function readyFixture(overrides: Partial<Extract<CapsuleDataState, { status: 're
 
 function mockData(state: CapsuleDataState) {
   vi.mocked(useCapsuleData).mockReturnValue(state)
+}
+
+/** Default shared-reading fixture for the hero — a forecast primary matching
+ * `readyFixture()`'s own numbers (Seoul, moderate, 42 µg/m³), fresh (15m old
+ * against the 6h CAMS refresh window). Individual tests override only the
+ * fields their assertion cares about (`ageMs`, `dqss`, `uncertainty`, ...). */
+function readingFixture(overrides: Partial<PrimaryReadingReady> = {}): PrimaryReadingReady {
+  // `validTimeIso`/`updatedAtIso` are derived from `ageMs` (defaulting to 15m,
+  // matching this fixture's own doc comment) rather than a fixed timestamp —
+  // a hardcoded ISO string after `NOW` produced a negative age, which
+  // HomeTrustStrip's "Updated" cell renders as "—" (tripped G8's `not toContain
+  // '—'` assertion once this fixture's default age was pushed to 15m).
+  const ageMs = overrides.ageMs ?? 15 * 60 * 1000
+  const iso = new Date(NOW.getTime() - ageMs).toISOString()
+  return {
+    status: 'ready',
+    source: 'forecast',
+    pm25: 42,
+    tier: 'moderate',
+    stale: false,
+    place: { label: 'Seoul, KR', countryCode: null, distanceKm: null },
+    validTimeIso: iso,
+    validTimeMs: NOW.getTime() - ageMs,
+    ageMs,
+    natureLabel: '[FORECAST]',
+    secondary: null,
+    agreement: null,
+    agreeCount: 1,
+    resolvedCount: 1,
+    hudStatus: 'ready',
+    dqss: { available: false, reason: 'not measured for forecast-sourced readings' },
+    uncertainty: { available: false, reason: "this forecast doesn't publish a range" },
+    refreshMs: CAMS_REFRESH_MS,
+    updatedAtIso: iso,
+    ...overrides,
+  }
+}
+
+function mockReading(reading: PrimaryReading) {
+  vi.mocked(usePrimaryReading).mockReturnValue({
+    reading,
+    grid: { status: 'loading' },
+    cams: { status: 'loading' },
+  })
 }
 
 /** Default DQSS fixture for `HomeTrustStrip` — a graded station right at
@@ -134,6 +199,7 @@ beforeEach(() => {
   // HomeStoriesResearch's own states (covered in its own test file).
   vi.mocked(fetchBlogFeed).mockReturnValue(new Promise(() => {}))
   mockResolvedLocation()
+  mockReading(readingFixture())
   mockDQSS(dqssFixture())
 })
 
@@ -146,7 +212,7 @@ afterEach(() => {
 
 describe('Home page — ready state', () => {
   it('renders the 6 hero elements: value, unit, tier, nature badge, valid time, freshness', () => {
-    // Arrange
+    // Arrange — beforeEach's default readingFixture() already covers this.
     mockData(readyFixture())
     // Act
     const { container, getByText } = render(<Home />)
@@ -210,10 +276,11 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-strip__band')).toBeNull()
   })
 
-  it('shows explicit stale wording and a stale chip — never a muted value — when generated_at is older than the refresh cadence', () => {
-    // Arrange — 7h old, past the 6h STALE_THRESHOLD_MS
-    const staleUpdatedAt = new Date(NOW.getTime() - 7 * 3600_000).toISOString()
-    mockData(readyFixture({ updatedAt: staleUpdatedAt }))
+  it('shows explicit stale wording and a stale chip — never a muted value — when the resolver marks the reading stale', () => {
+    // Arrange — staleness is `reading.stale` (the same verdict /today's HUD
+    // reads), not a fixed STALE_THRESHOLD_MS and not a cadence compare.
+    mockReading(readingFixture({ ageMs: 7 * 60 * 60 * 1000, stale: true, hudStatus: 'stale' }))
+    mockData(readyFixture())
     // Act
     const { container } = render(<Home />)
     // Assert — the value itself stays full-ink (design-audit 2026-09-05 §1 #1:
@@ -225,9 +292,9 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__meta')?.textContent).toMatch(/Stale/i)
   })
 
-  it('does not render a stale marker when generated_at is fresh', () => {
-    // Arrange
-    mockData(readyFixture({ updatedAt: NOW.toISOString() }))
+  it('does not render a stale marker when the reading is fresh', () => {
+    // Arrange — beforeEach's default readingFixture() (15m old) is already fresh.
+    mockData(readyFixture())
     // Act
     const { container } = render(<Home />)
     // Assert
@@ -273,11 +340,14 @@ describe('Home page — ready state', () => {
     expect(queryByText(/THICKEST AIR/)).toBeNull()
   })
 
-  it('hides the fallback band and shows "Not you?" once geolocation personalizes the reading', () => {
-    // Arrange
+  it('shows a plain place-label eyebrow (no "MY LOCATION" prefix) once geolocation personalizes the reading', () => {
+    // Arrange — W1b commit ②: the eyebrow now reads `location.label` as-is
+    // for an opt-in choice (geolocation or search) — it no longer builds a
+    // "MY LOCATION · {city}, {cc}" string from `data.city`/`data.countryCode`
+    // (the CAMS feed city, which HomeHero must not describe the visitor by).
     mockResolvedLocation({
-      location: { lat: 48.8566, lon: 2.3522, label: 'My location', source: 'geolocation' },
-      choice: { lat: 48.8566, lon: 2.3522, label: 'My location', source: 'geolocation' },
+      location: { lat: 48.8566, lon: 2.3522, label: 'My location, Paris', source: 'geolocation' },
+      choice: { lat: 48.8566, lon: 2.3522, label: 'My location, Paris', source: 'geolocation' },
     })
     mockData(readyFixture({ city: 'Paris', countryCode: 'FR' }))
     // Act
@@ -286,7 +356,7 @@ describe('Home page — ready state', () => {
     expect(container.querySelector('.home-hero__fallback-band')).toBeNull()
     expect(queryByText('See air quality near me')).toBeNull()
     expect(getByText('Not you? Search again')).not.toBeNull()
-    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · Paris, FR/)
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toBe('My location, Paris')
   })
 
   it('shows a plain "{city}, {cc}" eyebrow (not "MY LOCATION") and keeps the CTAs for a searched city', () => {
@@ -356,22 +426,35 @@ describe('Home page — ready state', () => {
     ).toBeNull()
   })
 
-  it('prefers a real choice over approx when both are present', () => {
-    // Arrange
+  it('reads the resolved choice, not the approx or the CAMS feed city, for the eyebrow', () => {
+    // Arrange — three different places in play: a real geolocation choice
+    // ("My location, London"), a stale approx (Paris), and `data`'s own feed
+    // city (London/GB, from a CAMS station that may not be the same point) —
+    // the eyebrow must show only the first, verbatim (W1b commit ②: it is no
+    // longer assembled from `data.city`/`data.countryCode` at all).
     mockResolvedLocation({
-      location: { lat: 51.5074, lon: -0.1278, label: 'My location', source: 'geolocation' },
-      choice: { lat: 51.5074, lon: -0.1278, label: 'My location', source: 'geolocation' },
+      location: { lat: 51.5074, lon: -0.1278, label: 'My location, London', source: 'geolocation' },
+      choice: { lat: 51.5074, lon: -0.1278, label: 'My location, London', source: 'geolocation' },
       approx: { status: 'ready', location: { lat: 48.8566, lon: 2.3522, city: 'Paris' } },
     })
     mockData(readyFixture({ city: 'London', countryCode: 'GB' }))
     // Act
     const { container } = render(<Home />)
     // Assert
-    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toMatch(/MY LOCATION · London, GB/)
+    expect(container.querySelector('.home-hero__eyebrow')?.textContent).toBe('My location, London')
   })
 
-  it('renders TrustLine with DQSS withheld and p10/p90 not published for the deterministic forecast', () => {
-    // Arrange — p10/p90 null (Open-Meteo CAMS carries no band)
+  it('renders TrustLine with DQSS withheld and p10/p90 not published for a forecast-sourced reading', () => {
+    // Arrange — W1b commit ②: TrustLine's dqss/uncertainty come from
+    // `reading`, not `data.p10`/`data.p90` — the `data` override here is now
+    // inert for this assertion, kept only so the below-the-fold row still
+    // renders consistently with the rest of this describe block.
+    mockReading(
+      readingFixture({
+        dqss: { available: false, reason: 'not measured for forecast-sourced readings' },
+        uncertainty: { available: false, reason: "this forecast doesn't publish a range" },
+      }),
+    )
     mockData(readyFixture({ p10: null, p90: null }))
     // Act
     const { container } = render(<Home />)
@@ -381,20 +464,51 @@ describe('Home page — ready state', () => {
     expect(trustLine?.textContent).toMatch(/DQSS.*withheld/)
     expect(trustLine?.textContent).toMatch(/not published/)
     expect(trustLine?.textContent).toMatch(/obs age/)
-    // design-review 2026-09-05 (PR #82): this line trust-scores the CAMS
-    // forecast reading, never HomeTrustStrip's ground-station DQSS just
-    // below it — the scope tag says so rather than leaving it ambiguous.
-    expect(container.querySelector('.trust-line__scope')?.textContent).toBe('THIS FORECAST')
+    // W1b commit ②: HomeHero no longer passes TrustLine a `scopeLabel` (the
+    // old "THIS FORECAST" tag, meant to disambiguate from HomeTrustStrip's
+    // ground-station DQSS just below it) — Home's headline can now be either
+    // source, and neither is a ground-station observation either way, so the
+    // hard-coded label was dropped entirely rather than kept on one branch.
+    expect(container.querySelector('.trust-line__scope')).toBeNull()
   })
 
-  it('renders TrustLine with a real p10/p90 range when the source publishes one', () => {
-    // Arrange
-    mockData(readyFixture({ p10: 30, p90: 55 }))
+  it("renders TrustLine with the reading's own p10/p90 range, not the CAMS outlook's band", () => {
+    // Arrange — the two sources publish DIFFERENT bands on purpose: with the
+    // same numbers on both sides, a TrustLine that read `data.p10`/`data.p90`
+    // (the pre-W1b derivation) would be indistinguishable from one that reads
+    // `reading.uncertainty`. TrustLine belongs to the headline `reading`;
+    // `data` is only the CAMS 24h outlook.
+    mockReading(readingFixture({ uncertainty: { available: true, p10: 30, p90: 55, unit: 'µg/m³' } }))
+    mockData(readyFixture({ p10: 12, p90: 88 }))
     // Act
     const { container } = render(<Home />)
     // Assert
     const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.querySelector('[data-band-state="available"]')).not.toBeNull()
     expect(trustLine?.textContent).toMatch(/30\.0–55\.0/)
+    expect(trustLine?.textContent).not.toMatch(/12\.0|88\.0/)
+  })
+
+  it('renders TrustLine as "not published" when the reading has no band, even though the CAMS outlook publishes one', () => {
+    // Arrange — a grid-analysis headline publishes no p10/p90 of its own,
+    // while CAMS (the outlook rail) does. Glass-box: the city forecast's band
+    // must never be borrowed as the analysis number's own uncertainty.
+    mockReading(
+      readingFixture({
+        source: 'analysis',
+        natureLabel: '[ANALYSIS]',
+        uncertainty: { available: false, reason: 'this data source publishes no uncertainty range' },
+      }),
+    )
+    mockData(readyFixture({ p10: 12, p90: 88, range: { lo: 12, hi: 88 } }))
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    const trustLine = container.querySelector('[data-testid="trust-line"]')
+    expect(trustLine?.querySelector('[data-band-state="unavailable"]')).not.toBeNull()
+    expect(trustLine?.querySelector('[data-band-state="available"]')).toBeNull()
+    expect(trustLine?.textContent).toMatch(/not published \(this data source publishes no uncertainty range\)/)
+    expect(trustLine?.textContent).not.toMatch(/12\.0|88\.0/)
   })
 })
 
@@ -402,7 +516,9 @@ describe('Home page — G8 trust strip (DQSS branch coverage)', () => {
   // HomeTrustStrip has its own full unit coverage in HomeTrustStrip.test.tsx
   // — these two just confirm Home wires `useDQSSData()` (mocked at the top
   // of this file) into it for both of the branches a reader can land on:
-  // a real grade, and a withheld one.
+  // a real grade, and a withheld one. (W1b commit ②: HomeTrustStrip now
+  // mounts on `reading.status === 'ready'`, not `data.status` — beforeEach's
+  // default `readingFixture()` already covers that.)
   it('shows a real grade in the DATA QUALITY cell when a station is graded at the hero location', () => {
     // Arrange — beforeEach's mockDQSS(dqssFixture()) is already the graded case.
     mockData(readyFixture())
@@ -430,7 +546,11 @@ describe('Home page — G8 trust strip (DQSS branch coverage)', () => {
 
 describe('Home page — missing state', () => {
   it('shows an error banner, renders no numeric value, and does not throw', () => {
-    // Arrange
+    // Arrange — W1b commit ②: the hero's own missing/error state is driven by
+    // `reading.status === 'unavailable'`, not `data.status` — both mocked
+    // "missing"/"unavailable" here since a real page can have either source
+    // fail independently.
+    mockReading({ status: 'unavailable' })
     mockData({ status: 'missing' })
     // Act
     const render_ = () => render(<Home />)
@@ -443,6 +563,40 @@ describe('Home page — missing state', () => {
     // No forecast strip / below-the-fold row without ready data.
     expect(container.querySelector('.home-strip')).toBeNull()
     expect(container.querySelector('.home-below-fold')).toBeNull()
+  })
+
+  it('still shows the unavailable banner and no headline number when the reading is unavailable but the CAMS outlook is ready', () => {
+    // Arrange — the hero's error branch is pinned to `reading.status`. A
+    // ready CAMS outlook (42 µg/m³ series) must not resurrect a headline the
+    // shared resolver could not produce, nor suppress the banner.
+    mockReading({ status: 'unavailable' })
+    mockData(readyFixture())
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero--missing .wf-datastate')).not.toBeNull()
+    expect(container.querySelector('.home-hero__value')).toBeNull()
+    expect(container.querySelector('[data-testid="trust-line"]')).toBeNull()
+    expect(container.querySelector('[data-testid="home-trust-strip"]')).toBeNull()
+  })
+
+  it('renders the headline number, not the error banner, when the reading is ready but the CAMS outlook is missing', () => {
+    // Arrange — the mirror case: a grid-analysis headline can be ready while
+    // CAMS failed. The hero stays on its ready branch and the rail says, in
+    // its own words, that the city forecast is unavailable.
+    mockReading(readingFixture())
+    mockData({ status: 'missing' })
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-hero__value')?.textContent).toMatch(/^42/)
+    expect(container.querySelector('.home-hero--missing')).toBeNull()
+    expect(container.querySelector('.wf-datastate')).toBeNull()
+    expect(container.querySelector('.home-hero__rail-empty')?.textContent).toBe(
+      'City forecast (CAMS) unavailable this pass.',
+    )
+    // The outlook rows below the fold stay withheld — they gate on `data`.
+    expect(container.querySelector('.home-strip')).toBeNull()
   })
 })
 
@@ -460,5 +614,90 @@ describe('Home page — reduced motion', () => {
       expect(node.style.transition).toBe('')
       expect(node.style.animation).toBe('')
     }
+  })
+})
+
+describe('Home page — analytics reports the resolver\'s own stale verdict, never a cadence compare', () => {
+  it('reports "ready" for a reading well past its refresh cadence but not marked stale by the resolver', () => {
+    // Arrange — 12h old (2x CAMS's 6h refresh cadence, the late-cron case
+    // seen live) but `reading.stale` is false: a cadence compare must not
+    // override the resolver's own verdict (same rule HomeHero.tsx's `isStale`
+    // comment documents for the rendered chip).
+    mockReading(readingFixture({ ageMs: 12 * 60 * 60 * 1000, stale: false }))
+    mockData(readyFixture())
+    // Act
+    render(<Home />)
+    // Assert
+    expect(track).toHaveBeenCalledWith('home_briefing_ready', { status: 'ready', source: 'forecast' })
+    expect(track).not.toHaveBeenCalledWith('home_state_shown', expect.anything())
+  })
+
+  it('reports "stale" and fires home_state_shown when the resolver marks the reading stale', () => {
+    // Arrange
+    mockReading(readingFixture({ stale: true }))
+    mockData(readyFixture())
+    // Act
+    render(<Home />)
+    // Assert
+    expect(track).toHaveBeenCalledWith('home_state_shown', { status: 'stale' })
+    expect(track).toHaveBeenCalledWith('home_briefing_ready', { status: 'stale', source: 'forecast' })
+  })
+
+  it('reports which source backed the headline, so an analysis-backed briefing is not counted as a forecast one', () => {
+    // Arrange — a fresh grid-analysis primary.
+    mockReading(readingFixture({ source: 'analysis', natureLabel: '[ANALYSIS]' }))
+    mockData(readyFixture())
+    // Act
+    render(<Home />)
+    // Assert
+    expect(track).toHaveBeenCalledWith('home_briefing_ready', { status: 'ready', source: 'analysis' })
+  })
+})
+
+describe('Home page — Globe deep links carry the visitor\'s own coordinates, not the CAMS feed city\'s', () => {
+  // A visitor location (Paris) whose lat/lon differ from `readyFixture()`'s own
+  // CAMS feed-city coordinates (Seoul, 37.5665/126.978) — so a link or lookup
+  // built from the wrong source can never coincide with the right answer.
+  const PARIS = { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' as const }
+
+  it('points the Act-on-it Globe link at the resolved location, not the CAMS feed city', () => {
+    // Arrange
+    mockResolvedLocation({ location: PARIS, choice: PARIS })
+    mockData(readyFixture())
+    // Act
+    const { container } = render(<Home />)
+    // Assert — the query string is the visitor's own point, not the Seoul feed city's.
+    const globeLink = container.querySelector<HTMLAnchorElement>('.home-act-on-it__primary')
+    expect(globeLink).not.toBeNull()
+    expect(globeLink?.getAttribute('href')).toBe('/globe?lat=48.8566&lon=2.3522')
+  })
+
+  it('looks up the trust strip\'s nearest-station DQSS grade at the resolved location, not the CAMS feed city', () => {
+    // Arrange — the only graded station sits at the visitor's own point; a
+    // lookup at the Seoul feed-city coordinates would find none in range.
+    mockResolvedLocation({ location: PARIS, choice: PARIS })
+    mockData(readyFixture())
+    mockDQSS(dqssFixture({ stations: [{ station_id: 'paris-1', lat: PARIS.lat, lon: PARIS.lon, final_score: 82 }] }))
+    // Act
+    const { getByTestId } = render(<Home />)
+    // Assert — a real grade (not "—") whose title names the Paris station's score.
+    const qualityLink = getByTestId('home-trust-strip').querySelector('a[href="/methodology#dqss"]')
+    expect(qualityLink).not.toBeNull()
+    expect(qualityLink?.textContent).not.toBe('—')
+    expect(qualityLink?.getAttribute('title')).toMatch(/score 82\/100/)
+  })
+
+  it('falls back to a plain /globe link and a "no location" trust-strip cell while the location is still resolving', () => {
+    // Arrange — `location` is null only while genuinely still resolving; the
+    // CAMS feed city's coordinates must not stand in for the visitor's own.
+    mockResolvedLocation({ location: null, choice: null })
+    mockData(readyFixture())
+    // Act
+    const { container, getByTestId } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-act-on-it__primary')?.getAttribute('href')).toBe('/globe')
+    const qualityLink = getByTestId('home-trust-strip').querySelector('a[href="/methodology#dqss"]')
+    expect(qualityLink).not.toBeNull()
+    expect(qualityLink?.getAttribute('title')).toBe('No location for this reading yet')
   })
 })

@@ -71,9 +71,11 @@ export default function HomeForecastStrip({ series, city }: HomeForecastStripPro
     : `24-hour PM2.5 forecast for ${city} — unavailable this pass`
 
   return (
-    <section className="home-strip" aria-label="Next 24 hours, PM2.5">
+    <section className="home-strip" aria-label={`Next 24 hours, PM2.5 city forecast (CAMS) for ${city}`}>
       <div className="home-strip__head">
-        <span className="t-tag">Next 24h · PM2.5</span>
+        {/* Glass-box: the hero headline above can be a grid analysis; this
+            strip is always CAMS's city forecast, so it names both. */}
+        <span className="t-tag">Next 24h · City forecast (CAMS) · {city}</span>
         {!hasBand && geometry ? (
           <span className="home-strip__no-band t-caption">No uncertainty range published for this forecast</span>
         ) : null}
