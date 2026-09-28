@@ -53,4 +53,12 @@ describe('TrustLine wrapping — withheld reasons wrap instead of forcing page o
     // Assert
     expect(item).toMatch(/white-space\s*:\s*nowrap\s*;/)
   })
+
+  it('.trust-line__withheld is plain inline, so the reason breaks beside the DQSS key', () => {
+    // Arrange / Act — as inline-flex it was capped at the item's full width
+    // rather than the space left after the key: 2px page overflow at 360px.
+    const withheld = blockFor(String.raw`\.trust-line__withheld`)
+    // Assert
+    expect(withheld).toMatch(/display\s*:\s*inline\s*;/)
+  })
 })

@@ -316,3 +316,34 @@ describe('F03 — glass-card AQI-tint background + paired --glass-card-ink', () 
     expect(contrastOf(ink, tint)).toBeGreaterThanOrEqual(AA)
   })
 })
+
+// ---------------------------------------------------------------------------
+// W0b — inside the glass card the typography classes (.t-numeric/.t-micro/
+// .t-caption) paint with the *site-theme* ink set, which beats the card's
+// inherited colour. The base `.glass-card` rule remaps --ink-0..3 onto
+// --glass-card-ink so every nested text rides the AQI-tint axis (measured
+// before the remap: hero number #000 on the hazard tint = 2.07:1). Guard the
+// remap itself — the AA math for each tint is the F03 block above.
+// ---------------------------------------------------------------------------
+
+describe('W0b — .glass-card remaps the site ink set onto --glass-card-ink', () => {
+  const base = /\.glass-card\s*\{([^}]*)\}/.exec(SURFACES_CSS)?.[1] ?? ''
+  it.each(['--ink-0', '--ink-1', '--ink-2', '--ink-3'])('%s is remapped', (token) => {
+    expect(base).toMatch(new RegExp(`${token}:\\s*var\\(--glass-card-ink\\b`))
+  })
+  it('the night variant pins --glass-card-ink to white (no data-aqi to supply it)', () => {
+    expect(SURFACES_CSS).toMatch(/\.glass-card\.glass-card--night\s*\{[^}]*--glass-card-ink:\s*#ffffff/)
+  })
+})
+
+describe('W0b — notes moved from --ink-3 to --ink-2 pass AA on --bg-0', () => {
+  it('light theme', () => {
+    expect(pairContrast('--ink-2', '--bg-0', lightMap)).toBeGreaterThanOrEqual(AA)
+  })
+  it('dark theme (prefers-color-scheme)', () => {
+    expect(pairContrast('--ink-2', '--bg-0', darkMediaMap)).toBeGreaterThanOrEqual(AA)
+  })
+  it('dark theme (data-theme="dark")', () => {
+    expect(pairContrast('--ink-2', '--bg-0', darkExplicitMap)).toBeGreaterThanOrEqual(AA)
+  })
+})

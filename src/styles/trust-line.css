@@ -105,14 +105,14 @@
 }
 
 .trust-line__withheld {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  /* F25 — same reasoning as `.trust-line__item` above: this inline-flex
-     wrapper sits between the item and `.trust-line__na`'s wrapping text,
-     and needs its own `min-width:0` so it doesn't reintroduce a min-content
-     floor at this layer. */
-  min-width: 0;
+  /* F25 — plain inline, not inline-flex: an inline-flex box is capped at the
+     item's full width, not the space left after the "DQSS" key, so at 360px
+     it started at x=70 and ran 2px past the viewport (measured 2026-09-28).
+     Inline lets `.trust-line__na` break on the same line as the key. */
+  display: inline;
+}
+.trust-line__withheld > .dqss-badge {
+  margin-right: var(--sp-1);
 }
 
 /* BandSlot renders its own two-row block (track/bracket + label) — this item

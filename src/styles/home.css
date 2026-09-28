@@ -138,7 +138,7 @@
   font-family: var(--mono);
   font-size: 11px; /* design-lint-ok: typography — hero meta micro label, not prose (matches chrome.css control labels) */
   letter-spacing: 0.04em;
-  opacity: 0.88;
+  /* no opacity: on the unhealthy tint 0.88 dropped this line to 4.25:1 (F03 root cause) */
 }
 .home-hero__stale-flag {
   font-weight: 700;
@@ -216,7 +216,6 @@
 
 .home-hero__location-note {
   margin: var(--sp-1) 0 0;
-  opacity: 0.85;
 }
 .home-hero__location-note.t-caption {
   color: inherit;
@@ -350,7 +349,6 @@
    uppercase+tracking), so this needs no case/tracking overrides of its own. */
 .home-trust-strip__sublabel {
   color: var(--ink-2);
-  opacity: 0.75;
 }
 .home-trust-strip__value {
   display: inline-flex;
@@ -479,7 +477,7 @@ a.home-trust-strip__value:hover {
 .home-why-now__unknown-tag {
   display: inline-block;
   margin-right: var(--sp-2);
-  color: var(--ink-3);
+  color: var(--ink-2); /* --ink-3 is 3.59:1 in dark */
 }
 
 .home-act-on-it__ctas {

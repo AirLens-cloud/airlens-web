@@ -219,7 +219,7 @@
   font-family: var(--sans);
   font-size: var(--fs-caption);
   line-height: 1.4;
-  color: var(--ink-3);
+  color: var(--ink-2); /* --ink-3 is 3.59:1 in dark */
 }
 
 /* notePlacement="below" — single-line pill (height-matched to a sibling
@@ -597,6 +597,11 @@
 .dqss-badge-prefix { color: var(--ink-2); }
 .dqss-badge-letter { font-weight: 700; color: var(--ink-0); }
 .dqss-badge-range { color: var(--ink-2); text-transform: none; font-size: var(--fs-micro); }
+/* Ungraded badge inside an AQI-tint glass card: the card remaps --ink-* to the tint
+   ink (surfaces.css), so a paper chip here would put that ink on --bg-0 (white on
+   white on the hazard tint). Ride the tint instead; the dashed border stays as the
+   "not measured" form, drawn in the text colour so it survives every tint. */
+.glass-card .dqss-badge[data-dqss="unknown"] { background: transparent; border-color: currentColor; }
 .dqss-badge[data-dqss="A"] { background: var(--dqss-a-badge-bg); border-color: var(--dqss-a-badge-border); }
 .dqss-badge[data-dqss="A"] .dqss-badge-letter { color: var(--dqss-a-badge-ink); }
 .dqss-badge[data-dqss="A"] .dqss-badge-prefix,

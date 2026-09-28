@@ -43,6 +43,16 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   color: var(--glass-card-ink, var(--tint-ink-dark));
+  /* The typography classes (.t-numeric/.t-micro/.t-caption…) paint with the site-theme
+     ink set, which beats the card's inherited colour. On an AQI tint that ink is wrong
+     in both themes (light: #000 on hazard 2.07:1 · dark: #f4f1e8 on the light tints).
+     Remap the whole set to the tint's ink — the same pair rule as `.wx-sky` (GSKY1).
+     Hierarchy inside the card comes from weight/size, never from a lighter ink.
+     Nested search panel is translucent glass on the same tint, so it follows too. */
+  --ink-0: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-1: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-2: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-3: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .glass-card.glass-card--lift {
   background: var(--glass-fill-lift);
@@ -52,6 +62,7 @@
   background: var(--glass-night-fill);
   border-color: var(--glass-night-border);
   color: #ffffff;
+  --glass-card-ink: #ffffff;
 }
 /* AQI-tint backdrop the glass card sits on. Ink pairing is measured (see header) —
    unhealthy keeps dark ink (white fails AA at 3.59:1); hazard alone flips to white.
