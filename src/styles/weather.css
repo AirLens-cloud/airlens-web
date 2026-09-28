@@ -355,10 +355,16 @@
   padding: 10px 12px;
   border: 1px solid var(--glass-border);
   border-radius: var(--r-0);
-  background: rgba(255, 255, 255, 0.5);
+  /* A near-opaque field with its own ink, so it reads the same on every tint and sky
+     phase. At 0.5 the placeholder fell to 2.7:1 on the night sky (tokens.contrast.test). */
+  background: rgba(255, 255, 255, 0.8);
   color: var(--tint-ink-dark);
   font-family: var(--sans);
   font-size: 14px;
+}
+.wx-search-input::placeholder {
+  color: var(--tint-ink-dark);
+  opacity: 0.72;
 }
 .wx-search-list {
   margin-top: var(--sp-2);

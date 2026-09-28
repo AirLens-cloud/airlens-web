@@ -437,3 +437,74 @@ describe('sky phases — glass controls carry the phase ink', () => {
     expect(worst).toBeGreaterThanOrEqual(AA)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Nested glass inside the AQI-tint card (the Home hero's city search). The
+// panel paints --glass-fill and its rows paint --wx-ink-*, and neither lives
+// on the tint axis unless the card pins them: in dark theme the site fill is
+// a navy wash (measured: dark ink on navy-over-unhealthy = 2.97:1) and
+// --wx-ink-* was undefined, so the rows only inherited the right ink by
+// accident. Same paired-set rule as `.wx-sky` — fill travels with the ink.
+// ---------------------------------------------------------------------------
+
+/** Every `prop: value;` declaration (plain and custom) in the first block `selector` matches. */
+function ruleDecls(css: string, selector: RegExp): TokenMap {
+  const body = selector.exec(css)?.[1] ?? ''
+  const map: TokenMap = {}
+  for (const m of body.matchAll(/([a-z-]+):\s*([^;]+);/g)) map[m[1]] = m[2].trim()
+  return map
+}
+
+const TINT_SCOPE_BASE = ruleDecls(SURFACES_CSS, /\.glass-card\[data-aqi\]\s*\{([^}]*)\}/)
+const tintScope = (grade: string): TokenMap => ({
+  ...TINT_SCOPE_BASE,
+  ...ruleDecls(SURFACES_CSS, new RegExp(`\\.glass-card\\[data-aqi="${grade}"\\]\\s*\\{([^}]*)\\}`)),
+})
+
+describe('glass card — nested glass carries the tint ink', () => {
+  const base = /\.glass-card\s*\{([^}]*)\}/.exec(SURFACES_CSS)?.[1] ?? ''
+  it.each(['--wx-ink-1', '--wx-ink-2', '--wx-ink-3'])('%s is remapped onto --glass-card-ink', (token) => {
+    expect(base).toMatch(new RegExp(`${token}:\\s*var\\(--glass-card-ink\\b`))
+  })
+  const cases = glassCardTintPairs.flatMap((p) => ['--glass-fill', '--glass-fill-lift'].map((fill) => ({ ...p, fill })))
+  it.each(cases)('$grade · ink on $fill', ({ grade, tintToken, inkRaw, fill }) => {
+    const fillValue = tintScope(grade)[fill]
+    expect(fillValue, `${fill} is pinned for ${grade}`).toBeDefined()
+    const tint = resolveToken(tintToken, lightMap)
+    expect(contrastOf(resolveValue(inkRaw, lightMap), compositeValue(fillValue, tint))).toBeGreaterThanOrEqual(AA)
+  })
+})
+
+// The search input is its own opaque-ish field (white fill + dark ink) that
+// sits on the panel on every surface — each tint and each sky stop. It is
+// checked against the darkest panel it can land on, placeholder included
+// (the placeholder is the field's only label hint, so it is text too).
+const SEARCH_INPUT = ruleDecls(WEATHER_CSS, /\.wx-search-input\s*\{([^}]*)\}/)
+const SEARCH_PLACEHOLDER = ruleDecls(WEATHER_CSS, /\.wx-search-input::placeholder\s*\{([^}]*)\}/)
+
+const inputSurfaces = [
+  ...glassCardTintPairs.map(({ grade, tintToken }) => ({
+    surface: `tint ${grade}`,
+    under: compositeValue(tintScope(grade)['--glass-fill'] ?? 'rgba(0, 0, 0, 0)', resolveToken(tintToken, lightMap)),
+  })),
+  ...Object.entries(SKY_GRADS).flatMap(([phase, stops]) => {
+    const inks = SKY_FLIP_PHASES.includes(phase) ? SKY_LIGHT_INKS : SKY_DARK_INKS
+    return stops.map((stop) => ({ surface: `sky ${phase} ${stop}`, under: compositeValue(inks['--glass-fill'], stop) }))
+  }),
+]
+
+describe('city search input — text and placeholder pass AA on every panel it sits on', () => {
+  it('parsed the input fill, ink and placeholder rule', () => {
+    expect(SEARCH_INPUT.background).toBeDefined()
+    expect(SEARCH_INPUT.color).toBeDefined()
+    expect(SEARCH_PLACEHOLDER.color).toBeDefined()
+    expect(inputSurfaces.length).toBe(4 + 11 * 4)
+  })
+  it.each(inputSurfaces)('$surface', ({ under }) => {
+    const field = compositeValue(SEARCH_INPUT.background, under)
+    expect(contrastOf(resolveValue(SEARCH_INPUT.color, lightMap), field)).toBeGreaterThanOrEqual(AA)
+    const ph = parseColor(resolveValue(SEARCH_PLACEHOLDER.color, lightMap))
+    const phAlpha = ph.a * Number(SEARCH_PLACEHOLDER.opacity ?? 1)
+    expect(contrastOf(`rgba(${ph.r}, ${ph.g}, ${ph.b}, ${phAlpha})`, field)).toBeGreaterThanOrEqual(AA)
+  })
+})
