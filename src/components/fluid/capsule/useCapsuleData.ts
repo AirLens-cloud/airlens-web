@@ -19,23 +19,18 @@
 import { useEffect, useState } from 'react'
 import { fetchForecast } from '../../../lib/today/forecastSource'
 import { pickNearestCity } from '../../../lib/today/nearestCity'
-import type { ForecastHourly } from '../../../types/forecast'
+import { tierFromPm25, detectAlert, summarizeWindow24h } from '../../../lib/reading/tier'
 import type { AqiTier } from '../../wireframe/AqiDot'
 import type { ResolvedLocation } from '../../../lib/location/resolveLocation'
+import type { CapsuleAlert, CapsuleRange, CapsuleSeriesPoint } from '../../../lib/reading/tier'
 
-export type CapsuleAlert = 'worsening' | 'steady' | 'unknown'
-
-export interface CapsuleRange {
-  lo: number
-  hi: number
-}
-
-export interface CapsuleSeriesPoint {
-  time: string
-  p10: number | null
-  p50: number
-  p90: number | null
-}
+// Moved to `lib/reading/tier.ts` (W1b commit ①) so `resolvePrimaryReading.ts`
+// can share the same tier cuts without importing this hook module.
+// Re-exported here, unchanged, so this file's existing importers (the
+// capsule component tree, `useTodayCams.ts`, `lib/home/whyNow.ts`, etc.)
+// keep compiling against this path.
+export { tierFromPm25 } from '../../../lib/reading/tier'
+export type { CapsuleAlert, CapsuleRange, CapsuleSeriesPoint } from '../../../lib/reading/tier'
 
 export interface CapsuleDataReady {
   status: 'ready'
@@ -63,43 +58,6 @@ export interface CapsuleDataReady {
 }
 
 export type CapsuleDataState = { status: 'loading' } | CapsuleDataReady | { status: 'missing' }
-
-const LOOKAHEAD_HOURS = 24
-
-/** PM2.5 -> 6-tier AQI classification. Shares the 15/35/75 cut convention
- * with `src/api/gridSnapshot.ts`'s `gradeFromPm25` (4-tier), extended with
- * two further EPA-style breakpoints (55, 150) to reach AqiDot's 6 tiers. */
-export function tierFromPm25(pm25: number): AqiTier {
-  if (pm25 <= 15) return 'good'
-  if (pm25 <= 35) return 'moderate'
-  if (pm25 <= 55) return 'usg'
-  if (pm25 <= 75) return 'unhealthy'
-  if (pm25 <= 150) return 'very-unhealthy'
-  return 'hazardous'
-}
-
-const TIER_RANK: Record<AqiTier, number> = {
-  good: 0,
-  moderate: 1,
-  usg: 2,
-  unhealthy: 3,
-  'very-unhealthy': 4,
-  hazardous: 5,
-  unknown: -1,
-}
-
-function detectAlert(hourly: ForecastHourly[], currentTier: AqiTier): CapsuleAlert {
-  if (hourly.length < 2 || currentTier === 'unknown') return 'unknown'
-  const currentRank = TIER_RANK[currentTier]
-  const window = hourly.slice(0, LOOKAHEAD_HOURS)
-  let sawFinite = false
-  for (const hour of window) {
-    if (!Number.isFinite(hour.pm25)) continue
-    sawFinite = true
-    if (TIER_RANK[tierFromPm25(hour.pm25)] > currentRank) return 'worsening'
-  }
-  return sawFinite ? 'steady' : 'unknown'
-}
 
 /**
  * @param location The resolved location (`useResolvedLocation`'s
@@ -139,27 +97,11 @@ export function useCapsuleData(location: ResolvedLocation | null): CapsuleDataSt
           setState({ status: 'missing' })
           return
         }
-        const window = city.hourly.slice(0, LOOKAHEAD_HOURS)
-        let lo = now.pm25
-        let hi = now.pm25
-        // Only a band the source actually published widens lo/hi. If no hour
-        // carries one, `range` stays null instead of reporting lo===hi.
-        let sawBand = false
-        const series24h: CapsuleSeriesPoint[] = []
-        for (const hour of window) {
-          if (!Number.isFinite(hour.pm25)) continue
-          const p10 = Number.isFinite(hour.pm25_p10) ? (hour.pm25_p10 as number) : null
-          const p90 = Number.isFinite(hour.pm25_p90) ? (hour.pm25_p90 as number) : null
-          if (p10 !== null) {
-            lo = Math.min(lo, p10)
-            sawBand = true
-          }
-          if (p90 !== null) {
-            hi = Math.max(hi, p90)
-            sawBand = true
-          }
-          series24h.push({ time: hour.time, p10, p50: hour.pm25, p90 })
-        }
+        // `summarizeWindow24h` (moved to `lib/reading/tier.ts`, W1b commit ①)
+        // builds `series24h` and widens the lo/hi band from any hour that
+        // actually publishes p10/p90 — `range` stays null (never lo===hi)
+        // when no hour in the window carries one.
+        const { series24h, range } = summarizeWindow24h(city.hourly, now.pm25)
         const tier = tierFromPm25(now.pm25)
         setState({
           status: 'ready',
@@ -169,7 +111,7 @@ export function useCapsuleData(location: ResolvedLocation | null): CapsuleDataSt
           countryCode: city.country_code,
           current: now.pm25,
           tier,
-          range: sawBand ? { lo, hi } : null,
+          range,
           p10: Number.isFinite(now.pm25_p10) ? (now.pm25_p10 as number) : null,
           p90: Number.isFinite(now.pm25_p90) ? (now.pm25_p90 as number) : null,
           series24h,

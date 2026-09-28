@@ -313,3 +313,95 @@ describe('fetchGlobalGridSnapshot — plausibility verdicts', () => {
     expect(result.nearbyCells[0].pm25).toBe(15867.96)
   })
 })
+
+/**
+ * `origin && limit === 1` fast path (`useTodayGrid.ts`'s per-coordinate
+ * lookup) — a single linear scan + per-artifact cache instead of mapping and
+ * sorting every point just to keep index 0. These pin that it is a pure
+ * allocation/sort avoidance: identical results to the general ranking path,
+ * plus the caching behaviour itself.
+ */
+describe('fetchGlobalGridSnapshot — origin+limit:1 fast path', () => {
+  const POINTS = [
+    { lat: 37.5, lon: 127.0, pm25: 12 },
+    { lat: 35.1, lon: 129.0, pm25: 40 },
+    { lat: 40.7, lon: -74.0, pm25: 90 },
+    { lat: -33.9, lon: 151.2, pm25: 22 },
+  ]
+
+  it('matches the general path\'s ranked[0] for several origins', async () => {
+    // Arrange — one origin per point, so each is the unambiguous nearest to itself.
+    fetchMock.mockResolvedValue(okResponse({ updated_at: '2026-08-25T11:00:00.000Z', points: POINTS }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    for (const origin of POINTS) {
+      // Act
+      const full = await fetchGlobalGridSnapshot({ ...origin, limit: POINTS.length, radiusKm: 20000 })
+      const fast = await fetchGlobalGridSnapshot({ ...origin, limit: 1, radiusKm: 20000 })
+
+      // Assert — same cell, same fields, same distance/plausibility.
+      expect(fast.nearbyCells).toEqual([full.nearbyCells[0]])
+      expect(fast.pm25).toBe(full.nearbyCells[0].pm25)
+      expect(fast.aqi).toBe(full.nearbyCells[0].aqi)
+      expect(fast.grade).toBe(full.nearbyCells[0].grade)
+      expect(fast.plausibility).toEqual(full.nearbyCells[0].plausibility)
+    }
+  })
+
+  it('throws the same "nothing in radius" error as the general path when nothing qualifies', async () => {
+    // Arrange — the only point is far outside the default 600km radius.
+    fetchMock.mockResolvedValueOnce(okResponse({
+      updated_at: '2026-08-25T11:00:00.000Z',
+      points: [{ lat: 40.7, lon: -74.0, pm25: 90 }],
+    }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act + Assert
+    await expect(fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })).rejects.toThrow(
+      'No grid cells in requested radius',
+    )
+  })
+
+  it('returns the cached cell (same object reference) on a repeat call for the same point', async () => {
+    // Arrange
+    fetchMock.mockResolvedValueOnce(okResponse({ updated_at: '2026-08-25T11:00:00.000Z', points: POINTS }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act — two calls for the same origin; `readArtifact()`'s own 30-minute
+    // cache means the second call never re-fetches, so both hit the same
+    // artifact object the nearest-cell cache is keyed on.
+    const first = await fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })
+    const second = await fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })
+
+    // Assert
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(second.nearbyCells[0]).toBe(first.nearbyCells[0])
+  })
+
+  it('does not reuse a cached nearest cell across a different artifact object', async () => {
+    // Arrange — the artifact refreshes (a new fetch after the 30-minute TTL
+    // expires) between the two calls, so the second lands on a genuinely
+    // different artifact object with a different reading at the same point.
+    fetchMock
+      .mockResolvedValueOnce(okResponse({
+        updated_at: '2026-08-25T11:00:00.000Z',
+        points: [{ lat: 37.5, lon: 127.0, pm25: 10 }],
+      }))
+      .mockResolvedValueOnce(okResponse({
+        updated_at: '2026-08-25T14:00:00.000Z',
+        points: [{ lat: 37.5, lon: 127.0, pm25: 99 }],
+      }))
+    const { fetchGlobalGridSnapshot } = await import('./gridSnapshot')
+
+    // Act
+    const first = await fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })
+    vi.setSystemTime(new Date('2026-08-25T12:35:00Z')) // >30min later — readArtifact() refetches
+    const second = await fetchGlobalGridSnapshot({ lat: 37.5, lon: 127.0, limit: 1 })
+
+    // Assert — the new artifact's own value, not a stale cached cell from the first.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(first.pm25).toBe(10)
+    expect(second.pm25).toBe(99)
+    expect(second.nearbyCells[0]).not.toBe(first.nearbyCells[0])
+  })
+})

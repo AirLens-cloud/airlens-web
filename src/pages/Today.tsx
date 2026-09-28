@@ -15,14 +15,10 @@
  * a stray `?tab=decision` (the tab's old name) maps to Insight for
  * backward compatibility.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
-import { useTodayGrid } from '../hooks/useTodayGrid'
-import { useTodayCams } from '../hooks/useTodayCams'
-import { tierFromPm25 } from '../components/fluid/capsule/useCapsuleData'
-import { computeSourceAgreement } from '../lib/today/sourceAgreement'
-import { isReportable } from '../lib/config/gridPlausibility'
+import { usePrimaryReading } from '../hooks/usePrimaryReading'
 import { LOCATING_LABEL, SEOUL_DEFAULT } from '../lib/location/resolveLocation'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import TrustLine from '../components/wireframe/TrustLine'
@@ -60,103 +56,30 @@ export default function Today() {
   const [nowMs] = useState(() => Date.now())
   const { location, requesting, denied, requestGeolocation, selectCity } = useResolvedLocation()
   const weatherData = useWeatherPageData(location?.lat ?? null, location?.lon ?? null)
-  const grid = useTodayGrid(location?.lat ?? null, location?.lon ?? null)
-  const cams = useTodayCams(location?.lat ?? null, location?.lon ?? null)
+  const { reading, grid, cams } = usePrimaryReading(location, nowMs)
 
-  // A GRID cell the model could not plausibly have produced (the live
-  // artifact ships 1° cells in the thousands of µg/m³ over boreal fire
-  // plumes) stops backing the day's judgment — it does not stop being shown.
-  // The number stays visible with its reason in TodayWhy/TodayEvidence; what
-  // it loses is the right to decide the headline, the tier, and the
-  // source-agreement claim. Without this it would win the `??` below purely
-  // by being the preferred source and put "15868 µg/m³ · hazardous" on
-  // someone's local air.
-  const usableGrid = grid.status === 'ready' && isReportable(grid.plausibility) ? grid : null
-  const gridPm25 = usableGrid?.pm25 ?? null
-  const camsPm25 = cams.status === 'ready' ? cams.current : null
-  // GRID (an analysis snapshot for this exact coordinate) is preferred over
-  // CAMS (a forecast resolved to the nearest feed city) as the primary
-  // reading when both are present.
-  const primaryPm25 = gridPm25 ?? camsPm25
-  const primaryTier = primaryPm25 !== null ? tierFromPm25(primaryPm25) : 'unknown'
-
-  const agreement = useMemo(() => computeSourceAgreement(gridPm25, camsPm25), [gridPm25, camsPm25])
-
-  let agreeCount = 0
-  let resolvedCount = 0
-  if (usableGrid) {
-    resolvedCount += 1
-    if (tierFromPm25(usableGrid.pm25) === primaryTier) agreeCount += 1
-  }
-  if (cams.status === 'ready') {
-    resolvedCount += 1
-    if (cams.tier === primaryTier) agreeCount += 1
-  }
-
-  // Whichever source backs the primary reading also decides staleness — a
-  // GRID-primary reading checks `grid.stale`, a CAMS-primary reading (GRID
-  // missing/loading, CAMS filled in) must check `cams.stale` instead, or a
-  // stale forecast-fallback bundle (`forecastSource.ts`'s "may be stale"
-  // static fallback) would render as unconditionally "ready".
-  const primaryIsGrid = usableGrid !== null
-  const primaryStale = usableGrid ? usableGrid.stale : cams.status === 'ready' ? cams.stale === true : false
-  const hudStatus: TodayHudStatus =
-    primaryPm25 !== null
-      ? primaryStale
-        ? 'stale'
-        : 'ready'
-      : grid.status === 'loading' || cams.status === 'loading'
-        ? 'loading'
-        : 'unavailable'
-
-  // Every line below describes the source *backing the headline*, so each
-  // reads `usableGrid` rather than `grid.status` — an unverifiable cell hands
-  // the headline to CAMS, and the timestamp, place, distance and nature label
-  // have to follow it there or they would describe a reading no longer shown.
-  const validTimeMs = usableGrid
-    ? new Date(usableGrid.updatedAt).getTime()
-    : cams.status === 'ready' && cams.series24h[0]
-      ? new Date(cams.series24h[0].time).getTime()
-      : null
-  const updatedAgeMs = usableGrid
-    ? nowMs - new Date(usableGrid.updatedAt).getTime()
-    : cams.status === 'ready'
-      ? nowMs - new Date(cams.updatedAt).getTime()
-      : null
-  const natureLabel = usableGrid ? '[ANALYSIS]' : cams.status === 'ready' ? '[FORECAST]' : '[NO DATA]'
+  // Every line below reads `reading` (the resolved primary), never `grid`/
+  // `cams` directly — `resolvePrimaryReading` (`lib/reading/`) already
+  // decided which source backs the headline (an unverifiable GRID cell hands
+  // it to CAMS) and computed everything derived from that choice. `grid`/
+  // `cams` themselves are still passed through below, unchanged, to
+  // TodayWhy/TodayEvidence — those panels render both raw sources
+  // side by side regardless of which one is primary.
+  const ready = reading.status === 'ready' ? reading : null
+  const hudStatus: TodayHudStatus = ready ? ready.hudStatus : reading.status === 'loading' ? 'loading' : 'unavailable'
+  const primaryTier = ready?.tier ?? 'unknown'
+  const primaryPm25 = ready?.pm25 ?? null
   const placeLabel = location?.label ?? LOCATING_LABEL
-  const primaryCity = usableGrid ? placeLabel : cams.status === 'ready' ? cams.cityName : placeLabel
-  const primaryCountryCode = cams.status === 'ready' ? cams.countryCode : null
-  const primaryDistanceKm = usableGrid ? usableGrid.distanceKm : cams.status === 'ready' ? cams.distanceKm : null
-  const validTimeIso = usableGrid
-    ? usableGrid.updatedAt
-    : cams.status === 'ready'
-      ? (cams.series24h[0]?.time ?? cams.updatedAt)
-      : null
-
-  // UI Tier-1 P3-B: same DQSS/p10-p90 honesty split as `useCapsuleData` —
-  // GRID (`gridSnapshot.ts`) carries a real `dqss` when the source artifact
-  // has one but never a p10/p90 band; CAMS (`forecastSource.ts`) is the
-  // reverse (band per hour, no DQSS at all). Never conflate the two sources'
-  // withheld reasons into one line.
-  const trustDqss =
-    primaryIsGrid && grid.status === 'ready' && grid.dqss !== undefined
-      ? { available: true as const, value: grid.dqss }
-      : {
-          available: false as const,
-          reason: primaryIsGrid ? 'not measured for this grid cell' : 'not measured for forecast-sourced readings',
-        }
-  const camsP10 = cams.status === 'ready' ? cams.series24h[0]?.p10 : null
-  const camsP90 = cams.status === 'ready' ? cams.series24h[0]?.p90 : null
-  const trustUncertainty =
-    !primaryIsGrid && camsP10 != null && camsP90 != null
-      ? { available: true as const, p10: camsP10, p90: camsP90, unit: 'µg/m³' }
-      : {
-          available: false as const,
-          reason: primaryIsGrid
-            ? 'this data source publishes no uncertainty range'
-            : "this forecast doesn't publish a range",
-        }
+  const primaryCity = ready?.place.label ?? placeLabel
+  const primaryCountryCode = ready?.place.countryCode ?? null
+  const primaryDistanceKm = ready?.place.distanceKm ?? null
+  const validTimeMs = ready?.validTimeMs ?? null
+  const updatedAgeMs = ready?.ageMs ?? null
+  const validTimeIso = ready?.validTimeIso ?? null
+  const natureLabel = ready?.natureLabel ?? '[NO DATA]'
+  const agreeCount = ready?.agreeCount ?? 0
+  const resolvedCount = ready?.resolvedCount ?? 0
+  const agreement = ready?.agreement ?? null
 
   return (
     <main className="today-page">
@@ -173,11 +96,11 @@ export default function Today() {
           aq={weatherData.aq}
           onRetry={weatherData.retry}
         />
-        {primaryPm25 !== null && (
+        {ready && (
           <TrustLine
-            ageMs={updatedAgeMs}
-            dqss={trustDqss}
-            uncertainty={trustUncertainty}
+            ageMs={ready.ageMs}
+            dqss={ready.dqss}
+            uncertainty={ready.uncertainty}
             className="today-hero__trust-line"
           />
         )}

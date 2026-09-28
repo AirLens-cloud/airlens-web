@@ -174,6 +174,78 @@ function evenSample<T>(arr: T[], limit: number): T[] {
   return out;
 }
 
+/**
+ * Cache for the origin+limit:1 fast path below — the nearest in-radius cell
+ * already computed for a given artifact + query point, so a repeat call for
+ * the same point (e.g. a hook re-render) doesn't rescan. Keyed by the
+ * artifact object itself (a `WeakMap`, so a stale artifact's entries are
+ * simply unreachable — never explicitly invalidated — once `readArtifact()`
+ * replaces `cache.artifact` with a freshly-fetched object).
+ */
+const nearestCellCache = new WeakMap<RawGridArtifact, Map<string, GlobalGridCell>>();
+
+function nearestCellCacheKey(lat: number, lon: number, radiusKm: number): string {
+  return `${lat},${lon},${radiusKm}`;
+}
+
+/**
+ * Fast path for `{lat, lon, limit: 1}` — Today's per-coordinate grid lookup
+ * (`useTodayGrid.ts`). The general path below maps EVERY point into a
+ * `GlobalGridCell` (haversine distance + aqi/grade/plausibility) and sorts
+ * the whole ~65k-point array just to keep index 0 — a single linear scan for
+ * the nearest in-radius point does the same job without the allocation or
+ * the sort. Results are identical to `ranked[0]` in the general path: same
+ * cell, same fields, same distance/plausibility, same "nothing in radius"
+ * rejection (`null` here, mirrored by the caller's throw).
+ *
+ * Tie-breaking matches the general path's stable sort: on equal distance the
+ * earlier point in `points`' own order wins, since this only overwrites the
+ * running best on a STRICTLY smaller distance.
+ */
+function nearestCellFastPath(
+  artifact: RawGridArtifact,
+  points: FinitePoint[],
+  origin: { lat: number; lon: number },
+  radiusKm: number,
+  updatedAt: string,
+): GlobalGridCell | null {
+  let cellsForArtifact = nearestCellCache.get(artifact);
+  if (!cellsForArtifact) {
+    cellsForArtifact = new Map();
+    nearestCellCache.set(artifact, cellsForArtifact);
+  }
+  const key = nearestCellCacheKey(origin.lat, origin.lon, radiusKm);
+  const cached = cellsForArtifact.get(key);
+  if (cached) return cached;
+
+  let bestPoint: FinitePoint | null = null;
+  let bestDistanceKm = Infinity;
+  for (const p of points) {
+    const distanceKm = haversineKm(origin, p);
+    if (distanceKm > radiusKm) continue;
+    if (distanceKm < bestDistanceKm) {
+      bestDistanceKm = distanceKm;
+      bestPoint = p;
+    }
+  }
+  if (!bestPoint) return null;
+
+  const cell: GlobalGridCell = {
+    lat: bestPoint.lat,
+    lon: bestPoint.lon,
+    pm25: bestPoint.pm25,
+    aqi: bestPoint.aqi ?? pm25ToAqi(bestPoint.pm25),
+    grade: gradeFromPm25(bestPoint.pm25),
+    updatedAt,
+    dqss: bestPoint.dqss,
+    confidence: bestPoint.confidence,
+    distanceKm: bestDistanceKm,
+    plausibility: classifyPm25(bestPoint.pm25),
+  };
+  cellsForArtifact.set(key, cell);
+  return cell;
+}
+
 async function fetchArtifact(url: string): Promise<RawGridArtifact | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
@@ -238,6 +310,25 @@ export async function fetchGlobalGridSnapshot(
 
   const limit = Math.max(1, Math.min(MAX_LIMIT, Math.trunc(options.limit ?? DEFAULT_LIMIT)));
   const radiusKm = Math.max(1, Math.min(MAX_RADIUS_KM, options.radiusKm ?? DEFAULT_RADIUS_KM));
+
+  if (origin && limit === 1) {
+    const cell = nearestCellFastPath(artifact, points, origin, radiusKm, updatedAt);
+    if (!cell) throw new Error('No grid cells in requested radius');
+    return {
+      pm25: cell.pm25,
+      aqi: cell.aqi,
+      grade: cell.grade,
+      lat: cell.lat,
+      lon: cell.lon,
+      source: 'global_grid',
+      updatedAt,
+      dqss: cell.dqss,
+      confidence: cell.confidence,
+      stale,
+      nearbyCells: [cell],
+      plausibility: cell.plausibility,
+    };
+  }
 
   const ranked: GlobalGridCell[] = points
     .map((p) => {

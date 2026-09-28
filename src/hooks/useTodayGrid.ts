@@ -33,30 +33,27 @@ export type TodayGridState =
     }
   | { status: 'missing' }
 
+/** A resolved state plus the point it was resolved for — same pattern as
+ * `useCapsuleData`'s `ResolvedFor`. A result for the previous lat/lon is not
+ * this point's answer: without this, a fetch that lands after the viewer's
+ * coordinates already moved on would show the old point's reading under the
+ * new location's label, then jump once the new fetch actually lands. */
+interface ResolvedFor {
+  state: TodayGridState
+  lat: number | null
+  lon: number | null
+}
+
 export function useTodayGrid(lat: number | null, lon: number | null): TodayGridState {
-  const [state, setState] = useState<TodayGridState>({ status: 'loading' })
+  const [resolved, setResolved] = useState<ResolvedFor>({ state: { status: 'loading' }, lat: null, lon: null })
 
   useEffect(() => {
-    let alive = true
     // Not resolved yet (`useResolvedLocation`'s `location` is still null) —
-    // stay loading without fetching, rather than requesting a bogus point.
-    // Deferred to a microtask rather than called synchronously in the effect
-    // body — same reasoning as the ready branch just below
-    // (react-hooks/set-state-in-effect).
-    if (lat === null || lon === null) {
-      Promise.resolve().then(() => {
-        if (alive) setState({ status: 'loading' })
-      })
-      return () => {
-        alive = false
-      }
-    }
-    // Deferred to a microtask rather than called synchronously in the effect
-    // body — same reasoning as `useWeatherPageData.ts`'s fetch effect
-    // (react-hooks/set-state-in-effect).
-    Promise.resolve().then(() => {
-      if (alive) setState({ status: 'loading' })
-    })
+    // no fetch, and the read below already reports `loading` for a lat/lon
+    // mismatch (initial state is lat:null/lon:null).
+    if (lat === null || lon === null) return
+    let alive = true
+    const setState = (state: TodayGridState) => setResolved({ state, lat, lon })
 
     fetchGlobalGridSnapshot({ lat, lon, limit: 1 })
       .then((snapshot) => {
@@ -80,5 +77,9 @@ export function useTodayGrid(lat: number | null, lon: number | null): TodayGridS
     }
   }, [lat, lon])
 
-  return state
+  // A result for a different point is not this point's answer — report
+  // loading until the fetch for the current one lands (or, if lat/lon are
+  // still null, forever loading — the initial state already matches that).
+  if (resolved.lat !== lat || resolved.lon !== lon) return { status: 'loading' }
+  return resolved.state
 }
