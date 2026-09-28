@@ -254,6 +254,28 @@ describe('locationChoiceStore', () => {
       expect(storage.getItem('airlens-weather-location')).toBeNull()
     })
 
+    it('a stale pre-G1 geolocation record in the new key does not block a legacy search pick', async () => {
+      // Arrange — Home's "near me" CTA persisted geolocation fixes under the new key before
+      // the G1 guard; that record is purged on read, so it must not count as "the new key wins".
+      const storage = createMemoryStorage()
+      storage.setItem(
+        'airlens-location-choice',
+        JSON.stringify({ lat: 37.26, lon: 127.03, label: 'My location', source: 'geolocation' }),
+      )
+      storage.setItem(
+        'airlens-weather-location',
+        JSON.stringify({ lat: 48.8566, lon: 2.3522, source: 'user', label: 'Paris, FR' }),
+      )
+      Object.defineProperty(window, 'localStorage', { value: storage, configurable: true })
+      // Act
+      const { useLocationChoiceStore } = await import('./locationChoiceStore')
+      // Assert — the search pick survives and the GPS fix is gone from disk
+      const paris = { lat: 48.8566, lon: 2.3522, label: 'Paris, FR', source: 'search' }
+      expect(useLocationChoiceStore.getState().choice).toEqual(paris)
+      expect(JSON.parse(storage.getItem('airlens-location-choice')!)).toEqual(paris)
+      expect(storage.getItem('airlens-weather-location')).toBeNull()
+    })
+
     it('a legacy city-search pick (source "user", "<Name>, <CC>" label) is migrated to the new key', async () => {
       // Arrange
       const storage = createMemoryStorage()

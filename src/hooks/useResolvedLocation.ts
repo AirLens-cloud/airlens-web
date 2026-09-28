@@ -6,11 +6,13 @@
  *    and persisted every chosen location — INCLUDING a precise device GPS
  *    fix labeled 'My location' — to localStorage, violating G1 (a
  *    geolocation fix must never be written to disk).
- *  - `useLocationPersonalization` (Home/capsule's pipeline): already
- *    G1-compliant (geolocation choices were session-only), but with no
- *    choice/approx resolved yet it left callers to fall back to the feed's
- *    worldwide "thickest air" city — very unlikely to be the visitor's own
- *    air, and a different fallback than Today's Seoul default.
+ *  - `useLocationPersonalization` (Home/capsule's pipeline): its store
+ *    stopped persisting geolocation choices, but Home's "near me" CTA had
+ *    already written some under the same key (purged on read now — see
+ *    `readStored`), and with no choice/approx resolved yet it left callers
+ *    to fall back to the feed's worldwide "thickest air" city — very
+ *    unlikely to be the visitor's own air, and a different fallback than
+ *    Today's Seoul default.
  *
  * Every surface now resolves through one shared `useLocationChoiceStore`
  * and one priority chain (`resolveLocation.ts`: choice > approx > Seoul

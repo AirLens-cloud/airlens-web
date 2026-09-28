@@ -101,12 +101,15 @@ function newKeyHasValidRecord(): boolean {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return false
     const parsed = JSON.parse(raw) as Partial<LocationChoice>
+    // A pre-G1 geolocation record is purged by `readStored`, so it is not a pick that
+    // should win over a legacy search — counting it would lose both.
     return (
       typeof parsed.lat === 'number' &&
       typeof parsed.lon === 'number' &&
       Number.isFinite(parsed.lat) &&
       Number.isFinite(parsed.lon) &&
-      typeof parsed.label === 'string'
+      typeof parsed.label === 'string' &&
+      parsed.source !== 'geolocation'
     )
   } catch {
     return false
