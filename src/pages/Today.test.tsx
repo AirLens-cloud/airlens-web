@@ -531,6 +531,17 @@ describe('Today — Conditions surfaces show the shared primary PM2.5 reading', 
     distanceKm: 3,
   }
 
+  // The fixtures are published 2026-08-26T00:00Z and declared fresh; every
+  // surface re-judges staleness on the ticking clock (48h), so pin it an
+  // hour later — on the real clock they would (correctly) read as stale.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-08-26T01:00:00Z'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   /** The hero rail's "PM2.5 now" tile — found by its label, not by position,
    * so the UV tile beside it can never be mistaken for it. */
   function pm25NowTile(container: HTMLElement): HTMLElement | null {
@@ -577,6 +588,32 @@ describe('Today — Conditions surfaces show the shared primary PM2.5 reading', 
     expect(line?.getAttribute('data-aqi')).toBe('usg')
     expect(line?.querySelector('.wx-aq-line__grade')?.textContent).toBe('Unhealthy for sensitive groups')
     expect(line?.querySelector('.wx-aq-line__source')?.textContent).toBe('Model analysis, nearest grid cell · 3 km')
+    expect(line?.querySelector('.wx-aq-line__action')?.textContent).toBe(
+      'Sensitive groups should limit prolonged outdoor exertion.',
+    )
+    expect(line?.hasAttribute('data-stale')).toBe(false)
+  })
+
+  it('marks both Conditions surfaces stale and withholds the health advice once the reading is past 48h', () => {
+    // Arrange — the same analysis, read 49h after it was published (an
+    // upstream outage): the HUD on the Insight tab calls it stale, and the
+    // default tab must not present it as the air right now.
+    vi.setSystemTime(new Date('2026-08-28T01:00:00Z'))
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · model analysis · stale')
+    const line = airQualitySection(container)?.querySelector('.wx-aq-line')
+    expect(line?.getAttribute('data-stale')).toBe('true')
+    expect(line?.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+    expect(line?.querySelector('.wx-aq-line__action')?.textContent).toBe(
+      'Stale — published more than 48h ago, so it may not reflect the air now.',
+    )
+    expect(line?.textContent).not.toContain('Sensitive groups')
   })
 
   it('hero rail, air-quality line and the Insight answer all read the same PM2.5 number', () => {
@@ -714,5 +751,63 @@ describe('Today — freshness labels keep ticking while the tab stays open (GNET
     expect(atMount).toMatch(/data age 30m/)
     expect(afterOneTick).toMatch(/data age 31m/)
     expect(dataAge()).toMatch(/data age 2\.0h/)
+  })
+
+  it('marks a CAMS reading of unknown age on the HUD and on both panels, never leaving the panels unflagged', () => {
+    // Arrange — no GRID; the CAMS feed's `generated_at` could not be parsed
+    // (`useTodayCams` reports `stale: null`), so the resolver calls it stale.
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ stale: null, updatedAt: 'not-a-date' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.gobs-live-dot.is-stale')).not.toBeNull()
+    expect(container.querySelector('[data-source="cams"] .today-cell__sub')?.textContent).toMatch(
+      /^publish time unknown · forecast · lead \+0h · valid /,
+    )
+    expect(container.querySelector('.today-evidence')?.textContent).toContain(' · publish time unknown')
+    expect(container.textContent).not.toMatch(/NaN/)
+  })
+
+  it('flags the Why and Evidence panels stale at the same moment as the HUD once the open tab crosses 48h', () => {
+    // Arrange — both sources published 1h before the page mounts, declared
+    // fresh at fetch time; nothing refetches while the tab stays open.
+    const updatedAt = '2026-08-26T00:00:00Z'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(updatedAt).getTime() + 60 * 60_000)
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt, stale: false, distanceKm: 1 })
+    mockCams(camsReady({ updatedAt, stale: false }))
+    const { container } = render(<Today />)
+    const snapshot = () => ({
+      hud: container.querySelector('.gobs-live-dot.is-stale') !== null,
+      whyGrid: container.querySelector('[data-source="grid"] .today-cell__sub')?.textContent ?? '',
+      whyCams: container.querySelector('[data-source="cams"] .today-cell__sub')?.textContent ?? '',
+      evidenceStale: (container.querySelector('.today-evidence')?.textContent ?? '').split(' · stale').length - 1,
+    })
+    const atMount = snapshot()
+    // Act — the tab stays open for 48 more hours.
+    act(() => {
+      vi.advanceTimersByTime(48 * 60 * 60_000)
+    })
+    // Assert — fresh everywhere at mount, stale everywhere after: the panels
+    // never contradict the HUD about the same two sources.
+    expect(atMount).toEqual({
+      hud: false,
+      whyGrid: expect.not.stringMatching(/^stale/),
+      whyCams: expect.not.stringMatching(/^stale/),
+      evidenceStale: 0,
+    })
+    expect(snapshot()).toEqual({
+      hud: true,
+      whyGrid: expect.stringMatching(/^stale · analysis/),
+      whyCams: expect.stringMatching(/^stale · forecast/),
+      evidenceStale: 2,
+    })
   })
 })

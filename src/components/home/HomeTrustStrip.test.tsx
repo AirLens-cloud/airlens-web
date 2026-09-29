@@ -152,4 +152,13 @@ describe('HomeTrustStrip', () => {
     // Updated cell doesn't depend on the DQSS fetch, so it still renders.
     expect(screen.getByText('42m ago')).toBeTruthy()
   })
+
+  it('shows a dash with a "could not compute" title — never "NaNd ago" — when the publish time cannot be parsed', () => {
+    // Arrange / Act — an unparseable CAMS `generated_at` reaches the strip as-is.
+    render(<HomeTrustStrip coords={HERO_COORDS} updatedAt="not-a-date" nowMs={NOW_MS} />)
+    // Assert
+    const updated = screen.getByTitle('Could not compute freshness for this reading')
+    expect(updated.textContent).toBe('—')
+    expect(screen.getByTestId('home-trust-strip').textContent).not.toMatch(/NaN/)
+  })
 })

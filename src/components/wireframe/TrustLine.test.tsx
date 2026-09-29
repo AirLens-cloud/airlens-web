@@ -48,7 +48,10 @@ describe('TrustLine', () => {
     const graded = line.querySelector('a.trust-line__graded')
     expect(graded?.getAttribute('href')).toBe('/methodology#dqss')
     expect(graded?.getAttribute('title')).toBe('DQSS score 78/100')
-    expect(graded?.getAttribute('aria-label')).toBe('DQSS score 78/100')
+    // The name starts with the visible letter (WCAG 2.5.3 label in name) —
+    // an aria-label replaces the badge's own "DQSS B — Good" name, so the
+    // grade must be in it, not only the score.
+    expect(graded?.getAttribute('aria-label')).toBe('DQSS B, score 78/100 — how DQSS is graded')
     expect(text).not.toMatch(/withheld/)
     expect(text).toMatch(/30\.0–55\.0 µg\/m³/)
   })
@@ -72,6 +75,9 @@ describe('TrustLine', () => {
     const line = getByTestId('trust-line')
     expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe(grade)
     expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe(`DQSS score ${shown}/100`)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('aria-label')).toBe(
+      `DQSS ${grade}, score ${shown}/100 — how DQSS is graded`,
+    )
   })
 
   it('shows the unknown-grade badge, never a made-up grade, when an available score is not a finite number', () => {
@@ -84,6 +90,9 @@ describe('TrustLine', () => {
     expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe('unknown')
     expect(line.textContent).not.toMatch(/NaN/)
     expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe('DQSS score not available')
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('aria-label')).toBe(
+      'DQSS grade unknown, score not available — how DQSS is graded',
+    )
   })
 
   it('honors an explicit ageLabel over a computed ms value (annual-aggregate surfaces)', () => {

@@ -176,6 +176,12 @@ function mockWeather() {
 }
 
 beforeEach(() => {
+  // The fixtures are published 2026-09-06 and declared fresh (`stale: false`);
+  // every surface re-judges staleness on the ticking clock (48h), so on the
+  // real clock they would all render the stale branch instead. Only `Date` is
+  // faked — `waitFor`'s own timers stay real.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-06T10:00:00Z'))
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('reduced-motion'),
     media: query,
@@ -193,6 +199,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.resetAllMocks()
 })
@@ -273,6 +280,9 @@ describe('shared headline resolver — /today, the capsule, and Home agree', () 
 
     expect(parseInt(home.container.querySelector('.home-hero__value')!.textContent!, 10)).toBe(18)
     expect(home.container.querySelector('.home-hero__eyebrow')?.textContent).toBe('Suwon, KR')
+    // The fixture is an hour old on the pinned clock: fresh on every surface.
+    expect(home.container.querySelector('.home-hero--stale')).toBeNull()
+    expect(today.container.querySelector('.gobs-live-dot.is-stale')).toBeNull()
     expect(home.container.querySelector('.home-hero__eyebrow')?.textContent).not.toContain('Seoul')
 
     // The CAMS feed city ("Seoul") surfaces only in the panel's secondary

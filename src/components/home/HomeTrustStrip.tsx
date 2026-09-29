@@ -3,6 +3,7 @@ import WfSkeleton from '../wireframe/WfSkeleton'
 import { useDQSSData, lookupDQSSScore } from '../../hooks/useGlobeData'
 import { dqssScoreToGrade } from '../../lib/config/globeOntology'
 import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
+import { ageAt } from '../../lib/reading/resolvePrimaryReading'
 
 export interface HomeTrustStripProps {
   /** Hero city's coordinates (`Home.tsx`'s `coords`) — used to find the
@@ -74,8 +75,10 @@ export default function HomeTrustStrip({ coords, updatedAt, nowMs }: HomeTrustSt
           ? "Nearest ground station's DQSS grade — some components measured, others are not yet available"
           : `Nearest ground station's DQSS grade (score ${Math.round(score)}/100)`
 
-  const elapsedMs = nowMs - new Date(updatedAt).getTime()
-  const ageText = formatElapsed(elapsedMs)
+  // `ageAt` is null for an unparseable publish time — the "could not
+  // compute" branch below, never "NaNd ago".
+  const elapsedMs = ageAt(updatedAt, nowMs)
+  const ageText = elapsedMs === null ? null : formatElapsed(elapsedMs)
   const updatedTitle = ageText
     ? `Reading generated ${formatUtcTime(updatedAt)}`
     : 'Could not compute freshness for this reading'

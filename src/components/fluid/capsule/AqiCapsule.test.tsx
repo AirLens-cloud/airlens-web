@@ -210,6 +210,46 @@ describe('AqiCapsule', () => {
     expect(countdown?.getAttribute('data-stale')).toBe('true')
   })
 
+  it('shows no countdown and no made-up age when the publish time is unknown', () => {
+    // Arrange — the resolver reports `ageMs: null` (unparseable publish time)
+    // and calls the reading stale.
+    mockPrimaryReading({ ...READING_READY, ageMs: null, stale: true, hudStatus: 'stale' })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const countdown = container.querySelector('.aq-capsule__countdown')
+    expect(countdown?.textContent).toBe('—')
+    expect(countdown?.getAttribute('data-stale')).toBe('true')
+    expect(countdown?.getAttribute('title')).toBe("This forecast's publish time is unknown")
+    expect(container.textContent).not.toMatch(/NaN/)
+  })
+
+  it('says the city forecast is loading — not "unavailable" or "NO FEED" — while CAMS is still in flight', () => {
+    // Arrange — the grid-gated headline is ready; the CAMS outlook is not yet.
+    vi.mocked(useCapsuleData).mockReturnValue({ status: 'loading' })
+    const { container } = render(<AqiCapsule />)
+    // Act
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Assert
+    expect(container.querySelector('.aq-capsule-panel__range')?.textContent).toBe('City forecast (CAMS) loading…')
+    const panelText = container.querySelector('.aq-capsule-panel')?.textContent ?? ''
+    expect(panelText).toContain('LOADING…')
+    expect(panelText).not.toMatch(/unavailable|NO FEED/)
+  })
+
+  it('says the city forecast is unavailable, with NO FEED on its chart page, once CAMS has failed', () => {
+    // Arrange
+    vi.mocked(useCapsuleData).mockReturnValue({ status: 'missing' })
+    const { container } = render(<AqiCapsule />)
+    // Act
+    fireEvent.click(within(container).getByRole('button', { name: /expand for details/i }))
+    // Assert
+    expect(container.querySelector('.aq-capsule-panel__range')?.textContent).toBe('City forecast (CAMS) unavailable')
+    const panelText = container.querySelector('.aq-capsule-panel')?.textContent ?? ''
+    expect(panelText).toContain('NO FEED')
+    expect(panelText).not.toContain('LOADING')
+  })
+
   it('still counts down at 5h — inside the 6h window the source actually uses', () => {
     // Arrange — 5h old, 1h of the 6h refresh window left. Under the previous
     // fixed 3h constant this read as stale, which was the capsule calling

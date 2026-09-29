@@ -61,9 +61,10 @@ export default function Today() {
   // `cams` directly — `resolvePrimaryReading` (`lib/reading/`) already
   // decided which source backs the headline (an unverifiable GRID cell hands
   // it to CAMS) and computed everything derived from that choice. `grid`/
-  // `cams` themselves are still passed through below, unchanged, to
-  // TodayWhy/TodayEvidence — those panels render both raw sources
-  // side by side regardless of which one is primary.
+  // `cams` themselves are still passed through below to TodayWhy/
+  // TodayEvidence — those panels render both raw sources side by side
+  // regardless of which one is primary (their `stale` re-judged at the same
+  // ticking clock as the HUD's — `usePrimaryReading`).
   const ready = reading.status === 'ready' ? reading : null
   const hudStatus: TodayHudStatus = ready ? ready.hudStatus : reading.status === 'loading' ? 'loading' : 'unavailable'
   const primaryTier = ready?.tier ?? 'unknown'

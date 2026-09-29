@@ -404,16 +404,42 @@ describe('resolvePrimaryReading — staleness moves with the clock (W1b ④, GNE
     expect(youngReading.secondary?.stale).toBeNull()
   })
 
-  it('keeps the fetch-time verdict when the publish time cannot be parsed', () => {
-    // Arrange — NaN age: neither invents staleness nor clears it.
-    const fresh = input({ grid: gridReady({ stale: false, updatedAt: 'not-a-date' }) })
-    const stale = input({ grid: gridReady({ stale: true, updatedAt: 'not-a-date' }) })
+  it('marks a CAMS forecast primary of unknown age stale, and reports no age rather than a made-up one', () => {
+    // Arrange — `useTodayCams` hands over `stale: null` when the feed's
+    // `generated_at` cannot be parsed; the age is then unknowable.
+    const args = input({ cams: camsReady({ stale: null, updatedAt: 'not-a-date' }) })
     // Act
-    const freshReading = resolvePrimaryReading(fresh)
-    const staleReading = resolvePrimaryReading(stale)
+    const reading = resolvePrimaryReading(args)
+    // Assert — never "fresh" (null is not false), never "NaN" downstream.
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.source).toBe('forecast')
+    expect(reading.ageMs).toBeNull()
+    expect(reading.stale).toBe(true)
+    expect(reading.hudStatus).toBe('stale')
+  })
+
+  it('applies the same unknown-age rule to a GRID analysis (defence in depth — gridSnapshot rejects such times today)', () => {
+    // Arrange
+    const args = input({ grid: gridReady({ stale: false, updatedAt: 'not-a-date' }) })
+    // Act
+    const reading = resolvePrimaryReading(args)
     // Assert
-    if (freshReading.status !== 'ready' || staleReading.status !== 'ready') throw new Error('expected ready')
-    expect(freshReading.stale).toBe(false)
-    expect(staleReading.stale).toBe(true)
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.source).toBe('analysis')
+    expect(reading.ageMs).toBeNull()
+    expect(reading.stale).toBe(true)
+    expect(reading.hudStatus).toBe('stale')
+  })
+
+  it('keeps an unknown-age CAMS secondary unknown under an analysis headline, whose own age stays real', () => {
+    // Arrange
+    const args = input({ grid: gridReady(), cams: camsReady({ stale: null, updatedAt: 'not-a-date' }) })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.source).toBe('analysis')
+    expect(reading.secondary?.stale).toBeNull()
+    expect(Number.isFinite(reading.ageMs)).toBe(true)
   })
 })

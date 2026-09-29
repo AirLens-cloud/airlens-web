@@ -2,7 +2,7 @@ import AqiDot from '../wireframe/AqiDot'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
 import { dataState } from '../../types/dataState'
-import { PRIMARY_READING_SOURCES, readingSourceLine } from '../../lib/reading/readingCopy'
+import { PRIMARY_READING_SOURCES, readingSourceLine, staleReadingNote } from '../../lib/reading/readingCopy'
 import type { AqiTier } from '../wireframe/AqiDot'
 import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
 
@@ -55,11 +55,15 @@ export default function AirQualityLine({ reading }: AirQualityLineProps) {
         </>
       )}
       {reading.status === 'ready' && (
-        <div className="wx-aq-line" data-aqi={reading.tier}>
+        <div className="wx-aq-line" data-aqi={reading.tier} data-stale={reading.stale || undefined}>
           <AqiDot tier={reading.tier} size={12} />
           <span className="wx-aq-line__value">{Math.round(reading.pm25)} µg/m³ PM2.5</span>
           <span className="wx-aq-line__grade">{TIER_LABEL[reading.tier]}</span>
-          <span className="wx-aq-line__action">{TIER_ACTION[reading.tier]}</span>
+          {/* Stale (the resolver's own 48h verdict, same as the HUD's): the
+              advice is withheld — it would read as guidance for the air now. */}
+          <span className="wx-aq-line__action">
+            {reading.stale ? staleReadingNote(reading) : TIER_ACTION[reading.tier]}
+          </span>
           <a className="wx-aq-line__more" href="/globe">
             See details on the Globe →
           </a>

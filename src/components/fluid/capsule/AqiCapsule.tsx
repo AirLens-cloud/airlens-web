@@ -325,7 +325,9 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     idle = <span className="aq-capsule__value">NO FEED</span>
     ariaLabel = 'Air quality feed unavailable, expand for details'
   } else {
-    const remaining = reading.refreshMs - reading.ageMs
+    // Null age (unparseable publish time): no countdown and no elapsed
+    // figure can be honest, so the chip says the time is unknown instead.
+    const remaining = reading.ageMs === null ? null : reading.refreshMs - reading.ageMs
     const refreshHours = Math.round(reading.refreshMs / (60 * 60 * 1000))
     const sourceNoun = reading.source === 'analysis' ? 'analysis' : 'forecast'
     // UI G4 (2026-09-05 design audit): the bare `mm:ss` countdown had no
@@ -335,9 +337,17 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     // bar's tight width on a permanent label; the stale branch gets its
     // own, distinct explanation.
     const countdownTitle =
-      remaining > 0
-        ? `Next ${sourceNoun} refresh in ${formatCountdown(remaining)} (updates every ${refreshHours}h)`
-        : `This ${sourceNoun} is older than its usual ${refreshHours}h refresh window`
+      remaining === null
+        ? `This ${sourceNoun}'s publish time is unknown`
+        : remaining > 0
+          ? `Next ${sourceNoun} refresh in ${formatCountdown(remaining)} (updates every ${refreshHours}h)`
+          : `This ${sourceNoun} is older than its usual ${refreshHours}h refresh window`
+    const countdownText =
+      remaining === null || reading.ageMs === null
+        ? '—'
+        : remaining > 0
+          ? formatCountdown(remaining)
+          : formatElapsed(reading.ageMs)
     idle = (
       <>
         <span className="aq-capsule__loc-row t-micro">
@@ -349,8 +359,12 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
           <AqiDot tier={reading.tier} size={10} />
           <span className="aq-capsule__value">{Math.round(reading.pm25)}</span>
           <span className="aq-capsule__unit">µg/m³</span>
-          <span className="aq-capsule__countdown" data-stale={remaining <= 0 || undefined} title={countdownTitle}>
-            {remaining > 0 ? formatCountdown(remaining) : formatElapsed(reading.ageMs)}
+          <span
+            className="aq-capsule__countdown"
+            data-stale={remaining === null || remaining <= 0 || undefined}
+            title={countdownTitle}
+          >
+            {countdownText}
           </span>
         </span>
       </>

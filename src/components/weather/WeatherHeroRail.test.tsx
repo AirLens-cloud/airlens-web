@@ -113,6 +113,22 @@ describe('WeatherHeroRail — PM2.5 now tile, forecast reading', () => {
     expect(sub).toBe('µg/m³ · CAMS forecast · Busan, KR · 312 km')
   })
 
+  it('marks a stale analysis "· stale" under the unit', () => {
+    // Arrange / Act — the resolver's own 48h verdict; the HUD is on the other tab.
+    const { sub } = renderRail(analysisReading({ stale: true, hudStatus: 'stale' }))
+    // Assert
+    expect(sub).toBe('µg/m³ · model analysis · stale')
+  })
+
+  it('marks a stale CAMS forecast "· stale" after its city and distance', () => {
+    // Arrange / Act
+    const { sub } = renderRail(
+      forecastReading({ stale: true, hudStatus: 'stale', place: { label: 'Seoul', countryCode: 'KR', distanceKm: 12.4 } }),
+    )
+    // Assert
+    expect(sub).toBe('µg/m³ · CAMS forecast · Seoul, KR · 12 km · stale')
+  })
+
   it('drops the distance, not the city, when the forecast carries no distance', () => {
     // Arrange / Act
     const { sub } = renderRail(forecastReading({ place: { label: 'Busan', countryCode: null, distanceKm: null } }))

@@ -102,6 +102,30 @@ describe('HomeHero — state chips stay within the label budget', () => {
     expect(container.querySelector('.home-hero--stale')).toBeNull()
   })
 
+  it('says the publish time is unknown — never "NaN" — when the resolver reports no age', () => {
+    // Arrange — an unparseable CAMS `generated_at`: the resolver marks it
+    // stale and reports `ageMs: null` rather than a guessed figure.
+    const reading: PrimaryReadingReady = { ...readyReading(0, true), ageMs: null }
+    // Act
+    const { container } = render(
+      <HomeHero
+        reading={reading}
+        data={RAIL_DATA}
+        requestingLocation={false}
+        locationDenied={false}
+        placeLabel="Seoul, KR"
+        locationSource="default"
+        onRequestLocation={() => {}}
+        onSelectCity={() => {}}
+      />,
+    )
+    // Assert
+    expect(container.querySelector('.home-hero__stale-flag')?.textContent).toBe('Stale · publish time unknown')
+    expect(container.querySelectorAll('.state-chip')).toHaveLength(1)
+    expect(container.textContent).not.toMatch(/NaN/)
+    expect(container.querySelector('[data-testid="trust-line"]')?.textContent).toMatch(/data age\s*unknown/)
+  })
+
   it('merges stale + forecast into one chip instead of stacking a second', () => {
     // Arrange / Act — 7h old and the resolver's own verdict is stale.
     const { container } = renderHero(7 * 60 * 60 * 1000, true)

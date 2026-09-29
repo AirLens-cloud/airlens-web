@@ -73,16 +73,12 @@ export interface PrimaryReadingReady {
   place: { label: string; countryCode: string | null; distanceKm: number | null }
   validTimeIso: string | null
   validTimeMs: number | null
-  /** Always a real number for a ready reading — both branches below compute
-   * it unconditionally from their own source's `updatedAt`, unlike
-   * `validTimeIso`/`validTimeMs` (which can be null on the forecast branch
-   * when CAMS carries no first hourly point). Kept non-nullable so the
-   * capsule's refresh countdown (`refreshMs - ageMs`, W1b commit ②) and the
-   * "Updated … ago" lines need no null-check at every call site. Staleness is
-   * `stale` below, never `ageMs > refreshMs`; `ready?.ageMs ?? null`
-   * at the existing call site (`Today.tsx`) still narrows to TrustLine's own
-   * `number | null` prop just fine. */
-  ageMs: number
+  /** Elapsed since the source published this reading (`updatedAtIso`) at
+   * `nowMs`; null only when that publish time cannot be parsed. An unknown
+   * age is never guessed — the reading is then `stale` (see `staleAt`), and
+   * every surface prints "time unknown" rather than an elapsed figure.
+   * Staleness is `stale` below, never `ageMs > refreshMs`. */
+  ageMs: number | null
   natureLabel: '[ANALYSIS]' | '[FORECAST]'
   /** CAMS city-forecast line under an analysis primary; null when the
    * primary IS the forecast or CAMS isn't ready. */
@@ -109,16 +105,24 @@ export type PrimaryReading = { status: 'loading' } | { status: 'unavailable' } |
 
 const MAX_AGE_MS = DEFAULT_MAX_AGE_HOURS * 3_600_000
 
+/** Elapsed ms from `iso` to `nowMs`, or null when `iso` doesn't parse. */
+export function ageAt(iso: string, nowMs: number): number | null {
+  const publishedMs = new Date(iso).getTime()
+  return Number.isFinite(publishedMs) ? nowMs - publishedMs : null
+}
+
 /**
  * Stale as of `nowMs`, not just as of the fetch. The hooks flag staleness
  * once, when the data arrives; with a ticking clock (`useNow`, GNET1) a
  * reading that was fresh at fetch can cross the same 48h threshold while the
  * tab stays open — without this, the screen would show "Updated 2d ago" on a
- * reading still marked current. An unparseable time (NaN age) leaves the
- * fetch-time verdict as it was.
+ * reading still marked current. An unknown age (unparseable publish time) is
+ * stale: nothing may present a reading of unknown age as current.
+ * `usePrimaryReading` applies the same verdict to the raw GRID/CAMS states it
+ * hands to /today's Why/Evidence panels, so they never disagree with the HUD.
  */
-function staleAt(staleAtFetch: boolean, ageMs: number): boolean {
-  return staleAtFetch || ageMs > MAX_AGE_MS
+export function staleAt(staleAtFetch: boolean, ageMs: number | null): boolean {
+  return staleAtFetch || ageMs === null || ageMs > MAX_AGE_MS
 }
 
 export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReading {
@@ -143,7 +147,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
 
   if (usableGrid) {
     const tier = tierFromPm25(usableGrid.pm25)
-    const gridAgeMs = nowMs - new Date(usableGrid.updatedAt).getTime()
+    const gridAgeMs = ageAt(usableGrid.updatedAt, nowMs)
     const gridStale = staleAt(usableGrid.stale, gridAgeMs)
     // The grid backs the headline, so it counts as one resolved, agreeing source.
     let agreeCount = 1
@@ -162,7 +166,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
             pm25: cams.current,
             tier: cams.tier,
             // `null` (no usable generation time) stays unknown, never "fresh".
-            stale: staleAt(cams.stale === true, nowMs - new Date(cams.updatedAt).getTime()) || cams.stale,
+            stale: cams.stale === null ? null : staleAt(cams.stale, ageAt(cams.updatedAt, nowMs)),
           }
         : null
 
@@ -202,7 +206,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
     const resolvedCount = 1
     if (cams.tier === tier) agreeCount += 1
 
-    const camsAgeMs = nowMs - new Date(cams.updatedAt).getTime()
+    const camsAgeMs = ageAt(cams.updatedAt, nowMs)
     const camsStale = staleAt(cams.stale === true, camsAgeMs)
 
     const first = cams.series24h[0]

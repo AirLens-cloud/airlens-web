@@ -96,11 +96,14 @@ export default function Home() {
         )}
       </div>
 
-      {data.status === 'ready' ? (
+      {/* The CAMS outlook rows gate on `data`; the Globe CTA only needs the
+          visitor's point, so it shows with the headline even when the city
+          forecast is down. */}
+      {data.status === 'ready' || reading.status === 'ready' ? (
         <div className="home-shell fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
-          <HomeForecastStrip series={data.series24h} city={data.city} />
+          {data.status === 'ready' && <HomeForecastStrip series={data.series24h} city={data.city} />}
           <div className="home-below-fold">
-            <HomeWhyNow series={data.series24h} city={data.city} />
+            {data.status === 'ready' && <HomeWhyNow series={data.series24h} city={data.city} />}
             <HomeActOnIt coords={coords} />
           </div>
         </div>

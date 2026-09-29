@@ -597,6 +597,19 @@ describe('Home page — missing state', () => {
     )
     // The outlook rows below the fold stay withheld — they gate on `data`.
     expect(container.querySelector('.home-strip')).toBeNull()
+    expect(container.querySelector('.home-why-now')).toBeNull()
+    // The Globe CTA needs only the visitor's point, so it stays with the headline.
+    expect(container.querySelector('.home-act-on-it__primary')?.getAttribute('href')).toMatch(/^\/globe/)
+  })
+
+  it('shows no below-the-fold row while neither the headline nor the CAMS outlook has resolved', () => {
+    // Arrange
+    mockReading({ status: 'loading' })
+    mockData({ status: 'loading' })
+    // Act
+    const { container } = render(<Home />)
+    // Assert
+    expect(container.querySelector('.home-below-fold')).toBeNull()
   })
 })
 

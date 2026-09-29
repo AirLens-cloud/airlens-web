@@ -4,7 +4,7 @@
 // headline names its own staleness separately from the analysis number's
 // (never silently inherited, never silently dropped).
 import { describe, it, expect } from 'vitest'
-import { readingSourceLine, secondaryForecastLine } from './readingCopy'
+import { readingSourceLine, secondaryForecastLine, staleReadingNote } from './readingCopy'
 import type { PrimaryReadingReady, PrimaryReadingSecondary } from './resolvePrimaryReading'
 
 /** A ready reading with sane defaults — spreadable per test so each only
@@ -133,5 +133,25 @@ describe('secondaryForecastLine', () => {
     // Assert
     expect(line).toBe('City forecast (CAMS) · Seoul, KR · 12 km · 22 µg/m³')
     expect(line).not.toContain('stale')
+  })
+})
+
+describe('staleReadingNote', () => {
+  it('names the 48h threshold when the age is known', () => {
+    // Arrange
+    const reading = readingReady({ stale: true, ageMs: 50 * 3_600_000 })
+    // Act
+    const note = staleReadingNote(reading)
+    // Assert
+    expect(note).toBe('Stale — published more than 48h ago, so it may not reflect the air now.')
+  })
+
+  it('says the publish time is unknown — never an age — when the resolver reports none', () => {
+    // Arrange
+    const reading = readingReady({ stale: true, ageMs: null })
+    // Act
+    const note = staleReadingNote(reading)
+    // Assert
+    expect(note).toBe('Stale — its publish time is unknown, so it may not reflect the air now.')
   })
 })

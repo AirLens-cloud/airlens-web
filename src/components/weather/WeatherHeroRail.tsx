@@ -26,10 +26,13 @@ export interface WeatherHeroRailProps {
 function pm25Sub(reading: PrimaryReading): string {
   if (reading.status === 'loading') return 'Loading…'
   if (reading.status === 'unavailable') return 'Unavailable'
-  if (reading.source === 'analysis') return 'µg/m³ · model analysis'
+  // The resolver's own staleness verdict (same as the HUD's) — this tile is
+  // on the default tab, where the HUD is not.
+  const stale = reading.stale ? ' · stale' : ''
+  if (reading.source === 'analysis') return `µg/m³ · model analysis${stale}`
   const cc = reading.place.countryCode ? `, ${reading.place.countryCode}` : ''
   const km = reading.place.distanceKm != null ? ` · ${Math.round(reading.place.distanceKm)} km` : ''
-  return `µg/m³ · CAMS forecast · ${reading.place.label}${cc}${km}`
+  return `µg/m³ · CAMS forecast · ${reading.place.label}${cc}${km}${stale}`
 }
 
 /**

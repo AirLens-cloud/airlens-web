@@ -2,11 +2,11 @@ import WfDisabledCta from '../wireframe/WfDisabledCta'
 import { track } from '../../lib/analytics'
 
 export interface HomeActOnItProps {
-  /** Featured city's coordinates, when the hero has resolved ready data —
+  /** The visitor's own resolved point (never the CAMS feed city) —
    * appended to the Globe link as forward-compat query params. Globe does
    * not consume them yet (centering lands with the B2 AnalysisCursor work);
-   * until then the params are inert. Omitted (plain `/globe`) when data
-   * isn't ready yet. */
+   * until then the params are inert. Omitted (plain `/globe`) while the
+   * location is still resolving. */
   coords: { lat: number; lon: number } | null
 }
 

@@ -192,7 +192,7 @@ export default function HomeHero({
               <StateChip
                 variant="stale"
                 label={reading.source === 'analysis' ? 'Model analysis · Stale' : 'Forecast · Stale'}
-                detail={formatElapsed(reading.ageMs)?.replace(/ ago$/, '')}
+                detail={reading.ageMs === null ? undefined : formatElapsed(reading.ageMs)?.replace(/ ago$/, '')}
                 index={0}
               />
             ) : (
@@ -271,8 +271,16 @@ export default function HomeHero({
           </span>
           <span aria-hidden="true">·</span>
           <span className={isStale ? 'home-hero__stale-flag' : undefined}>
-            {isStale ? 'Stale · updated ' : 'Updated '}
-            {formatElapsed(reading.ageMs)}
+            {/* An unparseable publish time: the resolver marks it stale and
+                reports no age — say so rather than print a made-up one. */}
+            {reading.ageMs === null ? (
+              'Stale · publish time unknown'
+            ) : (
+              <>
+                {isStale ? 'Stale · updated ' : 'Updated '}
+                {formatElapsed(reading.ageMs)}
+              </>
+            )}
           </span>
         </div>
 

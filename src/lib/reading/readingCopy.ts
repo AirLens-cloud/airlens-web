@@ -3,6 +3,7 @@
  * hero, the floating capsule's panel) prints under a `PrimaryReadingReady`.
  * One place so the two surfaces can never word the same reading differently.
  */
+import { DEFAULT_MAX_AGE_HOURS } from '../../api/gridSnapshot'
 import type { PrimaryReadingReady, PrimaryReadingSecondary } from './resolvePrimaryReading'
 
 /** The sources an `'unavailable'` reading tried — the `source` line of the
@@ -31,4 +32,12 @@ export function secondaryForecastLine(secondary: PrimaryReadingSecondary): strin
   return `City forecast (CAMS) · ${secondary.cityName}, ${secondary.countryCode}${distanceSuffix(
     secondary.distanceKm,
   )} · ${Math.round(secondary.pm25)} µg/m³${stale}`
+}
+
+/** What a stale headline says in place of tier-based health advice — advice
+ * on a days-old number would read as current guidance. */
+export function staleReadingNote(reading: PrimaryReadingReady): string {
+  return reading.ageMs === null
+    ? 'Stale — its publish time is unknown, so it may not reflect the air now.'
+    : `Stale — published more than ${DEFAULT_MAX_AGE_HOURS}h ago, so it may not reflect the air now.`
 }

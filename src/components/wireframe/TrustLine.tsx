@@ -1,4 +1,5 @@
 import DqssBadge from './DqssBadge'
+import type { DqssGrade } from './DqssBadge'
 import BandSlot from '../content/BandSlot'
 import { dqssScoreToGrade } from '../../lib/config/globeOntology'
 import TermLink from '../knowledge/TermLink'
@@ -63,12 +64,20 @@ export interface TrustLineProps {
   className?: string
 }
 
-/** The raw score behind the grade badge — the link's tooltip and accessible
- * name, so keyboard and screen-reader users can reach it too. Floored, not
+/** The raw score behind the grade badge — the link's tooltip. Floored, not
  * rounded: the grade cutoffs are `score >= 80` etc., so a rounded 79.9 would
  * read "80/100" beside a B. */
 function scoreLabel(value: number): string {
   return Number.isFinite(value) ? `DQSS score ${Math.floor(value)}/100` : 'DQSS score not available'
+}
+
+/** The graded link's accessible name: the visible letter first (WCAG 2.5.3
+ * label in name — "click B" must work), then the score and where it goes. An
+ * `aria-label` replaces the badge's own name, so the grade has to be in here. */
+function gradedLinkLabel(grade: DqssGrade, value: number): string {
+  const letter = grade === 'unknown' ? 'grade unknown' : grade
+  const score = Number.isFinite(value) ? `score ${Math.floor(value)}/100` : 'score not available'
+  return `DQSS ${letter}, ${score} — how DQSS is graded`
 }
 
 /** "2.3h" / "45m" / "3d" — never a countdown, always elapsed time. */
@@ -110,7 +119,7 @@ export default function TrustLine({
             className="trust-line__graded"
             href={`${methodologyHref}#dqss`}
             title={scoreLabel(dqss.value)}
-            aria-label={scoreLabel(dqss.value)}
+            aria-label={gradedLinkLabel(dqssScoreToGrade(dqss.value) ?? 'unknown', dqss.value)}
           >
             <DqssBadge dqss={dqssScoreToGrade(dqss.value) ?? 'unknown'} variant="compact" />
           </a>

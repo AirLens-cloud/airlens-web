@@ -155,9 +155,14 @@ export default function CapsulePanel({
   // The CAMS band disclosure — unconditional on `reading.source` (the 24h
   // outlook is always CAMS's own), always naming CAMS + the city it is for
   // so it can never be mistaken for the headline's own uncertainty.
+  // `data` can still be loading while `reading` (grid-gated) is ready — a
+  // fetch in flight is not a failed feed, so it never says "unavailable".
+  const camsLoading = data.status === 'loading'
   const rangeLine =
     data.status !== 'ready'
-      ? 'City forecast (CAMS) unavailable'
+      ? camsLoading
+        ? 'City forecast (CAMS) loading…'
+        : 'City forecast (CAMS) unavailable'
       : range
         ? `City forecast (CAMS) · ${data.city}: expected today ${Math.round(range.lo)}–${Math.round(range.hi)} µg/m³`
         : `City forecast (CAMS) · ${data.city}: no uncertainty band published`
@@ -214,7 +219,9 @@ export default function CapsulePanel({
           <div className="aq-capsule-panel__page" style={{ width: contentWidth }}>
             <p className="aq-capsule-panel__meta">
               {data.status !== 'ready'
-                ? 'City forecast (CAMS) unavailable'
+                ? camsLoading
+                  ? 'City forecast (CAMS) loading…'
+                  : 'City forecast (CAMS) unavailable'
                 : range
                   ? `City forecast (CAMS) for ${cityLabel} · expected range`
                   : `City forecast (CAMS) for ${cityLabel} · single value, no band`}
@@ -235,7 +242,7 @@ export default function CapsulePanel({
                 <circle cx={spark.endX} cy={spark.endY} r={3} className="aq-capsule-panel__spark-dot" />
               </svg>
             ) : (
-              <p className="aq-capsule-panel__meta">NO FEED</p>
+              <p className="aq-capsule-panel__meta">{camsLoading ? 'LOADING…' : 'NO FEED'}</p>
             )}
           </div>
         </div>
