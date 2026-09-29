@@ -25,3 +25,10 @@ export const GRID_REFRESH_MS = 3 * 60 * 60 * 1000
  * local constant).
  */
 export const CAMS_REFRESH_MS = 6 * 60 * 60 * 1000
+
+/**
+ * How often an on-screen elapsed-time label ("obs age", "Updated N ago") is
+ * recomputed against the wall clock (`hooks/useNow.ts`, GNET1). A clock
+ * tick, not a refetch: the reading stays what it was, only its age grows.
+ */
+export const ELAPSED_LABEL_TICK_MS = 60 * 1000

@@ -87,6 +87,13 @@
   text-decoration: underline;
 }
 
+/* F53 (W1b ④): the graded DQSS badge is a link to the DQSS methodology (its
+   raw score lives in the link's tooltip and accessible name). The badge
+   carries its own grade colours, so no hover underline under it. */
+.trust-line a.trust-line__graded:hover {
+  text-decoration: none;
+}
+
 /* F03 (2026-09-28): inside the hero's AQI-tint glass card, `--orange-ink`
    resolves to the raw `--orange` in dark theme (tokens.css) — measured
    1.16-1.35:1 for "Why this number? →" against the tint. Same ink axis

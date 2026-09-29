@@ -19,6 +19,7 @@ import { useState, type CSSProperties } from 'react'
 import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { usePrimaryReading } from '../hooks/usePrimaryReading'
+import { useNow } from '../hooks/useNow'
 import { LOCATING_LABEL, SEOUL_DEFAULT } from '../lib/location/resolveLocation'
 import WfSegmented from '../components/wireframe/WfSegmented'
 import TrustLine from '../components/wireframe/TrustLine'
@@ -49,11 +50,9 @@ function initialTab(): TodayTab {
 
 export default function Today() {
   const [tab, setTab] = useState<TodayTab>(initialTab)
-  // Read once, in a lazy initializer (React's documented escape hatch for a
-  // one-time non-deterministic read) rather than calling `Date.now()`
-  // directly in the render body, which the purity lint rule rejects — same
-  // pattern as `Home.tsx`'s `renderedAtMs`.
-  const [nowMs] = useState(() => Date.now())
+  // A ticking clock (GNET1), not a mount-time snapshot — the TrustLine's obs
+  // age and the HUD's "Updated … ago" keep growing while the tab stays open.
+  const nowMs = useNow()
   const { location, requesting, denied, requestGeolocation, selectCity } = useResolvedLocation()
   const weatherData = useWeatherPageData(location?.lat ?? null, location?.lon ?? null)
   const { reading, grid, cams } = usePrimaryReading(location, nowMs)

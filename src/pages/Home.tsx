@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, type CSSProperties } from 'react'
 import HomeHero from '../components/home/HomeHero'
 import HomeTrustStrip from '../components/home/HomeTrustStrip'
 import HomeForecastStrip from '../components/home/HomeForecastStrip'
@@ -8,6 +8,7 @@ import HomeStoriesResearch from '../components/home/HomeStoriesResearch'
 import { useCapsuleData } from '../components/fluid/capsule/useCapsuleData'
 import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { usePrimaryReading } from '../hooks/usePrimaryReading'
+import { useNow } from '../hooks/useNow'
 import { LOCATING_LABEL } from '../lib/location/resolveLocation'
 import { track } from '../lib/analytics'
 import '../styles/home.css'
@@ -44,16 +45,16 @@ export default function Home() {
   // HomeHero can word the eyebrow/fallback-band honestly instead of a single
   // "was this personalized" boolean.
   const data = useCapsuleData(location)
-  // Read once, in a lazy initializer (React's documented escape hatch for a
-  // one-time non-deterministic read) rather than calling `Date.now()`
-  // directly in the render body, which the purity lint rule rejects.
-  const [renderedAtMs] = useState(() => Date.now())
+  // A ticking clock (GNET1), not a mount-time snapshot — the hero's
+  // "Updated … ago", its TrustLine obs age and the trust strip keep growing
+  // while the tab stays open.
+  const nowMs = useNow()
   // The hero's headline (W1b commit ②) — the same shared resolver `/today`
   // uses, so Home never shows a different number than /today or the floating
   // capsule for the same place and moment. `data` above stays wired to the
   // CAMS-only 24h outlook row (`HomeForecastStrip`/`HomeWhyNow`), which keeps
   // its own gate below — the outlook is allowed to lag the headline.
-  const { reading } = usePrimaryReading(location, renderedAtMs)
+  const { reading } = usePrimaryReading(location, nowMs)
 
   useEffect(() => {
     if (reading.status === 'loading') return
@@ -91,7 +92,7 @@ export default function Home() {
           onSelectCity={selectCity}
         />
         {reading.status === 'ready' && (
-          <HomeTrustStrip coords={coords} updatedAt={reading.updatedAtIso} nowMs={renderedAtMs} />
+          <HomeTrustStrip coords={coords} updatedAt={reading.updatedAtIso} nowMs={nowMs} />
         )}
       </div>
 

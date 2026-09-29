@@ -12,7 +12,7 @@
 // the CAMS-only 24h outlook row (HomeForecastStrip/HomeWhyNow, still gated on
 // `data.status === 'ready'` and unchanged by this commit).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, act } from '@testing-library/react'
 import Home from './Home'
 
 vi.mock('../components/fluid/capsule/useCapsuleData', async () => {
@@ -699,5 +699,31 @@ describe('Home page — Globe deep links carry the visitor\'s own coordinates, n
     const qualityLink = getByTestId('home-trust-strip').querySelector('a[href="/methodology#dqss"]')
     expect(qualityLink).not.toBeNull()
     expect(qualityLink?.getAttribute('title')).toBe('No location for this reading yet')
+  })
+})
+
+describe('Home page — freshness labels keep ticking while the tab stays open (GNET1)', () => {
+  it('feeds the resolver and the trust strip a clock that moves, not the mount time', () => {
+    // Arrange — beforeEach's readingFixture() was generated 15 minutes before NOW.
+    mockData(readyFixture())
+    const { getByTestId } = render(<Home />)
+    const updated = () =>
+      getByTestId('home-trust-strip').querySelector('.home-trust-strip__value--static')?.textContent
+    const atMount = updated()
+    // Act — one clock tick, then the tab stays open for the rest of the hour.
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    const afterOneTick = updated()
+    const resolverNowAfterOneTick = vi.mocked(usePrimaryReading).mock.lastCall?.[1]
+    act(() => {
+      vi.advanceTimersByTime(59 * 60_000)
+    })
+    // Assert — it moves every minute, not only on some coarser cadence.
+    expect(atMount).toBe('15m ago')
+    expect(afterOneTick).toBe('16m ago')
+    expect(resolverNowAfterOneTick).toBe(NOW.getTime() + 60_000)
+    expect(updated()).toBe('1h ago')
+    expect(vi.mocked(usePrimaryReading).mock.lastCall?.[1]).toBe(NOW.getTime() + 60 * 60_000)
   })
 })

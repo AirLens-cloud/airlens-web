@@ -350,3 +350,70 @@ describe('resolvePrimaryReading', () => {
     expect(reading.resolvedCount).toBe(1)
   })
 })
+
+describe('resolvePrimaryReading — staleness moves with the clock (W1b ④, GNET1)', () => {
+  const HOUR = 3_600_000
+  // GRID published 05:00Z, CAMS generated 06:00Z (the fixtures above).
+  const GRID_AT = new Date('2026-08-26T05:00:00Z').getTime()
+  const CAMS_AT = new Date('2026-08-26T06:00:00Z').getTime()
+
+  it('marks a GRID reading stale once the open tab carries it past 48h, though it was fresh at fetch', () => {
+    // Arrange — fetched fresh (`stale: false`), now 48h + 1 minute old.
+    const args = input({ grid: gridReady({ stale: false }), nowMs: GRID_AT + 48 * HOUR + 60_000 })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.stale).toBe(true)
+    expect(reading.hudStatus).toBe('stale')
+  })
+
+  it('keeps a GRID reading current at exactly 48h (the threshold is "older than")', () => {
+    // Arrange
+    const args = input({ grid: gridReady({ stale: false }), nowMs: GRID_AT + 48 * HOUR })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.stale).toBe(false)
+    expect(reading.hudStatus).toBe('ready')
+  })
+
+  it('marks a CAMS forecast primary stale once the open tab carries it past 48h', () => {
+    // Arrange
+    const args = input({ cams: camsReady({ stale: false }), nowMs: CAMS_AT + 49 * HOUR })
+    // Act
+    const reading = resolvePrimaryReading(args)
+    // Assert
+    if (reading.status !== 'ready') throw new Error('expected ready')
+    expect(reading.source).toBe('forecast')
+    expect(reading.stale).toBe(true)
+    expect(reading.hudStatus).toBe('stale')
+  })
+
+  it("ages the CAMS secondary line too, and keeps an unknown (null) verdict unknown while it is young", () => {
+    // Arrange
+    const old = input({ grid: gridReady(), cams: camsReady({ stale: false }), nowMs: CAMS_AT + 49 * HOUR })
+    const young = input({ grid: gridReady(), cams: camsReady({ stale: null }), nowMs: CAMS_AT + HOUR })
+    // Act
+    const agedReading = resolvePrimaryReading(old)
+    const youngReading = resolvePrimaryReading(young)
+    // Assert
+    if (agedReading.status !== 'ready' || youngReading.status !== 'ready') throw new Error('expected ready')
+    expect(agedReading.secondary?.stale).toBe(true)
+    expect(youngReading.secondary?.stale).toBeNull()
+  })
+
+  it('keeps the fetch-time verdict when the publish time cannot be parsed', () => {
+    // Arrange — NaN age: neither invents staleness nor clears it.
+    const fresh = input({ grid: gridReady({ stale: false, updatedAt: 'not-a-date' }) })
+    const stale = input({ grid: gridReady({ stale: true, updatedAt: 'not-a-date' }) })
+    // Act
+    const freshReading = resolvePrimaryReading(fresh)
+    const staleReading = resolvePrimaryReading(stale)
+    // Assert
+    if (freshReading.status !== 'ready' || staleReading.status !== 'ready') throw new Error('expected ready')
+    expect(freshReading.stale).toBe(false)
+    expect(staleReading.stale).toBe(true)
+  })
+})

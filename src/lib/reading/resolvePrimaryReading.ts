@@ -21,6 +21,7 @@ import { tierFromPm25 } from './tier'
 import { isReportable } from '../config/gridPlausibility'
 import { computeSourceAgreement } from '../today/sourceAgreement'
 import { GRID_REFRESH_MS, CAMS_REFRESH_MS } from '../config/readingCadence'
+import { DEFAULT_MAX_AGE_HOURS } from '../../api/gridSnapshot'
 import type { TodayGridState } from '../../hooks/useTodayGrid'
 import type { TodayCamsState } from '../../hooks/useTodayCams'
 import type { ResolvedLocation } from '../location/resolveLocation'
@@ -106,6 +107,20 @@ export interface PrimaryReadingReady {
 
 export type PrimaryReading = { status: 'loading' } | { status: 'unavailable' } | PrimaryReadingReady
 
+const MAX_AGE_MS = DEFAULT_MAX_AGE_HOURS * 3_600_000
+
+/**
+ * Stale as of `nowMs`, not just as of the fetch. The hooks flag staleness
+ * once, when the data arrives; with a ticking clock (`useNow`, GNET1) a
+ * reading that was fresh at fetch can cross the same 48h threshold while the
+ * tab stays open — without this, the screen would show "Updated 2d ago" on a
+ * reading still marked current. An unparseable time (NaN age) leaves the
+ * fetch-time verdict as it was.
+ */
+function staleAt(staleAtFetch: boolean, ageMs: number): boolean {
+  return staleAtFetch || ageMs > MAX_AGE_MS
+}
+
 export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReading {
   const { grid, cams, location, nowMs } = input
 
@@ -128,6 +143,8 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
 
   if (usableGrid) {
     const tier = tierFromPm25(usableGrid.pm25)
+    const gridAgeMs = nowMs - new Date(usableGrid.updatedAt).getTime()
+    const gridStale = staleAt(usableGrid.stale, gridAgeMs)
     // The grid backs the headline, so it counts as one resolved, agreeing source.
     let agreeCount = 1
     let resolvedCount = 1
@@ -144,7 +161,8 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
             distanceKm: cams.distanceKm,
             pm25: cams.current,
             tier: cams.tier,
-            stale: cams.stale,
+            // `null` (no usable generation time) stays unknown, never "fresh".
+            stale: staleAt(cams.stale === true, nowMs - new Date(cams.updatedAt).getTime()) || cams.stale,
           }
         : null
 
@@ -153,20 +171,20 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
       source: 'analysis',
       pm25: usableGrid.pm25,
       tier,
-      stale: usableGrid.stale,
+      stale: gridStale,
       // countryCode is null here — the location label already carries it
       // (e.g. "Busan, KR"). Appending CAMS's own country code on top of that
       // label (the pre-fix behaviour) rendered "Busan, KR, KR".
       place: { label: location.label, countryCode: null, distanceKm: usableGrid.distanceKm },
       validTimeIso: usableGrid.updatedAt,
       validTimeMs: new Date(usableGrid.updatedAt).getTime(),
-      ageMs: nowMs - new Date(usableGrid.updatedAt).getTime(),
+      ageMs: gridAgeMs,
       natureLabel: '[ANALYSIS]',
       secondary,
       agreement,
       agreeCount,
       resolvedCount,
-      hudStatus: usableGrid.stale ? 'stale' : 'ready',
+      hudStatus: gridStale ? 'stale' : 'ready',
       dqss:
         usableGrid.dqss !== undefined
           ? { available: true, value: usableGrid.dqss }
@@ -184,6 +202,9 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
     const resolvedCount = 1
     if (cams.tier === tier) agreeCount += 1
 
+    const camsAgeMs = nowMs - new Date(cams.updatedAt).getTime()
+    const camsStale = staleAt(cams.stale === true, camsAgeMs)
+
     const first = cams.series24h[0]
     const camsP10 = first?.p10 ?? null
     const camsP90 = first?.p90 ?? null
@@ -193,17 +214,17 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
       source: 'forecast',
       pm25: cams.current,
       tier,
-      stale: cams.stale === true,
+      stale: camsStale,
       place: { label: cams.cityName, countryCode: cams.countryCode, distanceKm: cams.distanceKm },
       validTimeIso: first?.time ?? cams.updatedAt,
       validTimeMs: first ? new Date(first.time).getTime() : null,
-      ageMs: nowMs - new Date(cams.updatedAt).getTime(),
+      ageMs: camsAgeMs,
       natureLabel: '[FORECAST]',
       secondary: null,
       agreement,
       agreeCount,
       resolvedCount,
-      hudStatus: cams.stale === true ? 'stale' : 'ready',
+      hudStatus: camsStale ? 'stale' : 'ready',
       // Forecast source never publishes a DQSS score, regardless of band presence.
       dqss: { available: false, reason: 'not measured for forecast-sourced readings' },
       uncertainty:

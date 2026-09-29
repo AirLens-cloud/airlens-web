@@ -6,7 +6,7 @@
 // and a partial render when one source fails while the other still
 // resolves.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { render, cleanup, fireEvent, act } from '@testing-library/react'
 
 vi.mock('../hooks/useResolvedLocation', () => ({ useResolvedLocation: vi.fn() }))
 vi.mock('../hooks/useWeatherPageData', () => ({ useWeatherPageData: vi.fn() }))
@@ -260,18 +260,26 @@ describe('Today page', () => {
   })
 
   it('renders a fresh CAMS-primary reading as ready — GRID missing, CAMS stale:false', () => {
-    // Arrange
-    openOnInsightTab()
-    mockGeo()
-    mockWeather()
-    mockGrid({ status: 'missing' })
-    mockCams(camsReady({ stale: false }))
-    // Act
-    const { container } = render(<Today />)
-    // Assert
-    expect(container.querySelector('.gobs-live-dot.is-ready')).not.toBeNull()
-    const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
-    expect(camsWhySub?.textContent).not.toMatch(/^stale/)
+    // Arrange — "fresh" needs a clock near the fixture's 2026-08-26 generation
+    // time: since W1b ④ staleness is also judged against the ticking clock,
+    // so on the real clock this fixture would (correctly) read as stale.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-26T01:00:00Z'))
+    try {
+      openOnInsightTab()
+      mockGeo()
+      mockWeather()
+      mockGrid({ status: 'missing' })
+      mockCams(camsReady({ stale: false }))
+      // Act
+      const { container } = render(<Today />)
+      // Assert
+      expect(container.querySelector('.gobs-live-dot.is-ready')).not.toBeNull()
+      const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
+      expect(camsWhySub?.textContent).not.toMatch(/^stale/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the distance to the primary source next to its city name when known', () => {
@@ -330,7 +338,7 @@ describe('Today page', () => {
     expect(getByText(/2\/2 sources agree on tier/)).toBeTruthy()
   })
 
-  it('shows a real DQSS score in TrustLine when the GRID reading carries one', () => {
+  it('shows a real DQSS score in TrustLine as its grade badge when the GRID reading carries one', () => {
     // Arrange
     mockGeo()
     mockWeather()
@@ -340,7 +348,9 @@ describe('Today page', () => {
     const { container } = render(<Today />)
     // Assert
     const trustLine = container.querySelector('[data-testid="trust-line"]')
-    expect(trustLine?.textContent).toMatch(/DQSS.*82\/100/)
+    // 82 is an A (≥ 80) — the badge, not the raw "82/100" (F53).
+    expect(trustLine?.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe('A')
+    expect(trustLine?.textContent).not.toMatch(/82\/100/)
     // GRID publishes no uncertainty band regardless of DQSS presence.
     expect(trustLine?.textContent).toMatch(/not published/)
   })
@@ -672,5 +682,37 @@ describe('Today — Conditions surfaces show the shared primary PM2.5 reading', 
     expect(section?.querySelector('.wf-skeleton')).not.toBeNull()
     expect(section?.querySelector('.wx-aq-line')).toBeNull()
     expect(section?.querySelector('.wf-datastate')).toBeNull()
+  })
+})
+
+describe('Today — freshness labels keep ticking while the tab stays open (GNET1)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("grows the TrustLine's obs age with the wall clock instead of freezing it at mount", () => {
+    // Arrange — the GRID reading was published 30 minutes before the page mounts.
+    const updatedAt = '2026-08-26T00:00:00Z'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(updatedAt).getTime() + 30 * 60_000)
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt, stale: false, distanceKm: 1 })
+    mockCams({ status: 'missing' })
+    const { container } = render(<Today />)
+    const obsAge = () => container.querySelector('[data-testid="trust-line"]')?.textContent ?? ''
+    const atMount = obsAge()
+    // Act — one clock tick, then the tab stays open for 89 more minutes.
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    const afterOneTick = obsAge()
+    act(() => {
+      vi.advanceTimersByTime(89 * 60_000)
+    })
+    // Assert — it moves every minute, not only on some coarser cadence.
+    expect(atMount).toMatch(/obs age 30m/)
+    expect(afterOneTick).toMatch(/obs age 31m/)
+    expect(obsAge()).toMatch(/obs age 2\.0h/)
   })
 })

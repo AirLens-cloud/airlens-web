@@ -22,7 +22,7 @@ describe('TrustLine', () => {
     expect(text).toMatch(/Why this number\?/)
   })
 
-  it('renders a real DQSS score and p10/p90 band when both are available', () => {
+  it('renders a real DQSS score as its grade badge, and the p10/p90 band, when both are available', () => {
     // Arrange / Act
     const { getByTestId } = render(
       <TrustLine
@@ -32,10 +32,58 @@ describe('TrustLine', () => {
       />,
     )
     // Assert
-    const text = getByTestId('trust-line').textContent ?? ''
+    const line = getByTestId('trust-line')
+    const text = line.textContent ?? ''
     expect(text).toMatch(/obs age.*45m/)
-    expect(text).toMatch(/DQSS.*78\/100/)
+    // 78.4 falls in the B band (65 ≤ score < 80) — shown as the badge, the
+    // raw score only in the tooltip (F53).
+    const badge = line.querySelector('.dqss-badge')
+    expect(badge?.getAttribute('data-dqss')).toBe('B')
+    expect(text).not.toMatch(/\/100/)
+    // One "DQSS" label only: the line's own key, then the letter-only badge.
+    expect(line.querySelector('.trust-line__graded .dqss-badge--compact')).not.toBeNull()
+    expect(line.querySelectorAll('.dqss-badge-prefix')).toHaveLength(0)
+    // The raw score stays reachable — tooltip and accessible name of a
+    // focusable link to the DQSS methodology, not visible text.
+    const graded = line.querySelector('a.trust-line__graded')
+    expect(graded?.getAttribute('href')).toBe('/methodology#dqss')
+    expect(graded?.getAttribute('title')).toBe('DQSS score 78/100')
+    expect(graded?.getAttribute('aria-label')).toBe('DQSS score 78/100')
+    expect(text).not.toMatch(/withheld/)
     expect(text).toMatch(/30\.0–55\.0 µg\/m³/)
+  })
+
+  it.each([
+    [80, 'A', 80],
+    [79.9, 'B', 79],
+    [65, 'B', 65],
+    [64.9, 'C', 64],
+    [50, 'C', 50],
+    [49.9, 'D', 49],
+    [20, 'D', 20],
+    [19.9, 'F', 19],
+    [0, 'F', 0],
+  ])('grades a DQSS score of %s as %s, and its tooltip never names a score across the cutoff (%s/100)', (value, grade, shown) => {
+    // Arrange / Act
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: true, value }} uncertainty={{ available: false }} />,
+    )
+    // Assert
+    const line = getByTestId('trust-line')
+    expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe(grade)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe(`DQSS score ${shown}/100`)
+  })
+
+  it('shows the unknown-grade badge, never a made-up grade, when an available score is not a finite number', () => {
+    // Arrange / Act
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: true, value: Number.NaN }} uncertainty={{ available: false }} />,
+    )
+    // Assert
+    const line = getByTestId('trust-line')
+    expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe('unknown')
+    expect(line.textContent).not.toMatch(/NaN/)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe('DQSS score not available')
   })
 
   it('honors an explicit ageLabel over a computed ms value (annual-aggregate surfaces)', () => {

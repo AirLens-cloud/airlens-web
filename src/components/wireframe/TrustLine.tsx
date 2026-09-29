@@ -1,5 +1,6 @@
 import DqssBadge from './DqssBadge'
 import BandSlot from '../content/BandSlot'
+import { dqssScoreToGrade } from '../../lib/config/globeOntology'
 
 /**
  * TrustLine — "how much should I trust this number" strip, shared by every
@@ -28,7 +29,10 @@ export interface TrustLineDqss {
 
 export interface TrustLineDqssReady {
   available: true
-  /** Raw 0-100 DQSS score — this app has no letter-grade thresholds ported yet. */
+  /** Raw 0-100 sensor DQSS score. Rendered as its A–F grade badge
+   * (`dqssScoreToGrade`, the same cutoffs Home's trust strip and the Globe
+   * use) — the raw number only in the badge link's tooltip and accessible
+   * name (F53). */
   value: number
 }
 
@@ -68,6 +72,14 @@ export interface TrustLineProps {
   scopeLabel?: string
 }
 
+/** The raw score behind the grade badge — the link's tooltip and accessible
+ * name, so keyboard and screen-reader users can reach it too. Floored, not
+ * rounded: the grade cutoffs are `score >= 80` etc., so a rounded 79.9 would
+ * read "80/100" beside a B. */
+function scoreLabel(value: number): string {
+  return Number.isFinite(value) ? `DQSS score ${Math.floor(value)}/100` : 'DQSS score not available'
+}
+
 /** "2.3h" / "45m" / "3d" — never a countdown, always elapsed time. */
 function formatAge(ms: number): string {
   const totalMin = Math.max(0, ms / 60000)
@@ -101,7 +113,14 @@ export default function TrustLine({
       <span className="trust-line__item">
         <span className="trust-line__k">DQSS</span>{' '}
         {dqss.available ? (
-          `${Math.round(dqss.value)}/100`
+          <a
+            className="trust-line__graded"
+            href={`${methodologyHref}#dqss`}
+            title={scoreLabel(dqss.value)}
+            aria-label={scoreLabel(dqss.value)}
+          >
+            <DqssBadge dqss={dqssScoreToGrade(dqss.value) ?? 'unknown'} variant="compact" />
+          </a>
         ) : (
           <span className="trust-line__withheld">
             <DqssBadge dqss="unknown" variant="compact" />
