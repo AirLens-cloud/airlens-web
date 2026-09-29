@@ -11,6 +11,10 @@
  * exact class of regression this commit's six tasks were about) would make
  * that surface disagree with the other two here — three separate hand-tuned
  * fixtures, one per surface, could not catch that.
+ *
+ * W1b commit ③ extends the same guarantee to /today's Conditions surfaces:
+ * the hero rail's "PM2.5 now" tile and the Conditions tab's AirQualityLine
+ * (both read Open-Meteo's own hourly point before) must show that same number.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, cleanup, fireEvent, waitFor, within } from '@testing-library/react'
@@ -40,7 +44,7 @@ import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { fetchBlogFeed } from '../api/blog'
 import { useDQSSData } from '../hooks/useGlobeData'
 import type { GlobalGridSnapshot } from '../types/data'
-import type { ForecastPayload } from '../types/forecast'
+import type { ForecastPayload, OpenMeteoWeatherHourly } from '../types/forecast'
 
 // No explicit `ResolvedLocation` annotation — inferring the literal keeps
 // `source` typed as the literal `'geolocation'`, which both `location`
@@ -147,12 +151,23 @@ function forecastPayload(cityName: string, currentPm25: number): ForecastPayload
   }
 }
 
+// Non-null on purpose: WeatherHero only renders its instrument rail (the
+// "PM2.5 now" tile) once the weather section itself is 'ready'. The values are
+// chosen to collide with neither case's PM2.5 (18 / 56).
+const WEATHER_HOURS = Array.from({ length: 24 }, (_, i) => `2026-09-06T${String(i).padStart(2, '0')}:00`)
+const WEATHER_READY: OpenMeteoWeatherHourly = {
+  time: WEATHER_HOURS,
+  temperature_2m: WEATHER_HOURS.map(() => 23),
+  apparent_temperature: WEATHER_HOURS.map(() => 24),
+  uv_index: WEATHER_HOURS.map(() => 6),
+  weather_code: WEATHER_HOURS.map(() => 0),
+}
+
 function mockWeather() {
   vi.mocked(useWeatherPageData).mockReturnValue({
     status: 'ready',
     configured: true,
-    weather: null,
-    aq: null,
+    weather: WEATHER_READY,
     wind: null,
     mslp: null,
     fetchedAt: Date.now(),
@@ -190,6 +205,29 @@ function todayHeadlinePm25(container: HTMLElement): number | null {
   const text = container.querySelector('.today-answer__meta')?.textContent ?? ''
   const m = text.match(/(\d+)\s*µg\/m³\s*PM2\.5/)
   return m ? Number(m[1]) : null
+}
+
+/** /today's Conditions-tab surfaces (W1b commit ③): the hero rail's "PM2.5
+ * now" tile — found by its label, not position, so the UV tile beside it can
+ * never be mistaken for it — and AirQualityLine's "{n} µg/m³ PM2.5" value.
+ * Both are rendered from the same `reading` prop `Today.tsx` hands them. */
+function todayConditionsReadout(container: HTMLElement): {
+  railValue: number | null
+  railSub: string | null
+  lineValue: number | null
+  lineSource: string | null
+} {
+  const tile = Array.from(container.querySelectorAll('.wx-hero__rail .wx-tile')).find(
+    (t) => t.querySelector('.wx-tile__label')?.textContent === 'PM2.5 now',
+  )
+  const railText = tile?.querySelector('.wx-tile__value')?.textContent
+  const lineMatch = container.querySelector('.wx-aq-line__value')?.textContent?.match(/(\d+)\s*µg\/m³\s*PM2\.5/)
+  return {
+    railValue: railText ? Number(railText) : null,
+    railSub: tile?.querySelector('.wx-tile__sub')?.textContent ?? null,
+    lineValue: lineMatch ? Number(lineMatch[1]) : null,
+    lineSource: container.querySelector('.wx-aq-line__source')?.textContent ?? null,
+  }
 }
 
 describe('shared headline resolver — /today, the capsule, and Home agree', () => {
@@ -251,6 +289,20 @@ describe('shared headline resolver — /today, the capsule, and Home agree', () 
     expect(homeSourceLines).toHaveLength(2)
     expect(homeSourceLines[0].textContent).not.toContain('Seoul')
     expect(homeSourceLines[1].textContent).toContain('Seoul')
+
+    // W1b commit ③ — switch /today to its Conditions tab (every Insight-tab
+    // assertion above has already run; the hero rail sits above the tabs and
+    // AirQualityLine lives in this one). Both show that same 18, worded as a
+    // model analysis (never a measurement) with the same source line Home and
+    // the capsule print under it.
+    fireEvent.click(within(today.container).getByRole('button', { name: 'Conditions' }))
+    const conditions = todayConditionsReadout(today.container)
+    const capsuleValue = Number(capsule.container.querySelector('.aq-capsule__value')?.textContent)
+    const homeValue = parseInt(home.container.querySelector('.home-hero__value')?.textContent ?? '', 10)
+    expect([conditions.railValue, conditions.lineValue, capsuleValue, homeValue]).toEqual([18, 18, 18, 18])
+    expect(conditions.railSub).toBe('µg/m³ · model analysis')
+    expect(conditions.lineSource).toBe(homeSourceLines[0].textContent)
+    expect(conditions.lineSource).toBe(sourceLines[0].textContent)
   })
 
   it('falls back to the CAMS forecast number and label everywhere when the GRID cell is implausible', async () => {
@@ -297,5 +349,19 @@ describe('shared headline resolver — /today, the capsule, and Home agree', () 
     // not the "Busan" the CAMS feed backs the number with.
     expect(home.container.querySelector('.home-hero__eyebrow')?.textContent).toBe('Suwon, KR')
     expect(home.container.querySelector('.home-hero__source')?.textContent).toContain('Busan')
+
+    // W1b commit ③ — switch /today to its Conditions tab (the Insight-tab
+    // assertions above have already run); the hero rail and AirQualityLine
+    // show the forecast's 56 too, never the 15,868 µg/m³ GRID outlier, worded
+    // as a CAMS forecast.
+    fireEvent.click(within(today.container).getByRole('button', { name: 'Conditions' }))
+    const conditions = todayConditionsReadout(today.container)
+    const capsuleValue = Number(capsule.container.querySelector('.aq-capsule__value')?.textContent)
+    const homeValue = parseInt(home.container.querySelector('.home-hero__value')?.textContent ?? '', 10)
+    expect([conditions.railValue, conditions.lineValue, capsuleValue, homeValue]).toEqual([56, 56, 56, 56])
+    // The tile names the CAMS city (Busan), not the visitor's Suwon it sits under.
+    expect(conditions.railSub).toMatch(/^µg\/m³ · CAMS forecast · Busan, KR · \d+ km$/)
+    expect(conditions.lineSource).toBe(home.container.querySelector('.home-hero__source')?.textContent)
+    expect(today.container.textContent).not.toContain('15868')
   })
 })

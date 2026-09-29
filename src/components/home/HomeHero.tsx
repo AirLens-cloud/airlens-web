@@ -16,7 +16,7 @@ import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
 import type { WeatherCity } from '../../lib/cityCatalog'
 import { DENIED_NOTICE, LOCATING_LABEL, type LocationSource } from '../../lib/location/resolveLocation'
 import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
-import { readingSourceLine, secondaryForecastLine } from '../../lib/reading/readingCopy'
+import { PRIMARY_READING_SOURCES, readingSourceLine, secondaryForecastLine } from '../../lib/reading/readingCopy'
 import { useSpring } from '../../motion/useSpring'
 import type { SpringConfig } from '../../motion/spring'
 
@@ -132,9 +132,7 @@ export default function HomeHero({
       <section className="home-hero home-hero--missing" aria-label="Air quality unavailable">
         <div className="home-hero__inner">
           <WfDataState
-            state={dataState('unavailable', {
-              source: 'GEFS-Aerosols grid analysis or Open-Meteo CAMS forecast (via HF live-data)',
-            })}
+            state={dataState('unavailable', { source: PRIMARY_READING_SOURCES })}
           />
         </div>
       </section>

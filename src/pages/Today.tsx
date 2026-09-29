@@ -93,7 +93,7 @@ export default function Today() {
           status={weatherData.status}
           configured={weatherData.configured}
           weather={weatherData.weather}
-          aq={weatherData.aq}
+          reading={reading}
           onRetry={weatherData.retry}
         />
         {ready && (
@@ -167,12 +167,7 @@ export default function Today() {
             weather={weatherData.weather}
             onRetry={weatherData.retry}
           />
-          <AirQualityLine
-            status={weatherData.status}
-            configured={weatherData.configured}
-            aq={weatherData.aq}
-            onRetry={weatherData.retry}
-          />
+          <AirQualityLine reading={reading} />
           <WindMinimap
             status={weatherData.status}
             configured={weatherData.configured}

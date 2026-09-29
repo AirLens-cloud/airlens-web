@@ -538,6 +538,11 @@
   text-transform: uppercase;
   color: var(--orange-ink);
 }
+/* Which source backs the number (W1b commit ③) — its own row under the line,
+   same wording as Home's and the capsule's source lines (`readingCopy.ts`). */
+.wx-aq-line__source {
+  flex-basis: 100%;
+}
 
 /* ============================ S5 — wind minimap ========================= */
 

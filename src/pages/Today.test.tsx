@@ -20,6 +20,7 @@ import { useTodayCams } from '../hooks/useTodayCams'
 import Today from './Today'
 import type { TodayGridState } from '../hooks/useTodayGrid'
 import type { TodayCamsState } from '../hooks/useTodayCams'
+import type { OpenMeteoWeatherHourly } from '../types/forecast'
 
 const SEOUL = { lat: 37.5665, lon: 126.978, source: 'default' as const, label: 'Seoul, KR' }
 
@@ -42,7 +43,6 @@ function mockWeather(overrides: Partial<ReturnType<typeof useWeatherPageData>> =
     status: 'ready',
     configured: true,
     weather: null,
-    aq: null,
     wind: null,
     mslp: null,
     fetchedAt: Date.now(),
@@ -492,5 +492,185 @@ describe('Today — an unverifiable GRID cell', () => {
 
     // Assert — GRID is still preferred over CAMS when it is sound.
     expect(container.querySelector('.today-answer')?.textContent).toContain('12')
+  })
+})
+
+/**
+ * W1b commit ③ — the Conditions surfaces (the hero rail's "PM2.5 now" tile
+ * and the Conditions tab's AirQualityLine) used to read Open-Meteo's own
+ * hourly PM2.5 point, a third number next to the headline resolver's. They
+ * now render the resolved primary reading. The numbers below are chosen so
+ * no other figure on the page can be mistaken for them: the GRID analysis
+ * (42.4) and the CAMS city forecast (21) sit in different tiers, and the
+ * weather fixture's own numbers (23 degrees, UV 6) collide with neither.
+ */
+describe('Today — Conditions surfaces show the shared primary PM2.5 reading', () => {
+  const HOURS = Array.from({ length: 24 }, (_, i) => `2026-09-06T${String(i).padStart(2, '0')}:00`)
+  const WEATHER_READY: OpenMeteoWeatherHourly = {
+    time: HOURS,
+    temperature_2m: HOURS.map(() => 23),
+    apparent_temperature: HOURS.map(() => 24),
+    uv_index: HOURS.map(() => 6),
+    weather_code: HOURS.map(() => 0),
+  }
+  const GRID_ANALYSIS = {
+    status: 'ready' as const,
+    pm25: 42.4,
+    updatedAt: '2026-08-26T00:00:00Z',
+    stale: false,
+    distanceKm: 3,
+  }
+
+  /** The hero rail's "PM2.5 now" tile — found by its label, not by position,
+   * so the UV tile beside it can never be mistaken for it. */
+  function pm25NowTile(container: HTMLElement): HTMLElement | null {
+    const tiles = container.querySelectorAll<HTMLElement>('.wx-hero__rail .wx-tile')
+    return Array.from(tiles).find((t) => t.querySelector('.wx-tile__label')?.textContent === 'PM2.5 now') ?? null
+  }
+
+  function airQualitySection(container: HTMLElement): HTMLElement | null {
+    return container.querySelector<HTMLElement>('section[aria-label="Air quality"]')
+  }
+
+  /** Integer in "{n} µg/m³ PM2.5" — the Answer meta line's and the AirQualityLine's shared phrasing. */
+  function headlineNumber(text: string | null | undefined): number | null {
+    const m = (text ?? '').match(/(\d+)\s*µg\/m³\s*PM2\.5/)
+    return m ? Number(m[1]) : null
+  }
+
+  it('hero rail tile shows the resolved analysis PM2.5 with its own tier dot and a "model analysis" caption', () => {
+    // Arrange — analysis 42.4 (usg) beats the CAMS city forecast 21 (moderate).
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('42')
+    expect(tile?.querySelector('.aqi-dot')?.getAttribute('data-tier')).toBe('usg')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · model analysis')
+  })
+
+  it('air-quality line shows the same resolved number, its tier grade and where the number comes from', () => {
+    // Arrange
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const line = airQualitySection(container)?.querySelector('.wx-aq-line')
+    expect(line?.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+    expect(line?.getAttribute('data-aqi')).toBe('usg')
+    expect(line?.querySelector('.wx-aq-line__grade')?.textContent).toBe('Unhealthy for sensitive groups')
+    expect(line?.querySelector('.wx-aq-line__source')?.textContent).toBe('Model analysis, nearest grid cell · 3 km')
+  })
+
+  it('hero rail, air-quality line and the Insight answer all read the same PM2.5 number', () => {
+    // Arrange
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    const { container, getByRole } = render(<Today />)
+    // Act — read both Conditions surfaces, then switch to Insight via the
+    // segmented control and read the Answer's meta line.
+    const rail = Number(pm25NowTile(container)?.querySelector('.wx-tile__value')?.textContent)
+    const airQualityLine = headlineNumber(container.querySelector('.wx-aq-line__value')?.textContent)
+    fireEvent.click(getByRole('button', { name: 'Insight' }))
+    const insightAnswer = headlineNumber(container.querySelector('.today-answer__meta')?.textContent)
+    // Assert — one number, not three (the pre-③ hero rail / line read Open-Meteo's own point).
+    expect({ rail, airQualityLine, insightAnswer }).toEqual({ rail: 42, airQualityLine: 42, insightAnswer: 42 })
+  })
+
+  it('names the CAMS forecast — not a model analysis — on both surfaces when only the forecast resolved', () => {
+    // Arrange — GRID absent, so the CAMS city forecast (55.6) is the headline.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ current: 55.6, tier: 'unhealthy' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('56')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · CAMS forecast · Seoul, KR · 1 km')
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('56 µg/m³ PM2.5')
+    expect(container.querySelector('.wx-aq-line__source')?.textContent).toBe('CAMS forecast for Seoul, KR · 1 km')
+  })
+
+  it('never prints an unverifiable GRID cell on the hero rail or the air-quality line — the CAMS reading stands in', () => {
+    // Arrange — the 15,868 µg/m³ boreal-fire cell is unreportable (see the
+    // "unverifiable GRID cell" block below); CAMS carries the headline.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({
+      ...GRID_ANALYSIS,
+      pm25: 15867.96,
+      plausibility: { verdict: 'beyond-scale', reason: 'beyond the top of our reporting scale — we cannot verify this reading' },
+    })
+    mockCams(camsReady({ current: 20, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)?.querySelector('.wx-tile__value')?.textContent).toBe('20')
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('20 µg/m³ PM2.5')
+    expect(container.textContent).not.toContain('15868')
+  })
+
+  it('still shows the resolved number in the air-quality line when the weather fetch failed and the hero rail is absent', () => {
+    // Arrange — `weather: null` with status 'ready' is the weather section's
+    // own error state; the PM2.5 reading no longer depends on it.
+    mockGeo()
+    mockWeather({ weather: null })
+    mockGrid(GRID_ANALYSIS)
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)).toBeNull()
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+  })
+
+  it('shows "unavailable" instead of a number on both surfaces when no source resolved, even though weather is ready', () => {
+    // Arrange — GRID and CAMS both absent -> the reading is 'unavailable'.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'missing' })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert — the rail keeps its footprint but says why it has no number
+    // (never the old "Not measured"); the line swaps to the data-state.
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('—')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('Unavailable')
+    expect(tile?.querySelector('.aqi-dot')).toBeNull()
+    const section = airQualitySection(container)
+    expect(section?.querySelector('.wf-datastate-unavailable')).not.toBeNull()
+    expect(section?.querySelector('.wx-aq-line')).toBeNull()
+    expect(section?.textContent ?? '').not.toMatch(/\d+\s*µg\/m³/)
+  })
+
+  it('shows a loading placeholder — no number, no "unavailable" — on both surfaces while the GRID is still resolving', () => {
+    // Arrange — the resolver holds the whole reading back while GRID loads,
+    // even with CAMS already in (the flicker fix).
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'loading' })
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('—')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('Loading…')
+    const section = airQualitySection(container)
+    expect(section?.querySelector('.wf-skeleton')).not.toBeNull()
+    expect(section?.querySelector('.wx-aq-line')).toBeNull()
+    expect(section?.querySelector('.wf-datastate')).toBeNull()
   })
 })

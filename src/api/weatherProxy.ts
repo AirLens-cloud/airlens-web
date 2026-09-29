@@ -1,8 +1,9 @@
 /**
- * Weather / air-quality proxy client — Weather page (Wave W1).
+ * Weather proxy client — Weather page (Wave W1). (Its PM2.5 no longer comes
+ * from here: the page reads the shared primary reading since W1b commit ③.)
  *
- * Server-Collect: the browser never calls Open-Meteo directly. Both hourly
- * routes go through the Community API Worker (`COMMUNITY_API_BASE`),
+ * Server-Collect: the browser never calls Open-Meteo directly. The hourly
+ * weather route goes through the Community API Worker (`COMMUNITY_API_BASE`),
  * keyless and cached upstream for 30 minutes. An unset base URL
  * (`COMMUNITY_API_BASE === ''`) is an honest "not configured" state — no
  * request is attempted, and the caller renders that as missing, not as a
@@ -16,12 +17,7 @@
  */
 import { COMMUNITY_API_BASE, HF_LIVE_BASE } from '../lib/config/dataSources'
 import { feedPipeline } from '../lib/config/feeds'
-import type {
-  OpenMeteoAqHourly,
-  OpenMeteoAqProxyResponse,
-  OpenMeteoWeatherHourly,
-  OpenMeteoWeatherProxyResponse,
-} from '../types/forecast'
+import type { OpenMeteoWeatherHourly, OpenMeteoWeatherProxyResponse } from '../types/forecast'
 
 const FETCH_TIMEOUT_MS = 8000
 const DEFAULT_HOURS = 24
@@ -57,16 +53,6 @@ export async function fetchWeatherHourly(
     lon,
     hours,
   )
-  return body?.hourly ?? null
-}
-
-/** 24h (default) hourly PM2.5 series for one location, via the keyless proxy. */
-export async function fetchAqHourly(
-  lat: number,
-  lon: number,
-  hours: number = DEFAULT_HOURS,
-): Promise<OpenMeteoAqHourly | null> {
-  const body = await fetchProxyHourly<OpenMeteoAqProxyResponse>('/api/proxy/open-meteo-aq', lat, lon, hours)
   return body?.hourly ?? null
 }
 

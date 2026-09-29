@@ -1,17 +1,17 @@
 /**
  * useWeatherPageData — fetches everything the /weather page needs for one
  * location and exposes it as one state object. Each source degrades
- * independently (weather/aq/wind/mslp can each be null while the others
+ * independently (weather/wind/mslp can each be null while the others
  * resolve) — sections render their own honest missing state per field
  * rather than the whole page failing together.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { COMMUNITY_API_BASE } from '../lib/config/dataSources'
-import { fetchAqHourly, fetchWeatherGridMslp, fetchWeatherHourly } from '../api/weatherProxy'
+import { fetchWeatherGridMslp, fetchWeatherHourly } from '../api/weatherProxy'
 import type { WeatherGridMslp } from '../api/weatherProxy'
 import { fetchWindField } from '../api/weather'
 import { WindField } from '../lib/windField'
-import type { OpenMeteoAqHourly, OpenMeteoWeatherHourly } from '../types/forecast'
+import type { OpenMeteoWeatherHourly } from '../types/forecast'
 
 export type WeatherPageStatus = 'loading' | 'ready'
 
@@ -24,7 +24,6 @@ export interface WeatherPageData {
    * is true and the branch is a misconfiguration guard, not a live mode. */
   configured: boolean
   weather: OpenMeteoWeatherHourly | null
-  aq: OpenMeteoAqHourly | null
   wind: WindField | null
   mslp: WeatherGridMslp | null
   fetchedAt: number | null
@@ -34,7 +33,6 @@ export interface WeatherPageData {
 export function useWeatherPageData(lat: number | null, lon: number | null): WeatherPageData {
   const [status, setStatus] = useState<WeatherPageStatus>('loading')
   const [weather, setWeather] = useState<OpenMeteoWeatherHourly | null>(null)
-  const [aq, setAq] = useState<OpenMeteoAqHourly | null>(null)
   const [wind, setWind] = useState<WindField | null>(null)
   const [mslp, setMslp] = useState<WeatherGridMslp | null>(null)
   const [fetchedAt, setFetchedAt] = useState<number | null>(null)
@@ -65,13 +63,11 @@ export function useWeatherPageData(lat: number | null, lon: number | null): Weat
 
     Promise.allSettled([
       fetchWeatherHourly(lat, lon),
-      fetchAqHourly(lat, lon),
       fetchWindField('surface'),
       fetchWeatherGridMslp(lat, lon),
-    ]).then(([weatherResult, aqResult, windResult, mslpResult]) => {
+    ]).then(([weatherResult, windResult, mslpResult]) => {
       if (!alive) return
       setWeather(weatherResult.status === 'fulfilled' ? weatherResult.value : null)
-      setAq(aqResult.status === 'fulfilled' ? aqResult.value : null)
       setWind(windResult.status === 'fulfilled' ? windResult.value : null)
       setMslp(mslpResult.status === 'fulfilled' ? mslpResult.value : null)
       setFetchedAt(Date.now())
@@ -87,5 +83,5 @@ export function useWeatherPageData(lat: number | null, lon: number | null): Weat
     setRefetchToken((t) => t + 1)
   }, [])
 
-  return { status, configured: COMMUNITY_API_BASE !== '', weather, aq, wind, mslp, fetchedAt, retry }
+  return { status, configured: COMMUNITY_API_BASE !== '', weather, wind, mslp, fetchedAt, retry }
 }

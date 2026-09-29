@@ -16,8 +16,9 @@ import {
   type ResolvedLocation,
 } from '../../lib/location/resolveLocation'
 import type { WeatherPageStatus } from '../../hooks/useWeatherPageData'
-import type { OpenMeteoAqHourly, OpenMeteoWeatherHourly } from '../../types/forecast'
+import type { OpenMeteoWeatherHourly } from '../../types/forecast'
 import type { WeatherCity } from '../../lib/cityCatalog'
+import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
 
 export interface WeatherHeroProps {
   /** `null` while the location is still resolving — the place row shows
@@ -30,10 +31,10 @@ export interface WeatherHeroProps {
   status: WeatherPageStatus
   configured: boolean
   weather: OpenMeteoWeatherHourly | null
-  /** Same hourly PM2.5 fetch `AirQualityLine` (Conditions tab) already reads
-   * — passed through so the new S1 instrument rail (design-audit V2) can
-   * show a "PM2.5 now" tile without a second fetch. */
-  aq: OpenMeteoAqHourly | null
+  /** The shared headline resolver's result (W1b commit ③), for the S1
+   * instrument rail's "PM2.5 now" tile — the same reading the HUD, Home and
+   * the capsule show. */
+  reading: PrimaryReading
   onRetry: () => void
 }
 
@@ -90,7 +91,7 @@ export default function WeatherHero({
   status,
   configured,
   weather,
-  aq,
+  reading,
   onRetry,
 }: WeatherHeroProps) {
   const [searchOpen, setSearchOpen] = useState(false)
@@ -105,7 +106,6 @@ export default function WeatherHero({
   const temp = round(weather?.temperature_2m?.[0])
   const feels = round(weather?.apparent_temperature?.[0])
   const { min: lo, max: hi } = finiteMinMax(weather?.temperature_2m)
-  const pm25Now = round(aq?.pm2_5?.[0])
   const uvIndexNow = round(weather?.uv_index?.[0])
 
   const state = sectionDataState(status, configured, weather !== null)
@@ -182,7 +182,7 @@ export default function WeatherHero({
             </div>
             <WeatherHeroRail
               hourlyTemp={weather?.temperature_2m}
-              pm25Now={pm25Now}
+              reading={reading}
               uvIndexNow={uvIndexNow}
               reducedMotion={reducedMotion}
             />

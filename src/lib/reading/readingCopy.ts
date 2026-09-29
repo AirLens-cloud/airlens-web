@@ -5,6 +5,10 @@
  */
 import type { PrimaryReadingReady, PrimaryReadingSecondary } from './resolvePrimaryReading'
 
+/** The sources an `'unavailable'` reading tried — the `source` line of the
+ * `WfDataState` every headline surface shows in place of a number. */
+export const PRIMARY_READING_SOURCES = 'GEFS-Aerosols grid analysis or Open-Meteo CAMS forecast (via HF live-data)'
+
 function distanceSuffix(distanceKm: number | null): string {
   return distanceKm != null ? ` · ${Math.round(distanceKm)} km` : ''
 }

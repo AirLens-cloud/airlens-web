@@ -57,7 +57,7 @@ export interface WeatherForecastData {
 
 // ── Weather page proxy payloads (Wave W1, 2026-08-26) ───────────────────────
 // Passthrough of the Community API Worker's `/api/proxy/open-meteo-weather`
-// and `/api/proxy/open-meteo-aq` routes — themselves a thin cache over
+// route — itself a thin cache over
 // Open-Meteo's own response shape (parallel arrays keyed by field, index-
 // aligned to `time`). Every field beyond `time` is optional: the upstream
 // can omit one without failing the whole request, and a `wind_direction_10m`
@@ -82,11 +82,3 @@ export interface OpenMeteoWeatherProxyResponse {
   hourly: OpenMeteoWeatherHourly
 }
 
-export interface OpenMeteoAqHourly {
-  time: string[]
-  pm2_5?: (number | null)[]
-}
-
-export interface OpenMeteoAqProxyResponse {
-  hourly: OpenMeteoAqHourly
-}

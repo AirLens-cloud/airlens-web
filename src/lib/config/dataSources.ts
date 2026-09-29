@@ -42,8 +42,9 @@ export const POLICY_IMPACT_BASE: string = `${HF_LIVE_BASE}/insights-data/policy-
 
 /**
  * Community API Worker (keyless, 30-minute cached proxy over Open-Meteo) —
- * the Weather page's `/api/proxy/open-meteo-weather` and
- * `/api/proxy/open-meteo-aq` routes live here. Public and keyless, so it gets
+ * the Weather page's `/api/proxy/open-meteo-weather` route lives here (its
+ * `/api/proxy/open-meteo-aq` route is no longer read: since W1b commit ③ the
+ * page's PM2.5 comes from the shared primary reading). Public and keyless, so it gets
  * the same baked-in default as the two bases above: leaving it to an env var
  * nobody sets is what shipped every Weather card as "unavailable".
  *
