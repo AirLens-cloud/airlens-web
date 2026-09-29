@@ -11,23 +11,10 @@
 }
 /* `.t-tag` matches this strip's size/family exactly (11px mono); its
    uppercase + wide tracking are wrong for mixed-case key:value pairs
-   ("obs age", "p10–p90"), so the compound selector cancels both. */
+   ("data age", "p10–p90"), so the compound selector cancels both. */
 .trust-line.t-tag {
   text-transform: none;
   letter-spacing: normal;
-}
-
-/* Optional scope tag ("THIS FORECAST") — distinguishes this line's reading
-   from a *different* trust surface a page may also show (Home's G8 ground-
-   station strip). `.t-micro` supplies its own uppercase/tracking, unaffected
-   by the container's `.trust-line.t-tag` cancelling that for the mixed-case
-   key:value pairs below it. */
-.trust-line__scope {
-  color: var(--ink-2);
-  margin-right: var(--sp-1);
-}
-.glass-card .trust-line__scope {
-  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 
 .trust-line__item {
@@ -44,13 +31,18 @@
 
 .trust-line__k {
   color: var(--ink-2);
+  /* A key is one label — never split it. The band item re-enables wrapping
+     for its whole row and lays the key out as a flex child, so without these
+     "p10–p90" shrank to 28px and broke at the dash at 360px (W1b ⑤). */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .trust-line__na {
   color: var(--ink-2);
   font-style: italic;
   /* Re-enable wrapping inside the item's `nowrap` (which is inherited). That
-     nowrap exists to keep a key glued to its value — "obs age 21h" must not
+     nowrap exists to keep a key glued to its value — "data age 21h" must not
      split across lines — but a withheld/unpublished reason is a sentence, not
      a value: "p10–p90 not published (this data source publishes no uncertainty
      range)" measured 469px against a 390px viewport and pushed the whole page

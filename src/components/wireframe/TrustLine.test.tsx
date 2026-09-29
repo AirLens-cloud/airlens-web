@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent } from '@testing-library/react'
 import TrustLine from './TrustLine'
 
 afterEach(() => cleanup())
@@ -16,7 +16,7 @@ describe('TrustLine', () => {
     )
     // Assert
     const text = getByTestId('trust-line').textContent ?? ''
-    expect(text).toMatch(/obs age.*2\.3h/)
+    expect(text).toMatch(/data age.*2\.3h/)
     expect(text).toMatch(/DQSS.*withheld \(not measured\)/)
     expect(text).toMatch(/not published \(deterministic source\)/)
     expect(text).toMatch(/Why this number\?/)
@@ -34,7 +34,7 @@ describe('TrustLine', () => {
     // Assert
     const line = getByTestId('trust-line')
     const text = line.textContent ?? ''
-    expect(text).toMatch(/obs age.*45m/)
+    expect(text).toMatch(/data age.*45m/)
     // 78.4 falls in the B band (65 ≤ score < 80) — shown as the badge, the
     // raw score only in the tooltip (F53).
     const badge = line.querySelector('.dqss-badge')
@@ -96,7 +96,7 @@ describe('TrustLine', () => {
       />,
     )
     // Assert
-    expect(getByTestId('trust-line').textContent).toMatch(/obs age.*as of 2024/)
+    expect(getByTestId('trust-line').textContent).toMatch(/data age.*as of 2024/)
   })
 
   it('shows "unknown" (never a fabricated age) when neither ageMs nor ageLabel is given', () => {
@@ -105,24 +105,38 @@ describe('TrustLine', () => {
       <TrustLine dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
     // Assert
-    expect(getByTestId('trust-line').textContent).toMatch(/obs age.*unknown/)
+    expect(getByTestId('trust-line').textContent).toMatch(/data age.*unknown/)
   })
 
-  it('renders no scope tag by default, and the given one when scopeLabel is set', () => {
+  it('makes each of its three keys a glossary TermLink, and renders no scope tag', () => {
     // Arrange / Act
-    const unscoped = render(
-      <TrustLine dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
-    const scoped = render(
-      <TrustLine
-        dqss={{ available: false, reason: 'n/a' }}
-        uncertainty={{ available: false }}
-        scopeLabel="THIS FORECAST"
-      />,
+    // Assert — F48: "data age", "DQSS" and "p10–p90" each explain themselves.
+    const line = getByTestId('trust-line')
+    const triggers = Array.from(line.querySelectorAll('.trust-line__k .knowledge-termlink__trigger'))
+    expect(triggers.map((b) => b.textContent)).toEqual(['data age', 'DQSS', 'p10–p90'])
+    expect(triggers.every((b) => b.getAttribute('aria-haspopup') === 'dialog')).toBe(true)
+    // F70: the "THIS FORECAST" scope tag is gone for good.
+    expect(line.querySelector('.trust-line__scope')).toBeNull()
+  })
+
+  it('opens the "data age" definition, which says it is not a measurement time', () => {
+    // Arrange
+    const { getByTestId, getByRole } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
+    // Act
+    fireEvent.click(getByRole('button', { name: 'data age' }))
     // Assert
-    expect(unscoped.container.querySelector('.trust-line__scope')).toBeNull()
-    expect(scoped.container.querySelector('.trust-line__scope')?.textContent).toBe('THIS FORECAST')
+    const popover = getByTestId('trust-line').querySelector('[role="dialog"]')
+    expect(popover?.textContent).toContain('Data age')
+    expect(popover?.textContent).toContain('It is not the time anything was measured')
+    // The same popover shows on Country pages, where the key reads "as of
+    // <year>" and never ticks — the definition must not promise it does.
+    expect(popover?.textContent).toContain('an annual figure shows the year it covers instead')
+    expect(popover?.querySelector('a[href="/glossary#data-age"]')).not.toBeNull()
   })
 
   it('links "Why this number?" to /methodology by default, or a custom href when given', () => {

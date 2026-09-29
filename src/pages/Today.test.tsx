@@ -690,7 +690,7 @@ describe('Today — freshness labels keep ticking while the tab stays open (GNET
     vi.useRealTimers()
   })
 
-  it("grows the TrustLine's obs age with the wall clock instead of freezing it at mount", () => {
+  it("grows the TrustLine's data age with the wall clock instead of freezing it at mount", () => {
     // Arrange — the GRID reading was published 30 minutes before the page mounts.
     const updatedAt = '2026-08-26T00:00:00Z'
     vi.useFakeTimers()
@@ -700,19 +700,19 @@ describe('Today — freshness labels keep ticking while the tab stays open (GNET
     mockGrid({ status: 'ready', pm25: 20, updatedAt, stale: false, distanceKm: 1 })
     mockCams({ status: 'missing' })
     const { container } = render(<Today />)
-    const obsAge = () => container.querySelector('[data-testid="trust-line"]')?.textContent ?? ''
-    const atMount = obsAge()
+    const dataAge = () => container.querySelector('[data-testid="trust-line"]')?.textContent ?? ''
+    const atMount = dataAge()
     // Act — one clock tick, then the tab stays open for 89 more minutes.
     act(() => {
       vi.advanceTimersByTime(60_000)
     })
-    const afterOneTick = obsAge()
+    const afterOneTick = dataAge()
     act(() => {
       vi.advanceTimersByTime(89 * 60_000)
     })
     // Assert — it moves every minute, not only on some coarser cadence.
-    expect(atMount).toMatch(/obs age 30m/)
-    expect(afterOneTick).toMatch(/obs age 31m/)
-    expect(obsAge()).toMatch(/obs age 2\.0h/)
+    expect(atMount).toMatch(/data age 30m/)
+    expect(afterOneTick).toMatch(/data age 31m/)
+    expect(dataAge()).toMatch(/data age 2\.0h/)
   })
 })

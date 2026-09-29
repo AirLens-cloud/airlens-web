@@ -90,12 +90,26 @@ const darkExplicitMap: TokenMap = { ...lightBlock, ...darkExplicitBlock }
 
 /** Resolves `var(--x)` / `var(--x, fallback)` references against `map`, one level or recursively. */
 function resolveValue(rawValue: string, map: TokenMap, seen: Set<string> = new Set()): string {
-  const varRe = /var\((--[a-zA-Z0-9-]+)\s*(?:,\s*([^)]+))?\)/
   let result = rawValue
   for (let i = 0; i < 10; i++) {
-    const m = varRe.exec(result)
-    if (!m) break
-    const [full, name, fallback] = m
+    // Brace-balanced scan, so a nested fallback — `var(--a, var(--b))` — is
+    // taken whole (a `[^)]+` regex stops at the inner `)` and leaves one over).
+    const start = result.indexOf('var(')
+    if (start === -1) break
+    let depth = 0
+    let end = -1
+    for (let j = start + 3; j < result.length; j++) {
+      if (result[j] === '(') depth++
+      else if (result[j] === ')' && --depth === 0) {
+        end = j
+        break
+      }
+    }
+    if (end === -1) throw new Error(`unbalanced var(): ${result}`)
+    const inner = result.slice(start + 4, end)
+    const comma = inner.indexOf(',')
+    const name = (comma === -1 ? inner : inner.slice(0, comma)).trim()
+    const fallback = comma === -1 ? undefined : inner.slice(comma + 1)
     let replacement: string
     if (map[name] !== undefined) {
       if (seen.has(name)) throw new Error(`circular var() reference: ${name}`)
@@ -107,7 +121,7 @@ function resolveValue(rawValue: string, map: TokenMap, seen: Set<string> = new S
     } else {
       throw new Error(`unresolved var(): ${name}`)
     }
-    result = result.slice(0, m.index) + replacement + result.slice(m.index + full.length)
+    result = result.slice(0, start) + replacement + result.slice(end + 1)
   }
   return result.trim()
 }
@@ -506,5 +520,87 @@ describe('city search input — text and placeholder pass AA on every panel it s
     const ph = parseColor(resolveValue(SEARCH_PLACEHOLDER.color, lightMap))
     const phAlpha = ph.a * Number(SEARCH_PLACEHOLDER.opacity ?? 1)
     expect(contrastOf(`rgba(${ph.r}, ${ph.g}, ${ph.b}, ${phAlpha})`, field)).toBeGreaterThanOrEqual(AA)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TermLink popover (W1b ⑤ — TrustLine's keys are glossary TermLinks). The
+// popover is an opaque panel whose text inherits the host's ink set. Inside
+// the Home hero's glass card that ink set rides the AQI-tint axis while
+// --bg-0 stays on the site theme — painting --bg-0 there put the tint's dark
+// ink on the dark site fill (measured #0b1a2e on #0c1015 ≈ 1.1:1, 2026-09-29).
+// Checked on every surface a TrustLine sits on: bare page, and the glass card
+// on each tint plus no tint (loading/unavailable) — under all three themes.
+// ---------------------------------------------------------------------------
+
+const TERMLINK_CSS = stripComments(
+  fs.readFileSync(path.join(path.resolve(__dirname), '../components/knowledge/termLink.css'), 'utf8'),
+)
+const POPOVER = ruleDecls(TERMLINK_CSS, /(?:^|\n)\.knowledge-termlink__popover\s*\{([^}]*)\}/)
+const POPOVER_IN_CARD = ruleDecls(TERMLINK_CSS, /\.glass-card \.knowledge-termlink__popover\s*\{([^}]*)\}/)
+// parseDeclarations, not ruleDecls: the latter's key pattern has no digits,
+// so it would drop the card's --ink-0..3 remap and test the site ink instead.
+const GLASS_CARD_BASE = parseDeclarations(/\.glass-card\s*\{([^}]*)\}/.exec(SURFACES_CSS)?.[1] ?? '')
+const tintRule = (grade: string): TokenMap =>
+  parseDeclarations(
+    new RegExp(`\\.glass-card\\[data-aqi="${grade}"\\]\\s*\\{([^}]*)\\}`).exec(SURFACES_CSS)?.[1] ?? '',
+  )
+
+const SITE_THEMES: Array<[string, TokenMap]> = [
+  ['light', lightMap],
+  ['dark (prefers-color-scheme)', darkMediaMap],
+  ['dark (data-theme)', darkExplicitMap],
+]
+// Every colour the popover's text actually paints, read from the rules that
+// paint it (not a hand-kept token list): the definition and example rules,
+// the typography classes on the panel/title/example, and — inside a
+// TrustLine — the strip's link rule for "Full entry in Glossary →", which
+// differs between a bare page and the glass card.
+const TYPOGRAPHY_CSS = stripComments(fs.readFileSync(path.join(path.resolve(__dirname), 'typography.css'), 'utf8'))
+const TRUST_LINE_CSS = stripComments(fs.readFileSync(path.join(path.resolve(__dirname), 'trust-line.css'), 'utf8'))
+const lineStartRule = (css: string, selector: string): TokenMap =>
+  ruleDecls(css, new RegExp(`(?:^|\\n)${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))
+const POPOVER_TEXT_COLORS: Array<[string, string | undefined]> = [
+  ['definition', lineStartRule(TERMLINK_CSS, '.knowledge-termlink__popover-def').color],
+  ['example', lineStartRule(TERMLINK_CSS, '.knowledge-termlink__popover-example').color],
+  ['panel .t-caption', lineStartRule(TYPOGRAPHY_CSS, '.t-caption').color],
+  ['title .t-tag', lineStartRule(TYPOGRAPHY_CSS, '.t-tag').color],
+  ['example .t-micro', lineStartRule(TYPOGRAPHY_CSS, '.t-micro').color],
+]
+const LINK_ON_PAGE = lineStartRule(TRUST_LINE_CSS, '.trust-line a').color
+const LINK_IN_CARD = lineStartRule(TRUST_LINE_CSS, '.glass-card .trust-line a').color
+
+const popoverSurfaces = SITE_THEMES.flatMap(([theme, map]) => [
+  { theme, surface: 'bare page', scope: map, fillRaw: POPOVER.background, linkRaw: LINK_ON_PAGE },
+  ...['none', ...glassCardTintPairs.map((p) => p.grade)].map((grade) => ({
+    theme,
+    surface: `glass card · tint ${grade}`,
+    scope: { ...map, ...GLASS_CARD_BASE, ...(grade === 'none' ? {} : tintRule(grade)) },
+    fillRaw: POPOVER_IN_CARD.background,
+    linkRaw: LINK_IN_CARD,
+  })),
+])
+
+describe('TermLink popover — its text passes AA on its own fill, on every host surface', () => {
+  it('parsed the popover rules and every host surface', () => {
+    expect(POPOVER.background).toBeDefined()
+    expect(POPOVER_IN_CARD.background).toBeDefined()
+    expect(popoverSurfaces).toHaveLength(3 * (1 + 1 + 4))
+    expect(GLASS_CARD_BASE['--ink-1']).toMatch(/^var\(--glass-card-ink\b/)
+    for (const { grade } of glassCardTintPairs) expect(tintRule(grade)['--glass-card-ink-contrast']).toBeDefined()
+    for (const [what, raw] of POPOVER_TEXT_COLORS) expect(raw, `${what} colour`).toMatch(/var\(--/)
+    expect(LINK_ON_PAGE).toBeDefined()
+    expect(LINK_IN_CARD).toBeDefined()
+  })
+  it.each(popoverSurfaces)('$theme · $surface', ({ scope, fillRaw, linkRaw }) => {
+    const fill = resolveValue(fillRaw, scope)
+    const colors: Array<[string, string]> = [
+      ...POPOVER_TEXT_COLORS.map(([what, raw]): [string, string] => [what, raw ?? '']),
+      ['glossary link', linkRaw ?? ''],
+    ]
+    for (const [what, raw] of colors) {
+      const ink = resolveValue(raw, scope)
+      expect(contrastOf(ink, fill), `${what} ${ink} on ${fill}`).toBeGreaterThanOrEqual(AA)
+    }
   })
 })

@@ -1,6 +1,7 @@
 import DqssBadge from './DqssBadge'
 import BandSlot from '../content/BandSlot'
 import { dqssScoreToGrade } from '../../lib/config/globeOntology'
+import TermLink from '../knowledge/TermLink'
 
 /**
  * TrustLine — "how much should I trust this number" strip, shared by every
@@ -49,7 +50,8 @@ export interface TrustLineUncertaintyReady {
 }
 
 export interface TrustLineProps {
-  /** Observation age in ms — mutually exclusive with `ageLabel`. */
+  /** Data age in ms (time since the source published this value — not a
+   * measurement time) — mutually exclusive with `ageLabel`. */
   ageMs?: number | null
   /** Pre-formatted age override (e.g. "as of 2024" for annual aggregates,
    * where an hour-count would misrepresent the data's real granularity). */
@@ -59,17 +61,6 @@ export interface TrustLineProps {
   /** Defaults to `/methodology`. */
   methodologyHref?: string
   className?: string
-  /**
-   * What reading this line is trust-scoring — e.g. "THIS FORECAST". Every
-   * caller (`Home`/`Today`/`CountryProfile`) reads a different quantity
-   * (a CAMS forecast, a GRID analysis cell, an annual aggregate), and none
-   * of them is a ground-station observation — a reader who has just seen a
-   * *different* trust surface for an actual station (Home's own G8 strip)
-   * can otherwise mistake "DQSS withheld" here for that station's grade
-   * going missing. Optional and unset by default: existing call sites keep
-   * rendering exactly as before until they opt in.
-   */
-  scopeLabel?: string
 }
 
 /** The raw score behind the grade badge — the link's tooltip and accessible
@@ -96,7 +87,6 @@ export default function TrustLine({
   uncertainty,
   methodologyHref = '/methodology',
   className,
-  scopeLabel,
 }: TrustLineProps) {
   const classes = ['trust-line', 't-tag']
   if (className) classes.push(className)
@@ -105,13 +95,16 @@ export default function TrustLine({
 
   return (
     <div className={classes.join(' ')} data-testid="trust-line">
-      {scopeLabel && <span className="trust-line__scope t-micro">{scopeLabel}</span>}
       <span className="trust-line__item">
-        <span className="trust-line__k">obs age</span>{' '}
+        <span className="trust-line__k">
+          <TermLink termId="data-age">data age</TermLink>
+        </span>{' '}
         {ageText ?? <span className="trust-line__na">unknown</span>}
       </span>
       <span className="trust-line__item">
-        <span className="trust-line__k">DQSS</span>{' '}
+        <span className="trust-line__k">
+          <TermLink termId="dqss">DQSS</TermLink>
+        </span>{' '}
         {dqss.available ? (
           <a
             className="trust-line__graded"
@@ -129,7 +122,9 @@ export default function TrustLine({
         )}
       </span>
       <div className="trust-line__item trust-line__item--band">
-        <span className="trust-line__k">p10–p90</span>
+        <span className="trust-line__k">
+          <TermLink termId="p10-p90">p10–p90</TermLink>
+        </span>
         <BandSlot
           emptyLabel="not published"
           {...(uncertainty.available

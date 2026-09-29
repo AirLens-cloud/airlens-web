@@ -1,6 +1,8 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { findGlossaryTerm } from '../../content/glossaryTerms'
 import UnitSafeText from './UnitSafeText'
+import { popoverShiftPx } from './popoverPlacement'
+import './termLink.css'
 
 export interface TermLinkProps {
   /** Glossary termId this link explains (see src/content/glossaryTerms.ts). */
@@ -26,13 +28,37 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const wrapperRef = useRef<HTMLSpanElement | null>(null)
+  const popoverRef = useRef<HTMLSpanElement | null>(null)
   const popoverId = useId()
+  const popoverTitleId = `${popoverId}-title`
 
   useEffect(() => {
     if (!term && import.meta.env.DEV) {
       console.warn(`TermLink: unregistered termId "${termId}" — add it to src/content/glossaryTerms.ts`)
     }
   }, [term, termId])
+
+  // Keep the panel on screen: it is anchored at the trigger's left edge, so a
+  // trigger mid-row on a phone would otherwise run it past the right edge.
+  // Measured before paint and again on every resize while open (a rotated
+  // phone moves the trigger); the offset is written straight to the element
+  // (React owns no `style` on it) and goes away with it on close.
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current
+    const popover = popoverRef.current
+    if (!open || !wrapper || !popover) return
+    const place = () => {
+      const shift = popoverShiftPx(
+        wrapper.getBoundingClientRect().left,
+        popover.getBoundingClientRect().width,
+        document.documentElement.clientWidth,
+      )
+      popover.style.left = shift === 0 ? '' : `${shift}px`
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -87,8 +113,16 @@ export default function TermLink({ termId, children, className }: TermLinkProps)
         {children ?? term.term}
       </button>
       {open ? (
-        <span id={popoverId} role="dialog" className="knowledge-termlink__popover t-caption">
-          <span className="knowledge-termlink__popover-title t-tag">{term.term}</span>
+        <span
+          ref={popoverRef}
+          id={popoverId}
+          role="dialog"
+          aria-labelledby={popoverTitleId}
+          className="knowledge-termlink__popover t-caption"
+        >
+          <span id={popoverTitleId} className="knowledge-termlink__popover-title t-tag">
+            {term.term}
+          </span>
           <span className="knowledge-termlink__popover-def">{term.definition}</span>
           <span className="knowledge-termlink__popover-example t-micro">
             <UnitSafeText text={term.example} />

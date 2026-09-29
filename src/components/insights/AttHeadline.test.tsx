@@ -145,6 +145,16 @@ describe('AttHeadline — panel fit', () => {
     expect(screen.getByText(/Not the sensor DQSS scale/i)).toBeTruthy()
   })
 
+  it('labels the fit badge itself "Panel fit", never the sensor "DQSS" prefix (F05)', () => {
+    // Arrange / Act
+    const { container } = renderHeadline(estimatedRow)
+    // Assert
+    const badge = container.querySelector('.ins-fit-badge')
+    expect(badge?.querySelector('.dqss-badge-prefix')?.textContent).toBe('Panel fit')
+    expect(badge?.getAttribute('aria-label')).toMatch(/^Panel fit /)
+    expect(badge?.textContent).not.toMatch(/DQSS/)
+  })
+
   it('shows how much of the batch produced an estimate at all', () => {
     renderHeadline(estimatedRow)
     expect(screen.getByText('88 ESTIMATED / 119 RUN')).toBeTruthy()

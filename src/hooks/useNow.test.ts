@@ -1,5 +1,5 @@
 /**
- * useNow — the ticking wall clock behind "obs age" / "Updated N ago" (GNET1).
+ * useNow — the ticking wall clock behind "data age" / "Updated N ago" (GNET1).
  *
  * The regression this file exists to catch: an elapsed-time label frozen at
  * the moment the page mounted (the old lazy `useState(() => Date.now())`),

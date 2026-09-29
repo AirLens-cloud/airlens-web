@@ -463,7 +463,7 @@ describe('Home page — ready state', () => {
     expect(trustLine).not.toBeNull()
     expect(trustLine?.textContent).toMatch(/DQSS.*withheld/)
     expect(trustLine?.textContent).toMatch(/not published/)
-    expect(trustLine?.textContent).toMatch(/obs age/)
+    expect(trustLine?.textContent).toMatch(/data age/)
     // W1b commit ②: HomeHero no longer passes TrustLine a `scopeLabel` (the
     // old "THIS FORECAST" tag, meant to disambiguate from HomeTrustStrip's
     // ground-station DQSS just below it) — Home's headline can now be either

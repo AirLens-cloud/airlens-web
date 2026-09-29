@@ -46,7 +46,7 @@ export default function Home() {
   // "was this personalized" boolean.
   const data = useCapsuleData(location)
   // A ticking clock (GNET1), not a mount-time snapshot — the hero's
-  // "Updated … ago", its TrustLine obs age and the trust strip keep growing
+  // "Updated … ago", its TrustLine data age and the trust strip keep growing
   // while the tab stays open.
   const nowMs = useNow()
   // The hero's headline (W1b commit ②) — the same shared resolver `/today`

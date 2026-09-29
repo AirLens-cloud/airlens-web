@@ -1,0 +1,70 @@
+/* termLink.css — TermLink (src/components/knowledge/TermLink.tsx). Imported by
+ * the component itself (it used to live in static.css, which only the static
+ * pages load) since W1b ⑤ puts TermLinks inside TrustLine on Home, /today and
+ * Country pages. */
+
+.knowledge-termlink {
+  position: relative;
+  display: inline-block;
+}
+.knowledge-termlink__trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.knowledge-termlink__popover {
+  /* Self-contained against its host: TrustLine is a mono, weight-600,
+     `nowrap` strip — none of that belongs in a definition paragraph. */
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  text-align: left;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: var(--z-panel);
+  margin-top: var(--sp-1);
+  width: 280px;
+  /* Never wider than the viewport minus a --sp-4 gap each side; TermLink.tsx
+     (popoverPlacement.ts, same 16px gap) then slides it horizontally so it
+     stays inside that gap wherever its trigger sits. */
+  max-width: calc(100vw - 2 * var(--sp-4));
+  padding: var(--sp-3);
+  background: var(--bg-0);
+  border: 1px solid var(--rule-strong);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+/* Inside a glass card (the Home hero) --ink-* ride the AQI-tint axis
+   (surfaces.css) but --bg-0 stays on the site theme: dark site + a light tint
+   put the tint's dark ink on the dark site fill (measured #0b1a2e on #0c1015,
+   ~1.1:1). The fill travels with the ink — same pair as the hero's primary
+   CTA (home.css `.home-hero__cta--primary`), fallbacks included (GSKY1). */
+.glass-card .knowledge-termlink__popover {
+  background: var(--glass-card-ink-contrast, #ffffff);
+  border-color: var(--glass-card-ink, var(--tint-ink-dark));
+}
+.knowledge-termlink__popover-title {
+  display: block;
+}
+.knowledge-termlink__popover-def {
+  display: block;
+  color: var(--ink-1);
+}
+.knowledge-termlink__popover-example {
+  display: block;
+  color: var(--ink-2);
+}
+.knowledge-termlink__popover-links {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}

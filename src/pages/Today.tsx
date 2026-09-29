@@ -50,7 +50,7 @@ function initialTab(): TodayTab {
 
 export default function Today() {
   const [tab, setTab] = useState<TodayTab>(initialTab)
-  // A ticking clock (GNET1), not a mount-time snapshot — the TrustLine's obs
+  // A ticking clock (GNET1), not a mount-time snapshot — the TrustLine's data
   // age and the HUD's "Updated … ago" keep growing while the tab stays open.
   const nowMs = useNow()
   const { location, requesting, denied, requestGeolocation, selectCity } = useResolvedLocation()

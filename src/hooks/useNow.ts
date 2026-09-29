@@ -1,5 +1,5 @@
 /**
- * useNow — the wall clock behind elapsed-time labels ("obs age", "Updated
+ * useNow — the wall clock behind elapsed-time labels ("data age", "Updated
  * N ago"). Re-reads `Date.now()` every `intervalMs`, and at once when the
  * tab becomes visible again or the browser comes back online — so a tab left
  * open (or offline) never keeps showing the age a reading had at mount

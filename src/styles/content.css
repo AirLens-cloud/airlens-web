@@ -140,6 +140,18 @@
 .content-trust--external { color: var(--trust-external); }
 .content-trust--community { color: var(--trust-community); }
 
+/* F29 (W1b ⑤): on a Dispatch list card the trust badge was the 4th mono-caps
+   label in a meta row whose budget is category · source · date (News/Dispatch
+   contract #8) — three cards in view put 12 in one section (DESIGN.md: ≤8).
+   Sentence case in the body face, same colour and border, so the editorial-
+   trust axis still reads as its own badge; the article page keeps its single
+   mono-caps badge. */
+.dispatch-card .content-trust {
+  font-family: var(--sans);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 /* ---- Article ---- */
 
 .article-title { margin: 0; }
