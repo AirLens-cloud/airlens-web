@@ -111,15 +111,30 @@ describe('ScholarlyEvidencePanel', () => {
     expect(path.closest('a')).toBeNull()
   })
 
-  it('omits the References heading when a claim has no references', async () => {
+  it('hides claims without literature references from the full catalog view', async () => {
+    const value = fixture()
+    value.claims[0].references = []
+    mockCatalog(value)
+    render(<ScholarlyEvidencePanel />)
+    await screen.findByText('mixed English statement')
+
+    expect(screen.queryByText('supported English statement')).toBeNull()
+  })
+
+  it('reports a page reference to a claim without literature as missing', async () => {
     const value = fixture()
     value.claims[0].references = []
     mockCatalog(value)
     render(<ScholarlyEvidencePanel claimIds={['supported-fixture']} />)
-    await screen.findByText('supported English statement')
 
-    expect(screen.queryByRole('heading', { name: 'References' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Limitations' })).not.toBeNull()
+    expect((await screen.findByRole('alert')).textContent).toMatch(/referenced claim is missing/i)
+  })
+
+  it('explains what a status judges', async () => {
+    mockCatalog()
+    render(<ScholarlyEvidencePanel />)
+
+    expect(await screen.findByText(/judges the whole statement/i)).not.toBeNull()
   })
 
   it('renders duplicate limitation strings without key collisions', async () => {

@@ -13,10 +13,14 @@ describe('checked-in scholarly evidence catalog', () => {
     expect(document.claims.length).toBeGreaterThan(0)
   })
 
-  it('contains every claim referenced by methodology and deployed model cards', () => {
+  it('contains every claim referenced by methodology and deployed model cards, each with literature', () => {
     const path = resolve(process.cwd(), 'public/data/evidence/scholarly_claims.v1.json')
     const document = parseScholarlyClaims(JSON.parse(readFileSync(path, 'utf8')))
-    const publishedIds = new Set(document.claims.map((claim) => claim.claimId))
+    // The panel hides claims with no literature references, so a page link to one
+    // would be a dead anchor.
+    const publishedIds = new Set(
+      document.claims.filter((claim) => claim.references.length > 0).map((claim) => claim.claimId),
+    )
     const usedIds = new Set([...METHODOLOGY_CLAIM_IDS, ...MODEL_CARD_CLAIM_IDS])
 
     expect([...usedIds].filter((id) => !publishedIds.has(id))).toEqual([])

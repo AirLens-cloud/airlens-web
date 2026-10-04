@@ -159,7 +159,6 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     claimIds: [
       'conformal-quantile-interval-method',
       'aod-forward-band-coverage-is-regime-limited',
-      'history-feature-regime-remains-withheld',
     ],
   },
   {

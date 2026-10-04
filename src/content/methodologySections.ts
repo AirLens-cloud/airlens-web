@@ -60,7 +60,6 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     why: 'When neither a station nor a published model grid covers a point, IDW lets AirLens show a reasonable estimate instead of a blank map — but it is deliberately the last resort, used only when the other two are unavailable.',
     limitations: 'Accuracy degrades with distance from the nearest real sensor — interpolated values in low-coverage regions carry wider uncertainty, and this mechanism should not be assumed just because a value sits on a grid.',
     relatedTermIds: ['interpolated', 'analysis', 'coverage', 'p10-p90'],
-    claimIds: ['idw-beats-canonical-gnn-on-matched-holdout'],
   },
   {
     sectionId: 'nature-satellite-derived',
@@ -117,7 +116,6 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     claimIds: [
       'conformal-quantile-interval-method',
       'aod-forward-band-coverage-is-regime-limited',
-      'history-feature-regime-remains-withheld',
     ],
   },
   {

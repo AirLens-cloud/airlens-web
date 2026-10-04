@@ -13,6 +13,7 @@ const COPY = {
   en: {
     title: 'Scholarly evidence',
     intro: 'AirLens review decisions, stable paper identifiers, and the limits that travel with each claim.',
+    statusNote: 'Each status judges the whole statement against the cited literature and AirLens’s own evaluation artifacts together.',
     language: 'Evidence language',
     loading: 'Loading evidence…',
     unavailable: 'Evidence is temporarily unavailable.',
@@ -43,6 +44,7 @@ const COPY = {
   ko: {
     title: '학술 근거',
     intro: '각 주장에 대한 AirLens 판정, 안정적인 논문 식별자, 함께 공개해야 하는 한계입니다.',
+    statusNote: '판정은 인용 문헌과 AirLens 자체 평가 아티팩트를 함께 보고 문장 전체에 대해 내립니다.',
     language: '근거 언어',
     loading: '근거를 불러오는 중…',
     unavailable: '현재 근거를 불러올 수 없습니다.',
@@ -96,32 +98,28 @@ function ClaimCard({ claim, locale }: { claim: ScholarlyClaim; locale: EvidenceL
       </header>
       <p className="scholarly-claim__statement t-body" lang={locale}>{claim.statement[locale]}</p>
 
-      {claim.references.length > 0 ? (
-        <>
-          <h3 className="scholarly-claim__label t-micro">{copy.references}</h3>
-          <ul className="scholarly-claim__references">
-            {claim.references.map((reference) => {
-              const href = referenceHref(reference)
-              return (
-                <li key={`${reference.idType}:${reference.id}`}>
-                  <span className="t-tag">{copy.role[reference.role]}</span>{' '}
-                  {href ? (
-                    <a href={href} target="_blank" rel="noreferrer">{reference.title} ↗</a>
-                  ) : (
-                    <span>{reference.title}</span>
-                  )}{' '}
-                  <code>{reference.idType === 'arxiv' ? `arXiv:${reference.id}` : reference.id}</code>
-                  {reference.notice !== 'none' ? (
-                    <strong className="scholarly-claim__notice" role="status">
-                      {copy.notice[reference.notice]}
-                    </strong>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ul>
-        </>
-      ) : null}
+      <h3 className="scholarly-claim__label t-micro">{copy.references}</h3>
+      <ul className="scholarly-claim__references">
+        {claim.references.map((reference) => {
+          const href = referenceHref(reference)
+          return (
+            <li key={`${reference.idType}:${reference.id}`}>
+              <span className="t-tag">{copy.role[reference.role]}</span>{' '}
+              {href ? (
+                <a href={href} target="_blank" rel="noreferrer">{reference.title} ↗</a>
+              ) : (
+                <span>{reference.title}</span>
+              )}{' '}
+              <code>{reference.idType === 'arxiv' ? `arXiv:${reference.id}` : reference.id}</code>
+              {reference.notice !== 'none' ? (
+                <strong className="scholarly-claim__notice" role="status">
+                  {copy.notice[reference.notice]}
+                </strong>
+              ) : null}
+            </li>
+          )
+        })}
+      </ul>
 
       {claim.airlensEvidenceRefs.length > 0 ? (
         <>
@@ -159,8 +157,12 @@ export default function ScholarlyEvidencePanel({ claimIds }: ScholarlyEvidencePa
 
   const selected = useMemo(() => {
     if (!claims) return null
-    if (!claimIds) return claims
-    const byId = new Map(claims.map((claim) => [claim.claimId, claim]))
+    // The panel is scholarly evidence only: claims backed solely by AirLens's own
+    // evaluation artifacts stay in the catalog but are not shown here, so a page
+    // that references one surfaces the "missing claim" alert instead.
+    const scholarly = claims.filter((claim) => claim.references.length > 0)
+    if (!claimIds) return scholarly
+    const byId = new Map(scholarly.map((claim) => [claim.claimId, claim]))
     return claimIds.map((id) => byId.get(id)).filter((claim): claim is ScholarlyClaim => Boolean(claim))
   }, [claimIds, claims])
   const missingClaim = Boolean(claims && claimIds && selected && selected.length !== claimIds.length)
@@ -183,6 +185,7 @@ export default function ScholarlyEvidencePanel({ claimIds }: ScholarlyEvidencePa
         <div>
           <h2 id="scholarly-evidence-title" className="h-3">{copy.title}</h2>
           <p className="t-caption">{copy.intro}</p>
+          <p className="t-caption">{copy.statusNote}</p>
         </div>
         <div className="scholarly-evidence__locale" role="group" aria-label={copy.language}>
           <button type="button" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>English</button>
