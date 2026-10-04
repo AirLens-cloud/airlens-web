@@ -1,5 +1,17 @@
 # baseline.json — 각 숫자가 어디서 나왔는가
 
+## 2026-09-07 — 미세먼지 해석 72문항 사양 추가 (live 평가는 pending)
+
+`interpretation-cases.ts`에 12범주 × 6문항, 총 72문항(한국어 48 / 영어 24)의
+결정론적 평가 계약을 추가했다. 이 숫자는 **평가 범위가 코드로 준비됐다는 뜻**이며,
+CHAT_MODEL이 72개 답변을 생성해 통과했다는 뜻이 아니다. Workers AI 생성,
+citation entailment, LLM judge는 자격증명과 사람 검토가 필요한 opt-in 단계로 남아
+있고 현재 상태는 `pending`이다.
+
+기존 recall@3 0.833은 6문항, generated grounding 1.0은 1문항에서 나온 좁은
+baseline이다. 따라서 현재 챗봇의 종합 미세먼지 해석 능력은 `insufficient`로
+유지하며, 72문항 결과로 기존 baseline을 자동 갱신하지 않는다.
+
 ## 2026-09-06 — 잔여 4지표 확정 (사람 승인 커밋, 6/6 완성)
 
 사용자가 CI 실측값 4종을 검토·승인해 커밋했다. 값의 출처는 전부 GitHub Actions

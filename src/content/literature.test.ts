@@ -29,6 +29,17 @@ describe('literature ledger', () => {
     expect(new Set(refIds).size).toBe(refIds.length)
     expect(new Set(slugs).size).toBe(slugs.length)
   })
+
+  it('gives every quantitative external result a stable claim id', () => {
+    // A reported number may be external rather than an AirLens measurement,
+    // but it still needs a durable handle for the evidence brief and corpus.
+    const quantitative = LITERATURE_REFS.filter((ref) => ref.quantitativeClaim)
+    const ids = quantitative.map((ref) => ref.claimId)
+
+    expect(ids.filter((id) => !id), 'quantitative refs without claim ids').toEqual([])
+    expect(ids.every((id) => /^literature-[a-z0-9-]+$/.test(id!))).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
 })
 
 describe('literatureChunks', () => {
@@ -86,6 +97,7 @@ describe('literatureChunks', () => {
     // Assert
     expect(paperCards).toHaveLength(withNumbers.length)
     expect(paperCards.every((c) => c.source_url.startsWith('https://'))).toBe(true)
+    expect(paperCards.every((c) => c.text.includes('외부 문헌 claim ID: literature-'))).toBe(true)
   })
 
   it('counts each domain\'s references from the ledger rather than from a typed-in number', () => {
@@ -122,12 +134,16 @@ describe('literatureChunks', () => {
     expect(caveat!.text).toContain('판정 불가')
   })
 
-  it('names the two subject gaps instead of leaving them silently uncovered', () => {
-    // Health dose-response and national AQI scales are the two axes ordinary
-    // visitors actually ask about, and neither has sourced evidence yet.
+  it('states the remaining AQI and personal-health boundary after the evidence expansion', () => {
     const caveat = chunks.find((c) => c.id === 'literature:caveat')!
-    expect(caveat.text).toContain('건강영향 용량-반응')
-    expect(caveat.text).toContain('AQI')
+    expect(caveat.text).toContain('국가별 AQI')
+    expect(caveat.text).toContain('개인 의료 위험점수')
+  })
+
+  it('adds the Scite-reviewed assistant and public-interest evidence tracks', () => {
+    expect(LITERATURE_REFS.length).toBeGreaterThanOrEqual(111)
+    expect(LITERATURE_REFS.filter((r) => r.reviewState === 'audited').length).toBeGreaterThanOrEqual(10)
+    expect(LITERATURE_DOMAINS.map((d) => d.id)).toEqual([1, 2, 3, 4, 5, 6])
   })
 })
 

@@ -16,7 +16,7 @@ afterEach(cleanup)
 const DATA_VALUE_PATTERN = /\d+(\.\d+)?\s*(µg\/m³|ppm|%)|AQI\s*\d/i
 
 describe('Trust', () => {
-  it('renders the 6-section hub with no data values (concentration/count/AQI number)', () => {
+  it('renders the 7-section hub with no data values (concentration/count/AQI number)', () => {
     const { container } = render(<Trust />)
     expect(container.textContent).not.toMatch(DATA_VALUE_PATTERN)
   })
@@ -25,7 +25,14 @@ describe('Trust', () => {
     const { getAllByRole } = render(<Trust />)
     const links = getAllByRole('link').map((el) => el.getAttribute('href'))
     expect(links).toEqual(
-      expect.arrayContaining(['/data-sources', '/datasets', '/methodology', '/legal/model-card', '/probe']),
+      expect.arrayContaining([
+        '/data-sources',
+        '/datasets',
+        '/methodology',
+        '/legal/model-card',
+        '/probe',
+        '/methodology#scholarly-evidence',
+      ]),
     )
   })
 

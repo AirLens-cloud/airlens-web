@@ -197,6 +197,14 @@
   color: var(--ink-3);
   font-style: italic;
 }
+.legal-model-table__claims {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legal-model-table__claims li + li {
+  margin-top: var(--sp-1);
+}
 
 /* ==================== About ==================== */
 

@@ -53,6 +53,13 @@ const SECTIONS = [
     href: '/legal/privacy',
     cta: 'Browse legal documents →',
   },
+  {
+    key: 'evidence',
+    title: '⑦ Scholarly evidence',
+    summary: 'Dated AirLens review decisions, DOI and arXiv identifiers, contrasting evidence, and limitations.',
+    href: '/methodology#scholarly-evidence',
+    cta: 'Open Evidence Rail →',
+  },
 ] as const
 
 export default function Trust() {
