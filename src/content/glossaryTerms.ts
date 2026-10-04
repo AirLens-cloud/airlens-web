@@ -143,7 +143,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     definitionKo:
       '실제 관측이 아니라 모델 실행으로 산출된, 미래 또는 근미래 상태를 서술하는 값입니다.',
     example: '"32.1 µg/m³ (forecast, +6h)" shown with a p10–p90 range rather than a single number.',
-    methodRef: 'forecast',
+    methodRef: 'nature-forecast',
     relations: [
       { type: 'isA', target: 'nature' },
       { type: 'seeAlso', target: 'p10-p90' },

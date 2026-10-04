@@ -7,9 +7,17 @@
  * (`relatedTermIds` → `findGlossaryTerm` returns `undefined`, and the UI
  * falls back to printing the raw termId string). This test is the guard
  * against that drifting silently as the catalog grows.
+ *
+ * `methodRef` is the second edge type — a term pointing at the
+ * `/methodology` section that explains it. It is checked against the real
+ * section catalog, not against a string shape: a kebab-case check passes a
+ * ref that names no section at all, which is exactly how four dangling refs
+ * survived (page-specs/methodology-glossary-knowledge-system.md §13 test 3
+ * asks for "dangling link 0건").
  */
 import { describe, it, expect } from 'vitest'
 import { GLOSSARY_TERMS, findGlossaryTerm, relatedTermIds } from './glossaryTerms'
+import { METHODOLOGY_SECTIONS } from './methodologySections'
 
 describe('GLOSSARY_TERMS data integrity', () => {
   it('has no duplicate termIds', () => {
@@ -45,11 +53,14 @@ describe('GLOSSARY_TERMS data integrity', () => {
     expect(ids).toContain('dqss-grade')
   })
 
-  it('every methodRef points at a plausible section id shape (non-empty, kebab-case)', () => {
+  it('every methodRef resolves to a real MethodologySection', () => {
+    const knownSections = new Set(METHODOLOGY_SECTIONS.map((s) => s.sectionId))
+    const dangling: string[] = []
     for (const term of GLOSSARY_TERMS) {
-      if (term.methodRef !== undefined) {
-        expect(term.methodRef).toMatch(/^[a-z0-9-]+$/)
+      if (term.methodRef !== undefined && !knownSections.has(term.methodRef)) {
+        dangling.push(`${term.termId} --methodRef--> ${term.methodRef}`)
       }
     }
+    expect(dangling).toEqual([])
   })
 })
