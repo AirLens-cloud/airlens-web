@@ -1,8 +1,10 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -15,6 +17,8 @@ import CapsulePanel from './CapsulePanel'
 import { useCapsuleData } from './useCapsuleData'
 import { useResolvedLocation } from '../../../hooks/useResolvedLocation'
 import { usePrimaryReading } from '../../../hooks/usePrimaryReading'
+import { useMediaQuery } from '../../../hooks/useMediaQuery'
+import { NAV_DESKTOP, belowWidthQuery } from '../../../lib/breakpoints'
 import { LOCATING_LABEL } from '../../../lib/location/resolveLocation'
 import { formatElapsed } from '../../../lib/home/whyNow'
 import { formatCountdown } from './formatCountdown'
@@ -26,8 +30,25 @@ const COLLAPSED_W = 220
 // bare number with no location context — see AqiCapsule's header comment.
 const COLLAPSED_H = 68
 const EXPANDED_W = 320
+// W2 (F06/GTAB2, mockup B's "Suwon 22" header chip): below NAV_DESKTOP —
+// wherever the nav is in its hamburger mode — the idle pill folds into a
+// one-row chip that sits inside the nav bar; chrome.css places it between
+// the wordmark and the nav's two buttons. The floating 220x68 pill covered
+// each page's own first content there (the /today place heading, the /globe
+// source label, the /insights country picker and freshness line — the last
+// still at 769-1023, iPad portrait). Height =
+// --control-h-md, the theme toggle beside it; width = the room left at the
+// 360px floor (right offset 124 = pad 20 + 56 + 40 + 2x4 gaps; left edge
+// 132 clears the wordmark's 119) — enough for "DEFAULT" and 3 digits.
+const COMPACT_W = 104
+const COMPACT_H = 40
+// The open height before the panel is measured (and the fallback where it
+// cannot be, e.g. jsdom): the effect below grows or shrinks the shell to the
+// bar plus the panel's own content, which W1b's source lines made taller.
 const EXPANDED_H = 300
 const PANEL_PAD = 20
+// Room kept below an open shell that has been capped to the viewport.
+const VIEWPORT_GAP = 16
 
 const ALERT_AUTOCLOSE_MS = 4000
 const ALERT_SESSION_KEY = 'airlens-capsule-alert-shown'
@@ -120,17 +141,21 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
   // clock feeds `usePrimaryReading`'s `ageMs`/countdown math, so the idle
   // bar's countdown live-updates without a second timer.
   const { reading } = usePrimaryReading(location, nowTick)
+  const compact = useMediaQuery(belowWidthQuery(NAV_DESKTOP))
+  const collapsedW = compact ? COMPACT_W : COLLAPSED_W
+  const collapsedH = compact ? COMPACT_H : COLLAPSED_H
 
   const panelId = useId()
   const rootRef = useRef<HTMLDivElement | null>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const userInteractedRef = useRef(false)
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const alertKickoffRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const width = useSpring(COLLAPSED_W, CAPSULE_SPRING)
-  const height = useSpring(COLLAPSED_H, CAPSULE_SPRING)
+  const width = useSpring(collapsedW, CAPSULE_SPRING)
+  const height = useSpring(collapsedH, CAPSULE_SPRING)
 
   useEffect(() => {
     const applyW = (v: number) => {
@@ -152,9 +177,43 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
 
   function applyOpen(next: boolean): void {
     setOpen(next)
-    width.set(next ? EXPANDED_W : COLLAPSED_W)
-    height.set(next ? EXPANDED_H : COLLAPSED_H)
+    width.set(next ? EXPANDED_W : collapsedW)
+    height.set(next ? EXPANDED_H : collapsedH)
   }
+
+  // Open height = the bar + the panel's measured content, capped so the shell
+  // never runs past the bottom of the viewport (a landscape phone); a capped
+  // panel scrolls inside itself (fluid-capsule.css). Re-fit whenever the
+  // panel's content changes size — the CAMS outlook often lands after the
+  // headline. 0 means not laid out (jsdom), so EXPANDED_H stays.
+  const panelMounted = open && reading.status === 'ready'
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    if (!panelMounted || !panel) return
+    function fit(): void {
+      const shell = shellRef.current
+      if (!panel || !shell || panel.scrollHeight === 0) return
+      // The glass's own border sits inside the shell, outside the bar+panel.
+      const border = shell.offsetHeight - (panel.parentElement?.clientHeight ?? shell.offsetHeight)
+      const room = window.innerHeight - shell.getBoundingClientRect().top - VIEWPORT_GAP
+      height.set(Math.max(collapsedH, Math.min(collapsedH + panel.scrollHeight + border, room)))
+    }
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(fit)
+    observer.observe(panel)
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelMounted, collapsedH])
+
+  // A rotation or resize across NAV_DESKTOP while collapsed re-sizes the idle
+  // shape; an open panel keeps its size and collapses to the new one.
+  useEffect(() => {
+    if (open) return
+    width.set(collapsedW)
+    height.set(collapsedH)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collapsedW, collapsedH])
 
   function clearAutoCloseTimer(): void {
     if (autoCloseTimerRef.current !== null) {
@@ -310,20 +369,59 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  const radius = open ? 20 : COLLAPSED_H / 2
+  // The compact chip is square like the nav it sits in (mockup B's chip is
+  // a square hairline box); the floating pill stays round.
+  const radius = open ? 20 : compact ? 0 : COLLAPSED_H / 2
   const phase = pulsing ? 'alerting' : open ? 'open' : 'idle'
   // Never actually hide while it's open or announcing an alert — only the
-  // idle collapsed pill slides away.
-  const hidden = scrolledAway && !open && phase !== 'alerting'
+  // idle collapsed pill slides away. The compact chip never hides: it rides
+  // the nav bar, which stays on screen, so it covers no content to begin with.
+  const hidden = scrolledAway && !open && phase !== 'alerting' && !compact
 
   let idle: ReactNode
   let ariaLabel: string
+  if (reading.status === 'ready') {
+    // Shared by both idle shapes. The stale note matters most on the compact
+    // chip, whose visible "STALE" tag this label replaces for screen readers.
+    const pm = Math.round(reading.pm25)
+    const staleNote = reading.stale ? ', stale reading' : ''
+    ariaLabel =
+      locationSource === 'approx'
+        ? `Air quality ${pm} PM2.5 near ${placeLabel} — approximate location${staleNote}, expand for details`
+        : locationSource === 'default'
+          ? `Air quality ${pm} PM2.5 near ${placeLabel} — not your location${staleNote}, expand for details`
+          : `Air quality ${pm} PM2.5 near ${placeLabel}${staleNote}, expand for details`
+  } else {
+    ariaLabel =
+      reading.status === 'loading'
+        ? 'Air quality loading, expand for details'
+        : 'Air quality feed unavailable, expand for details'
+  }
   if (reading.status === 'loading') {
     idle = <span className="aq-capsule__value">···</span>
-    ariaLabel = 'Air quality loading, expand for details'
   } else if (reading.status === 'unavailable') {
     idle = <span className="aq-capsule__value">NO FEED</span>
-    ariaLabel = 'Air quality feed unavailable, expand for details'
+  } else if (compact) {
+    // One slot beside the number says why to doubt it, most urgent first:
+    // a stale reading is not the air now for anyone; the Seoul default is
+    // not the visitor's place; "~" marks the IP guess (mockup B's "~ Seoul"
+    // eyebrow); otherwise the place itself, city only. The full place, badge
+    // and freshness are one tap away in the panel, and in the aria-label.
+    const tag = reading.stale ? 'STALE' : locationSource === 'default' ? 'DEFAULT' : null
+    idle = (
+      <span className="aq-capsule__chip">
+        <AqiDot tier={reading.tier} size={8} />
+        {tag !== null ? (
+          <span className="aq-capsule__warn">{tag}</span>
+        ) : (
+          <span className="aq-capsule__chip-place">
+            {locationSource === 'approx' ? '~' : ''}
+            {placeLabel.split(',')[0]}
+          </span>
+        )}
+        <span className="aq-capsule__value">{Math.round(reading.pm25)}</span>
+      </span>
+    )
   } else {
     // Null age (unparseable publish time): no countdown and no elapsed
     // figure can be honest, so the chip says the time is unknown instead.
@@ -369,12 +467,6 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
         </span>
       </>
     )
-    ariaLabel =
-      locationSource === 'approx'
-        ? `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel} — approximate location, expand for details`
-        : locationSource === 'default'
-          ? `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel} — not your location, expand for details`
-          : `Air quality ${Math.round(reading.pm25)} PM2.5 near ${placeLabel}, expand for details`
   }
 
   return (
@@ -383,6 +475,10 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
       className="aq-capsule"
       data-phase={phase}
       data-hidden={hidden || undefined}
+      data-compact={compact || undefined}
+      // The idle bar keeps its collapsed height once open, so the panel
+      // mounts below it instead of under a trigger stretched to the shell.
+      style={{ '--aq-capsule-bar-h': `${collapsedH}px` } as CSSProperties}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
     >
@@ -401,7 +497,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
             {idle}
           </button>
           {open && reading.status === 'ready' && (
-            <div id={panelId} className="aq-capsule__panel">
+            <div id={panelId} ref={panelRef} className="aq-capsule__panel">
               <CapsulePanel
                 reading={reading}
                 data={data}

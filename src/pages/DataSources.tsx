@@ -144,6 +144,10 @@ export default function DataSources() {
           </p>
         ) : null}
 
+        <p className="cat-scroll-hint t-micro" data-testid="registry-scroll-hint">
+          Swipe the table sideways for license, cadence and last success →
+        </p>
+
         <div className="cat-table-wrap fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
           <table className="cat-table" data-testid="feed-registry-table">
             <thead>

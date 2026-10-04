@@ -48,6 +48,20 @@ describe('Dispatch page', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/could not be read/i)
   })
 
+  it('renders the category filter as a horizontally scrollable tab row (mobile: no clipped tabs)', async () => {
+    vi.mocked(fetchDispatchFeed).mockResolvedValue({
+      status: 'ready',
+      articles: [article()],
+      categories: ['policy', 'research'],
+      refTime: null,
+    })
+    render(<Dispatch />)
+    await screen.findByText('Article A')
+    const group = screen.getByRole('group', { name: 'Filter by category' })
+    expect(group.classList.contains('seg--scroll')).toBe(true)
+    expect(group.classList.contains('seg--wrap')).toBe(false)
+  })
+
   it('renders card meta with at most 3 badges (category, source, date) plus a separate trust badge', async () => {
     vi.mocked(fetchDispatchFeed).mockResolvedValue({
       status: 'ready',

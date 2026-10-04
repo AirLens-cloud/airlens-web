@@ -105,3 +105,36 @@ describe('SiteChrome — ChatWidget mount scope', () => {
     expect(container.querySelector('.chat-dock')).toBeNull()
   })
 })
+
+// F28 — the mobile dock is a fixed full-width bar; ChatWidget renders a
+// `.chat-dock-reserve` spacer (sized in composites.css) so the last content of
+// a scrolled-to-end page is not left under it. It must trail the footer and
+// exist only where the dock does.
+describe('SiteChrome — chat dock end-of-page reserve', () => {
+  it('renders the reserve spacer after the footer for variant="site"', () => {
+    // Arrange / Act
+    const { container } = render(
+      <SiteChrome variant="site">
+        <p>page content</p>
+      </SiteChrome>,
+    )
+    // Assert
+    const shell = container.querySelector('.chrome-shell') as HTMLElement
+    const reserve = container.querySelector('.chat-dock-reserve') as HTMLElement
+    expect(reserve).not.toBeNull()
+    expect(reserve.getAttribute('aria-hidden')).toBe('true')
+    expect(reserve.parentElement).toBe(shell)
+    expect(reserve.previousElementSibling).toBe(shell.querySelector('footer'))
+  })
+
+  it.each(['overlay', 'bare'] as const)('does not render the reserve spacer for variant="%s"', (variant) => {
+    // Arrange / Act
+    const { container } = render(
+      <SiteChrome variant={variant}>
+        <p>page content</p>
+      </SiteChrome>,
+    )
+    // Assert
+    expect(container.querySelector('.chat-dock-reserve')).toBeNull()
+  })
+})

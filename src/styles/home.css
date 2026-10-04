@@ -55,10 +55,12 @@
   flex-direction: column;
   gap: var(--sp-5);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .home-hero__inner {
     flex-direction: row;
-    align-items: flex-start;
+    /* GTAB3: stretch (was flex-start) so the rail column takes the main
+       column's height instead of ending ~1/3 of the way down the card. */
+    align-items: stretch;
     justify-content: space-between;
     gap: var(--sp-6);
   }
@@ -248,7 +250,7 @@
   gap: var(--sp-3);
   color: var(--glass-card-ink, var(--tint-ink-dark));
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .home-hero__rail {
     width: clamp(280px, 30vw, 340px);
   }
@@ -292,6 +294,31 @@
   height: 1px;
   background: currentColor;
   opacity: 0.24;
+}
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
+  /* GTAB3: the rail is stretched to the main column's height (see
+     `.home-hero__inner`), so it needs a deliberate vertical rhythm rather than
+     an empty tail: head + plot stay together at the top, and the divider's
+     `margin-top: auto` absorbs the free space so the two stat tiles anchor to
+     the card's bottom edge, level with the main column's last line. The
+     sparkline grows into a plot area (hairline gridlines below); its glyph
+     stays aspect-locked (`viewBox` meet) and centres in that area, and
+     `max-height` stops it becoming a tall mostly-empty box on narrow tablets. */
+  .home-hero__rail-svg {
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 52px;
+    max-height: 176px;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, currentColor 12%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 100% 25%;
+  }
+  .home-hero__rail-divider {
+    margin-top: auto;
+  }
 }
 .home-hero__rail-stats {
   display: grid;

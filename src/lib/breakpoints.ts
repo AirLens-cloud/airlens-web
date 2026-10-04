@@ -27,3 +27,14 @@ export const MOBILE_GPU_MAX: Breakpoint = BP.LG; // adaptiveQuality 모바일 GP
 export function maxWidthQuery(px: Breakpoint): string {
   return `(max-width: ${px}px)`;
 }
+
+/** 배타 보수 `(max-width: px-1)` — CSS 의 `max-width: 1023px` + `design-lint-ok: breakpoint — exclusive
+ * complement` 관례와 동형 (예: NAV_DESKTOP 미만 = 햄버거 내비 구간). literal 없이 정본값에서 파생. */
+export function belowWidthQuery(px: Breakpoint): string {
+  return `(max-width: ${px - 1}px)`;
+}
+
+/** `(min-width: …)` 짝 — 데스크톱 쪽 조건 (예: NAV_DESKTOP 이상에서 모바일 메뉴 무효). */
+export function minWidthQuery(px: Breakpoint): string {
+  return `(min-width: ${px}px)`;
+}

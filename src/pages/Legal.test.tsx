@@ -94,3 +94,15 @@ describe('Legal — navigation', () => {
     expect(current.textContent).toMatch(/Terms/)
   })
 })
+
+describe('Legal — Model Card table scroll wrapper (F22)', () => {
+  it('wraps the table in a focusable scroll region so the wrapper, not the page, scrolls', () => {
+    // Arrange / Act
+    render(<Legal doc="model-card" />)
+    const region = screen.getByRole('region', { name: /deployed models table/i })
+    // Assert
+    expect(region.className).toContain('legal-model-table-wrap')
+    expect(region.getAttribute('tabindex')).toBe('0')
+    expect(region.querySelector('table.legal-model-table')).not.toBeNull()
+  })
+})

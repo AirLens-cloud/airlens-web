@@ -88,7 +88,7 @@ export default function Dispatch({ onNavigate }: DispatchProps = {}) {
       </header>
 
       {feed.status !== 'loading' && feed.status !== 'unavailable' && categories.length > 0 && (
-        <WfSegmented items={chipItems} activeKey={category} onChange={handleCategoryChange} ariaLabel="Filter by category" />
+        <WfSegmented items={chipItems} activeKey={category} onChange={handleCategoryChange} ariaLabel="Filter by category" layout="scroll" />
       )}
 
       {feed.status === 'loading' && (

@@ -77,6 +77,18 @@ describe('DataSources', () => {
     expect(screen.getByText('PM2.5 current grid')).toBeTruthy()
   })
 
+  it('tells the reader the table scrolls sideways and which columns are off-screen', async () => {
+    // Arrange
+    installFetch()
+    // Act
+    render(<DataSources />)
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('feed-registry-table')).toBeTruthy())
+    const hint = screen.getByTestId('registry-scroll-hint')
+    expect(hint.textContent).toMatch(/license, cadence and last success/i)
+    expect(hint.classList.contains('cat-scroll-hint')).toBe(true)
+  })
+
   it('opens the matching row on mount when the URL carries a #{sourceId} deep link', async () => {
     // Arrange
     installFetch()

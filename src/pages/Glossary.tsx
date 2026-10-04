@@ -75,7 +75,7 @@ export default function Glossary() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="seg" role="group" aria-label="Filter by category">
+          <div className="seg seg--wrap" role="group" aria-label="Filter by category">
             <button
               type="button"
               className={`seg-item${category === 'all' ? ' active' : ''}`}

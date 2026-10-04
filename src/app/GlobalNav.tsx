@@ -10,6 +10,8 @@ import {
 } from '../components/icons'
 import ThemeToggle from '../components/nav/ThemeToggle'
 import { NAV_GROUPS, getActiveGroupKey, navGroupItems, type NavGroup } from './nav'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import { NAV_DESKTOP, minWidthQuery } from '../lib/breakpoints'
 
 /** Maps each `NAV_GROUPS` key to its mockup §01 nav glyph (data-only `nav.ts`
  *  can't hold JSX, so the key -> icon lookup lives at the render layer). */
@@ -50,6 +52,7 @@ export default function GlobalNav({ variant, onMobileOpenChange }: GlobalNavProp
 
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const desktopNav = useMediaQuery(minWidthQuery(NAV_DESKTOP))
   const navRef = useRef<HTMLElement | null>(null)
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const mobileToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -81,6 +84,24 @@ export default function GlobalNav({ variant, onMobileOpenChange }: GlobalNavProp
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [mobileOpen])
+
+  // F60: lock background scroll while the full-screen mobile panel is open so
+  // the visitor doesn't lose their place. Keyed on `mobileOpen` alone, so every
+  // close path (toggle, Escape, unmount) runs this cleanup — link navigation is
+  // a full page load (D3), which discards the document anyway. Restores the
+  // PREVIOUS inline value rather than '' in case something else set one.
+  // `overflow: hidden` keeps the scroll offset in Chromium/Firefox, so no
+  // position:fixed hack. Never at desktop width: a menu opened on a tablet
+  // and then rotated past NAV_DESKTOP is hidden by CSS along with its close
+  // button, so a lock there would freeze the page with no way to undo it.
+  useEffect(() => {
+    if (!mobileOpen || desktopNav) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [mobileOpen, desktopNav])
 
   useEffect(() => {
     onMobileOpenChange?.(mobileOpen)

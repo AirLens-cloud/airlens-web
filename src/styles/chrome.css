@@ -285,6 +285,12 @@
   height: var(--control-h-lg);
   border: 0;
   background: transparent;
+  /* The bars below paint in currentColor. A <button> does not inherit color —
+     it gets the UA `buttontext`, which follows the OS color-scheme (`:root`
+     is `light dark`), not the site theme: white on the white site bar with the
+     site in light on a dark OS, black on /globe's night-fixed overlay on a
+     light OS. Inherit the bar's own ink instead. */
+  color: inherit;
   cursor: pointer;
   flex-shrink: 0;
   transition: transform var(--dur-press) var(--ease-out);
@@ -331,6 +337,13 @@
 
   .chrome-nav__primary {
     display: none;
+  }
+
+  /* The hidden primary nav was the bar's only flex: 1 child, so without it
+     the theme toggle and hamburger packed up against the wordmark instead
+     of sitting at the right edge (found on the W2 mobile pass). */
+  .chrome-nav__theme-toggle {
+    margin-left: auto;
   }
 
   .chrome-nav__primary[data-mobile-open='true'] {
@@ -424,6 +437,42 @@
    when the nav bar itself is taller (or shorter, at mobile). */
 .chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay {
   --fluid-chrome-top: calc(var(--nav-height) + 160px);
+}
+
+/* W2 (F06/GTAB2/F75): below NAV_DESKTOP (the hamburger-nav band) the
+   capsule is AqiCapsule's compact chip (`data-compact`, COMPACT_W x
+   COMPACT_H) and rides inside the nav bar — vertically centred on it, just
+   left of the theme toggle and hamburger (their widths plus the two 4px
+   gaps set here) — instead of floating over each page's first content: the
+   /today place heading, the /globe source label under the HUD (the +160px
+   anchor above), the /insights country picker and freshness line (still at
+   769-1023). Same query as the JS side (belowWidthQuery(NAV_DESKTOP)). The
+   safe-area term keeps it on the bar if the page ever opts into
+   viewport-fit=cover; today it resolves to 0. */
+@media (max-width: 1023px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 1024 (NAV_DESKTOP), not a new breakpoint */
+  .chrome-nav__bar {
+    gap: var(--sp-1);
+  }
+
+  .chrome-shell--site .fluid-chrome__overlay,
+  .chrome-shell--overlay .fluid-chrome__overlay,
+  .chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay {
+    --fluid-chrome-top: calc(env(safe-area-inset-top, 0px) + (var(--nav-height) - var(--control-h-md)) / 2);
+    left: auto;
+    right: calc(var(--pad-x) + var(--control-h-lg) + var(--control-h-md) + 2 * var(--sp-1));
+    transform: none;
+    transition: top var(--dur-base) var(--ease-out), right var(--dur-base) var(--ease-out);
+  }
+
+  /* Open or alerting: the 320px panel cannot grow out of the chip's spot
+     without running off the left edge, so it drops below the bar, flush
+     with the page gutter on the right. */
+  .chrome-shell--site .fluid-chrome__overlay:has(.aq-capsule:not([data-phase='idle'])),
+  .chrome-shell--overlay .fluid-chrome__overlay:has(.aq-capsule:not([data-phase='idle'])),
+  .chrome-shell--overlay .globe-page ~ .fluid-chrome__overlay:has(.aq-capsule:not([data-phase='idle'])) {
+    --fluid-chrome-top: calc(env(safe-area-inset-top, 0px) + var(--nav-height) + var(--sp-2));
+    right: var(--pad-x);
+  }
 }
 
 /* Blocker fix (review round 1): /globe's overlay nav (chrome-nav--overlay,

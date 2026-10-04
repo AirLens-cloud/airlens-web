@@ -252,6 +252,40 @@
 .seg-item-wrap:last-child { border-right: 0; }
 .seg-item-wrap .seg-item { border-right: 0; }
 
+/* .seg--wrap — chips wrap onto extra rows instead of overflowing (Glossary
+   category filter). overflow:hidden is what clipped the last chip, so the
+   wrap variant drops it and the group outline: every item draws its own
+   1px hairline and overlaps its neighbours by 1px (negative right/bottom
+   margin), so shared edges read as a single line in every row. The padding
+   gives the last column / row's overhanging edge room inside the box. */
+.seg--wrap { flex-wrap: wrap; max-width: 100%; border: 0; overflow: visible; padding: 0 1px 1px 0; }
+.seg.seg--wrap .seg-item { border: 1px solid var(--ink-0); margin: 0 -1px -1px 0; }
+.seg--wrap .seg-item-wrap { border: 1px solid var(--ink-0); margin: 0 -1px -1px 0; }
+.seg.seg--wrap .seg-item-wrap .seg-item { border: 0; margin: 0; }
+
+/* .seg--scroll — one non-wrapping row that swipes sideways (Dispatch category
+   tabs). Scrollbar hidden; the scroll-shadow layers below are the affordance:
+   `local` layers (solid page colour) travel with the content and cancel the
+   matching `scroll` layer (ink tint pinned to the box edge) once that end is
+   reached, so a fade shows only on a side that still has hidden content —
+   and never when the row fits. Needs the page behind it to be --bg-0. */
+.seg--scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  background:
+    linear-gradient(to right, var(--bg-0), var(--bg-0)) left center / 32px 100% no-repeat local,
+    linear-gradient(to left, var(--bg-0), var(--bg-0)) right center / 32px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--ink-0) 24%, transparent), transparent) left center / 32px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--ink-0) 24%, transparent), transparent) right center / 32px 100% no-repeat scroll;
+}
+.seg--scroll::-webkit-scrollbar { display: none; }
+.seg--scroll .seg-item,
+.seg--scroll .seg-item-wrap { flex: 0 0 auto; white-space: nowrap; }
+/* the group clips (overflow), so an outside focus ring would be cut off */
+.seg--scroll .seg-item:focus-visible { outline-offset: -2px; }
+
 /* ---- BilingualLabel ---- */
 .wf-bi-label { display: flex; flex-direction: column; gap: 4px; }
 .wf-bi-label__ko { font-family: var(--serif); font-weight: 700; font-size: var(--fs-h3); letter-spacing: -.02em; color: var(--ink-0); }

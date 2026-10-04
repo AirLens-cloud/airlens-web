@@ -4,6 +4,10 @@ import AqiCapsule from './AqiCapsule'
 import type { CapsuleDataReady } from './useCapsuleData'
 import type { PrimaryReadingReady } from '../../../lib/reading/resolvePrimaryReading'
 import { CAMS_REFRESH_MS, GRID_REFRESH_MS } from '../../../lib/config/readingCadence'
+import { NAV_DESKTOP, belowWidthQuery } from '../../../lib/breakpoints'
+
+/** The hamburger-nav band the compact chip keys on. */
+const NAV_QUERY = belowWidthQuery(NAV_DESKTOP)
 
 vi.mock('./useCapsuleData', () => ({
   useCapsuleData: vi.fn(),
@@ -614,5 +618,163 @@ describe('AqiCapsule — worsening alert waits for the headline reading', () => 
     // Assert — now it opens and the alert is marked shown
     expect(trigger().getAttribute('aria-expanded')).toBe('true')
     expect(sessionStorage.getItem('airlens-capsule-alert-shown')).toBe('1')
+  })
+})
+
+describe('AqiCapsule — compact nav chip below NAV_DESKTOP (W2 F06/GTAB2)', () => {
+  // A hamburger-nav viewport (phone or tablet portrait): the width query
+  // matches, and reduced motion stays on (as in the file default) so the
+  // springs jump.
+  let widthListeners: Set<() => void>
+  let phone: boolean
+
+  beforeEach(() => {
+    widthListeners = new Set()
+    phone = true
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      get matches() {
+        return query.includes('reduced-motion') || (query === NAV_QUERY && phone)
+      },
+      media: query,
+      addEventListener: (_t: string, cb: () => void) => {
+        if (query === NAV_QUERY) widthListeners.add(cb)
+      },
+      removeEventListener: (_t: string, cb: () => void) => widthListeners.delete(cb),
+    }))
+  })
+
+  function shellSize(container: HTMLElement): [string, string] {
+    const shell = container.querySelector<HTMLElement>('.aq-capsule__shell')!
+    return [shell.style.width, shell.style.height]
+  }
+
+  it('folds the idle pill into a one-row chip sized for the nav bar', () => {
+    // Arrange / Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const root = container.querySelector('.aq-capsule')!
+    expect(root.hasAttribute('data-compact')).toBe(true)
+    expect(shellSize(container)).toEqual(['104px', '40px'])
+    const chip = container.querySelector('.aq-capsule__chip')!
+    expect(chip.querySelector('[data-tier]')?.getAttribute('data-tier')).toBe('moderate')
+    expect(chip.querySelector('.aq-capsule__value')?.textContent).toBe('42')
+    // The two-row pill's parts are gone: no place row, unit or countdown.
+    expect(container.querySelector('.aq-capsule__loc-row')).toBeNull()
+    expect(container.querySelector('.aq-capsule__unit')).toBeNull()
+    expect(container.querySelector('.aq-capsule__countdown')).toBeNull()
+  })
+
+  it('says DEFAULT, not a bare place name, on the Seoul fallback', () => {
+    // Arrange / Act — the file-default location is the Seoul default
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const chip = container.querySelector('.aq-capsule__chip')!
+    expect(chip.querySelector('.aq-capsule__warn')?.textContent).toBe('DEFAULT')
+    expect(chip.querySelector('.aq-capsule__chip-place')).toBeNull()
+    expect(within(container).getByRole('button').getAttribute('aria-label')).toBe(
+      'Air quality 42 PM2.5 near Seoul, KR — not your location, expand for details',
+    )
+  })
+
+  it('marks an IP-approximate place with "~" and shows the city only', () => {
+    // Arrange
+    mockResolvedLocation({ location: { lat: 37.26, lon: 127.03, label: 'Suwon, KR', source: 'approx' } })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    const chip = container.querySelector('.aq-capsule__chip')!
+    expect(chip.querySelector('.aq-capsule__chip-place')?.textContent).toBe('~Suwon')
+    expect(chip.querySelector('.aq-capsule__warn')).toBeNull()
+  })
+
+  it("shows the visitor's own place plainly", () => {
+    // Arrange
+    mockResolvedLocation({ location: { lat: 37.26, lon: 127.03, label: 'Suwon, KR', source: 'geolocation' } })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(container.querySelector('.aq-capsule__chip-place')?.textContent).toBe('Suwon')
+    expect(container.querySelector('.aq-capsule__warn')).toBeNull()
+  })
+
+  it('puts STALE in the tag slot, ahead of DEFAULT, and says so to screen readers', () => {
+    // Arrange — stale AND the Seoul default: staleness wins the one slot
+    mockPrimaryReading({ ...READING_READY, stale: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(container.querySelector('.aq-capsule__chip .aq-capsule__warn')?.textContent).toBe('STALE')
+    expect(within(container).getByRole('button').getAttribute('aria-label')).toBe(
+      'Air quality 42 PM2.5 near Seoul, KR — not your location, stale reading, expand for details',
+    )
+  })
+
+  it('names a stale reading in the aria-label of the wide pill too', () => {
+    // Arrange — desktop width
+    phone = false
+    mockResolvedLocation({ location: { lat: 37.26, lon: 127.03, label: 'Suwon, KR', source: 'search' } })
+    mockPrimaryReading({ ...READING_READY, stale: true })
+    // Act
+    const { container } = render(<AqiCapsule />)
+    // Assert
+    expect(container.querySelector('.aq-capsule')!.hasAttribute('data-compact')).toBe(false)
+    expect(within(container).getByRole('button').getAttribute('aria-label')).toBe(
+      'Air quality 42 PM2.5 near Suwon, KR, stale reading, expand for details',
+    )
+  })
+
+  it('opens to the full panel size and closes back to the chip', () => {
+    // Arrange
+    const { container } = render(<AqiCapsule />)
+    const trigger = within(container).getByRole('button')
+    // Act
+    fireEvent.click(trigger)
+    // Assert
+    expect(shellSize(container)).toEqual(['320px', '300px'])
+    // Act
+    fireEvent.click(trigger)
+    // Assert
+    expect(shellSize(container)).toEqual(['104px', '40px'])
+  })
+
+  it('re-sizes the collapsed shape when the viewport crosses NAV_DESKTOP', () => {
+    // Arrange
+    const { container } = render(<AqiCapsule />)
+    expect(shellSize(container)).toEqual(['104px', '40px'])
+    // Act — rotated into landscape past 1024
+    phone = false
+    act(() => widthListeners.forEach((cb) => cb()))
+    // Assert
+    expect(shellSize(container)).toEqual(['220px', '68px'])
+    expect(container.querySelector('.aq-capsule__loc-row')).not.toBeNull()
+    // Act — and back
+    phone = true
+    act(() => widthListeners.forEach((cb) => cb()))
+    // Assert
+    expect(shellSize(container)).toEqual(['104px', '40px'])
+  })
+
+  it('never slides away on scroll: it rides the nav bar, which stays on screen', () => {
+    // Arrange — motion on (the scroll listener only attaches then), phone width
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === NAV_QUERY,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb))
+    vi.stubGlobal('cancelAnimationFrame', () => {})
+    const scrollTo = (y: number) => {
+      Object.defineProperty(window, 'scrollY', { value: y, configurable: true, writable: true })
+      fireEvent.scroll(window)
+      act(() => frames.splice(0).forEach((cb) => cb(0)))
+    }
+    scrollTo(0)
+    const { container } = render(<AqiCapsule />)
+    // Act — the same downward scroll that hides the wide pill
+    scrollTo(200)
+    // Assert
+    expect(container.querySelector('.aq-capsule')!.hasAttribute('data-hidden')).toBe(false)
   })
 })

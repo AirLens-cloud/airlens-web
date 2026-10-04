@@ -224,7 +224,7 @@
   flex-direction: column;
   gap: var(--sp-5);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .wx-hero__band {
     flex-direction: row;
     align-items: flex-start;
@@ -285,7 +285,7 @@
   flex-direction: column;
   gap: var(--sp-3);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .wx-hero__rail {
     width: clamp(280px, 30vw, 340px);
   }
