@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import '../styles/static.css'
-import { METHODOLOGY_SECTIONS } from '../content/methodologySections'
-import { METHODOLOGY_CLAIM_IDS } from '../content/methodologySections'
+import { METHODOLOGY_SECTIONS, METHODOLOGY_CLAIM_IDS } from '../content/methodologySections'
 import { GLOSSARY_TERMS } from '../content/glossaryTerms'
 import ScholarlyEvidencePanel from '../components/evidence/ScholarlyEvidencePanel'
 
@@ -81,7 +80,14 @@ export default function Methodology() {
               {section.claimIds?.length ? (
                 <div className="methodology-section__related" aria-label="Scholarly evidence references">
                   {section.claimIds.map((claimId) => (
-                    <a key={claimId} href={`#claim-${claimId}`} className="t-tag">Evidence review</a>
+                    <a
+                      key={claimId}
+                      href={`#claim-${claimId}`}
+                      className="t-tag"
+                      aria-label={`Evidence review: ${section.title} (${claimId})`}
+                    >
+                      Evidence review
+                    </a>
                   ))}
                 </div>
               ) : null}

@@ -79,10 +79,6 @@ function referenceHref(reference: ScholarlyReference): string | null {
   return null
 }
 
-function artifactHref(path: string): string {
-  return `https://github.com/AirLens-cloud/AirLens/blob/main/${path.split('/').map(encodeURIComponent).join('/')}`
-}
-
 function ClaimCard({ claim, locale }: { claim: ScholarlyClaim; locale: EvidenceLocale }) {
   const copy = COPY[locale]
   const reviewed = new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-CA', {
@@ -100,35 +96,39 @@ function ClaimCard({ claim, locale }: { claim: ScholarlyClaim; locale: EvidenceL
       </header>
       <p className="scholarly-claim__statement t-body" lang={locale}>{claim.statement[locale]}</p>
 
-      <h3 className="scholarly-claim__label t-micro">{copy.references}</h3>
-      <ul className="scholarly-claim__references">
-        {claim.references.map((reference) => {
-          const href = referenceHref(reference)
-          return (
-            <li key={`${reference.idType}:${reference.id}`}>
-              <span className="t-tag">{copy.role[reference.role]}</span>{' '}
-              {href ? (
-                <a href={href} target="_blank" rel="noreferrer">{reference.title} ↗</a>
-              ) : (
-                <span>{reference.title}</span>
-              )}{' '}
-              <code>{reference.idType === 'arxiv' ? `arXiv:${reference.id}` : reference.id}</code>
-              {reference.notice !== 'none' ? (
-                <strong className="scholarly-claim__notice" role="alert">
-                  {copy.notice[reference.notice]}
-                </strong>
-              ) : null}
-            </li>
-          )
-        })}
-      </ul>
+      {claim.references.length > 0 ? (
+        <>
+          <h3 className="scholarly-claim__label t-micro">{copy.references}</h3>
+          <ul className="scholarly-claim__references">
+            {claim.references.map((reference) => {
+              const href = referenceHref(reference)
+              return (
+                <li key={`${reference.idType}:${reference.id}`}>
+                  <span className="t-tag">{copy.role[reference.role]}</span>{' '}
+                  {href ? (
+                    <a href={href} target="_blank" rel="noreferrer">{reference.title} ↗</a>
+                  ) : (
+                    <span>{reference.title}</span>
+                  )}{' '}
+                  <code>{reference.idType === 'arxiv' ? `arXiv:${reference.id}` : reference.id}</code>
+                  {reference.notice !== 'none' ? (
+                    <strong className="scholarly-claim__notice" role="status">
+                      {copy.notice[reference.notice]}
+                    </strong>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      ) : null}
 
       {claim.airlensEvidenceRefs.length > 0 ? (
         <>
           <h3 className="scholarly-claim__label t-micro">{copy.airlens}</h3>
           <ul className="scholarly-claim__artifacts">
             {claim.airlensEvidenceRefs.map((path) => (
-              <li key={path}><a href={artifactHref(path)} target="_blank" rel="noreferrer"><code>{path}</code> ↗</a></li>
+              <li key={path}><code>{path}</code></li>
             ))}
           </ul>
         </>
@@ -136,7 +136,7 @@ function ClaimCard({ claim, locale }: { claim: ScholarlyClaim; locale: EvidenceL
 
       <h3 className="scholarly-claim__label t-micro">{copy.limitations}</h3>
       <ul className="scholarly-claim__limitations" lang={locale}>
-        {claim.limitations[locale].map((limitation) => <li key={limitation}>{limitation}</li>)}
+        {claim.limitations[locale].map((limitation, index) => <li key={`${index}:${limitation}`}>{limitation}</li>)}
       </ul>
     </article>
   )

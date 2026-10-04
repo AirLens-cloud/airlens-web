@@ -100,4 +100,38 @@ describe('ScholarlyEvidencePanel', () => {
 
     await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' }))
   })
+
+  it('renders artifact paths as plain text, not links', async () => {
+    mockCatalog()
+    render(<ScholarlyEvidencePanel claimIds={['supported-fixture']} />)
+    await screen.findByText('supported English statement')
+
+    const path = screen.getByText('models/eval/supported.json')
+    expect(path.tagName).toBe('CODE')
+    expect(path.closest('a')).toBeNull()
+  })
+
+  it('omits the References heading when a claim has no references', async () => {
+    const value = fixture()
+    value.claims[0].references = []
+    mockCatalog(value)
+    render(<ScholarlyEvidencePanel claimIds={['supported-fixture']} />)
+    await screen.findByText('supported English statement')
+
+    expect(screen.queryByRole('heading', { name: 'References' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Limitations' })).not.toBeNull()
+  })
+
+  it('renders duplicate limitation strings without key collisions', async () => {
+    const value = fixture()
+    value.claims[0].limitations.en = ['Same limit', 'Same limit']
+    mockCatalog(value)
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<ScholarlyEvidencePanel claimIds={['supported-fixture']} />)
+    await screen.findByText('supported English statement')
+
+    expect(screen.getAllByText('Same limit')).toHaveLength(2)
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
 })

@@ -34,8 +34,16 @@ function hasLocalizedText(value: unknown): value is { ko: string; en: string } {
   return isRecord(value) && typeof value.ko === 'string' && typeof value.en === 'string'
 }
 
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && ISO_DATE_TIME.test(value) && Number.isFinite(Date.parse(value))
+}
+
 function isReference(value: unknown): value is ScholarlyReference {
   if (!isRecord(value)) return false
+  // Reference URLs are rendered as hrefs: only https:// may cross the boundary.
+  if (value.idType === 'url' && !(typeof value.id === 'string' && value.id.startsWith('https://'))) return false
   return (
     ['doi', 'arxiv', 'guideline', 'url'].includes(String(value.idType)) &&
     typeof value.id === 'string' &&
@@ -53,8 +61,7 @@ function isClaim(value: unknown): value is ScholarlyClaim {
     DOMAINS.has(value.domain as ScholarlyClaimDomain) &&
     (value.risk === 'high' || value.risk === 'standard') &&
     STATUSES.has(value.status as ScholarlyClaimStatus) &&
-    typeof value.verifiedAt === 'string' &&
-    Number.isFinite(Date.parse(value.verifiedAt)) &&
+    isIsoDate(value.verifiedAt) &&
     Array.isArray(value.references) &&
     value.references.every(isReference) &&
     Array.isArray(value.airlensEvidenceRefs) &&
