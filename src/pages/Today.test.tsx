@@ -6,30 +6,34 @@
 // and a partial render when one source fails while the other still
 // resolves.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup, fireEvent } from '@testing-library/react'
+import { render, cleanup, fireEvent, act } from '@testing-library/react'
 
-vi.mock('../hooks/useGeolocation', () => ({ useGeolocation: vi.fn() }))
+vi.mock('../hooks/useResolvedLocation', () => ({ useResolvedLocation: vi.fn() }))
 vi.mock('../hooks/useWeatherPageData', () => ({ useWeatherPageData: vi.fn() }))
 vi.mock('../hooks/useTodayGrid', () => ({ useTodayGrid: vi.fn() }))
 vi.mock('../hooks/useTodayCams', () => ({ useTodayCams: vi.fn() }))
 
-import { useGeolocation } from '../hooks/useGeolocation'
+import { useResolvedLocation } from '../hooks/useResolvedLocation'
 import { useWeatherPageData } from '../hooks/useWeatherPageData'
 import { useTodayGrid } from '../hooks/useTodayGrid'
 import { useTodayCams } from '../hooks/useTodayCams'
 import Today from './Today'
 import type { TodayGridState } from '../hooks/useTodayGrid'
 import type { TodayCamsState } from '../hooks/useTodayCams'
+import type { OpenMeteoWeatherHourly } from '../types/forecast'
 
-const SEOUL = { lat: 37.5665, lon: 126.978, source: 'default' as const, label: 'Seoul (default)' }
+const SEOUL = { lat: 37.5665, lon: 126.978, source: 'default' as const, label: 'Seoul, KR' }
 
-function mockGeo(overrides: Partial<ReturnType<typeof useGeolocation>> = {}) {
-  vi.mocked(useGeolocation).mockReturnValue({
+function mockGeo(overrides: Partial<ReturnType<typeof useResolvedLocation>> = {}) {
+  vi.mocked(useResolvedLocation).mockReturnValue({
     location: SEOUL,
+    choice: null,
+    approx: { status: 'failed' },
     requesting: false,
     denied: false,
-    requestLocation: vi.fn(),
-    setLocation: vi.fn(),
+    requestGeolocation: vi.fn(),
+    selectCity: vi.fn(),
+    clearChoice: vi.fn(),
     ...overrides,
   })
 }
@@ -39,7 +43,6 @@ function mockWeather(overrides: Partial<ReturnType<typeof useWeatherPageData>> =
     status: 'ready',
     configured: true,
     weather: null,
-    aq: null,
     wind: null,
     mslp: null,
     fetchedAt: Date.now(),
@@ -257,18 +260,26 @@ describe('Today page', () => {
   })
 
   it('renders a fresh CAMS-primary reading as ready — GRID missing, CAMS stale:false', () => {
-    // Arrange
-    openOnInsightTab()
-    mockGeo()
-    mockWeather()
-    mockGrid({ status: 'missing' })
-    mockCams(camsReady({ stale: false }))
-    // Act
-    const { container } = render(<Today />)
-    // Assert
-    expect(container.querySelector('.gobs-live-dot.is-ready')).not.toBeNull()
-    const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
-    expect(camsWhySub?.textContent).not.toMatch(/^stale/)
+    // Arrange — "fresh" needs a clock near the fixture's 2026-08-26 generation
+    // time: since W1b ④ staleness is also judged against the ticking clock,
+    // so on the real clock this fixture would (correctly) read as stale.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-26T01:00:00Z'))
+    try {
+      openOnInsightTab()
+      mockGeo()
+      mockWeather()
+      mockGrid({ status: 'missing' })
+      mockCams(camsReady({ stale: false }))
+      // Act
+      const { container } = render(<Today />)
+      // Assert
+      expect(container.querySelector('.gobs-live-dot.is-ready')).not.toBeNull()
+      const camsWhySub = container.querySelector('[data-source="cams"] .today-cell__sub')
+      expect(camsWhySub?.textContent).not.toMatch(/^stale/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the distance to the primary source next to its city name when known', () => {
@@ -327,7 +338,7 @@ describe('Today page', () => {
     expect(getByText(/2\/2 sources agree on tier/)).toBeTruthy()
   })
 
-  it('shows a real DQSS score in TrustLine when the GRID reading carries one', () => {
+  it('shows a real DQSS score in TrustLine as its grade badge when the GRID reading carries one', () => {
     // Arrange
     mockGeo()
     mockWeather()
@@ -337,7 +348,9 @@ describe('Today page', () => {
     const { container } = render(<Today />)
     // Assert
     const trustLine = container.querySelector('[data-testid="trust-line"]')
-    expect(trustLine?.textContent).toMatch(/DQSS.*82\/100/)
+    // 82 is an A (≥ 80) — the badge, not the raw "82/100" (F53).
+    expect(trustLine?.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe('A')
+    expect(trustLine?.textContent).not.toMatch(/82\/100/)
     // GRID publishes no uncertainty band regardless of DQSS presence.
     expect(trustLine?.textContent).toMatch(/not published/)
   })
@@ -489,5 +502,312 @@ describe('Today — an unverifiable GRID cell', () => {
 
     // Assert — GRID is still preferred over CAMS when it is sound.
     expect(container.querySelector('.today-answer')?.textContent).toContain('12')
+  })
+})
+
+/**
+ * W1b commit ③ — the Conditions surfaces (the hero rail's "PM2.5 now" tile
+ * and the Conditions tab's AirQualityLine) used to read Open-Meteo's own
+ * hourly PM2.5 point, a third number next to the headline resolver's. They
+ * now render the resolved primary reading. The numbers below are chosen so
+ * no other figure on the page can be mistaken for them: the GRID analysis
+ * (42.4) and the CAMS city forecast (21) sit in different tiers, and the
+ * weather fixture's own numbers (23 degrees, UV 6) collide with neither.
+ */
+describe('Today — Conditions surfaces show the shared primary PM2.5 reading', () => {
+  const HOURS = Array.from({ length: 24 }, (_, i) => `2026-09-06T${String(i).padStart(2, '0')}:00`)
+  const WEATHER_READY: OpenMeteoWeatherHourly = {
+    time: HOURS,
+    temperature_2m: HOURS.map(() => 23),
+    apparent_temperature: HOURS.map(() => 24),
+    uv_index: HOURS.map(() => 6),
+    weather_code: HOURS.map(() => 0),
+  }
+  const GRID_ANALYSIS = {
+    status: 'ready' as const,
+    pm25: 42.4,
+    updatedAt: '2026-08-26T00:00:00Z',
+    stale: false,
+    distanceKm: 3,
+  }
+
+  // The fixtures are published 2026-08-26T00:00Z and declared fresh; every
+  // surface re-judges staleness on the ticking clock (48h), so pin it an
+  // hour later — on the real clock they would (correctly) read as stale.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-08-26T01:00:00Z'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** The hero rail's "PM2.5 now" tile — found by its label, not by position,
+   * so the UV tile beside it can never be mistaken for it. */
+  function pm25NowTile(container: HTMLElement): HTMLElement | null {
+    const tiles = container.querySelectorAll<HTMLElement>('.wx-hero__rail .wx-tile')
+    return Array.from(tiles).find((t) => t.querySelector('.wx-tile__label')?.textContent === 'PM2.5 now') ?? null
+  }
+
+  function airQualitySection(container: HTMLElement): HTMLElement | null {
+    return container.querySelector<HTMLElement>('section[aria-label="Air quality"]')
+  }
+
+  /** Integer in "{n} µg/m³ PM2.5" — the Answer meta line's and the AirQualityLine's shared phrasing. */
+  function headlineNumber(text: string | null | undefined): number | null {
+    const m = (text ?? '').match(/(\d+)\s*µg\/m³\s*PM2\.5/)
+    return m ? Number(m[1]) : null
+  }
+
+  it('hero rail tile shows the resolved analysis PM2.5 with its own tier dot and a "model analysis" caption', () => {
+    // Arrange — analysis 42.4 (usg) beats the CAMS city forecast 21 (moderate).
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('42')
+    expect(tile?.querySelector('.aqi-dot')?.getAttribute('data-tier')).toBe('usg')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · model analysis')
+  })
+
+  it('air-quality line shows the same resolved number, its tier grade and where the number comes from', () => {
+    // Arrange
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const line = airQualitySection(container)?.querySelector('.wx-aq-line')
+    expect(line?.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+    expect(line?.getAttribute('data-aqi')).toBe('usg')
+    expect(line?.querySelector('.wx-aq-line__grade')?.textContent).toBe('Unhealthy for sensitive groups')
+    expect(line?.querySelector('.wx-aq-line__source')?.textContent).toBe('Model analysis, nearest grid cell · 3 km')
+    expect(line?.querySelector('.wx-aq-line__action')?.textContent).toBe(
+      'Sensitive groups should limit prolonged outdoor exertion.',
+    )
+    expect(line?.hasAttribute('data-stale')).toBe(false)
+  })
+
+  it('marks both Conditions surfaces stale and withholds the health advice once the reading is past 48h', () => {
+    // Arrange — the same analysis, read 49h after it was published (an
+    // upstream outage): the HUD on the Insight tab calls it stale, and the
+    // default tab must not present it as the air right now.
+    vi.setSystemTime(new Date('2026-08-28T01:00:00Z'))
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · model analysis · stale')
+    const line = airQualitySection(container)?.querySelector('.wx-aq-line')
+    expect(line?.getAttribute('data-stale')).toBe('true')
+    expect(line?.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+    expect(line?.querySelector('.wx-aq-line__action')?.textContent).toBe(
+      'Stale — published more than 48h ago, so it may not reflect the air now.',
+    )
+    expect(line?.textContent).not.toContain('Sensitive groups')
+  })
+
+  it('hero rail, air-quality line and the Insight answer all read the same PM2.5 number', () => {
+    // Arrange
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid(GRID_ANALYSIS)
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    const { container, getByRole } = render(<Today />)
+    // Act — read both Conditions surfaces, then switch to Insight via the
+    // segmented control and read the Answer's meta line.
+    const rail = Number(pm25NowTile(container)?.querySelector('.wx-tile__value')?.textContent)
+    const airQualityLine = headlineNumber(container.querySelector('.wx-aq-line__value')?.textContent)
+    fireEvent.click(getByRole('button', { name: 'Insight' }))
+    const insightAnswer = headlineNumber(container.querySelector('.today-answer__meta')?.textContent)
+    // Assert — one number, not three (the pre-③ hero rail / line read Open-Meteo's own point).
+    expect({ rail, airQualityLine, insightAnswer }).toEqual({ rail: 42, airQualityLine: 42, insightAnswer: 42 })
+  })
+
+  it('names the CAMS forecast — not a model analysis — on both surfaces when only the forecast resolved', () => {
+    // Arrange — GRID absent, so the CAMS city forecast (55.6) is the headline.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ current: 55.6, tier: 'unhealthy' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('56')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('µg/m³ · CAMS forecast · Seoul, KR · 1 km')
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('56 µg/m³ PM2.5')
+    expect(container.querySelector('.wx-aq-line__source')?.textContent).toBe('CAMS forecast for Seoul, KR · 1 km')
+  })
+
+  it('never prints an unverifiable GRID cell on the hero rail or the air-quality line — the CAMS reading stands in', () => {
+    // Arrange — the 15,868 µg/m³ boreal-fire cell is unreportable (see the
+    // "unverifiable GRID cell" block below); CAMS carries the headline.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({
+      ...GRID_ANALYSIS,
+      pm25: 15867.96,
+      plausibility: { verdict: 'beyond-scale', reason: 'beyond the top of our reporting scale — we cannot verify this reading' },
+    })
+    mockCams(camsReady({ current: 20, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)?.querySelector('.wx-tile__value')?.textContent).toBe('20')
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('20 µg/m³ PM2.5')
+    expect(container.textContent).not.toContain('15868')
+  })
+
+  it('still shows the resolved number in the air-quality line when the weather fetch failed and the hero rail is absent', () => {
+    // Arrange — `weather: null` with status 'ready' is the weather section's
+    // own error state; the PM2.5 reading no longer depends on it.
+    mockGeo()
+    mockWeather({ weather: null })
+    mockGrid(GRID_ANALYSIS)
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(pm25NowTile(container)).toBeNull()
+    expect(container.querySelector('.wx-aq-line__value')?.textContent).toBe('42 µg/m³ PM2.5')
+  })
+
+  it('shows "unavailable" instead of a number on both surfaces when no source resolved, even though weather is ready', () => {
+    // Arrange — GRID and CAMS both absent -> the reading is 'unavailable'.
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'missing' })
+    mockCams({ status: 'missing' })
+    // Act
+    const { container } = render(<Today />)
+    // Assert — the rail keeps its footprint but says why it has no number
+    // (never the old "Not measured"); the line swaps to the data-state.
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('—')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('Unavailable')
+    expect(tile?.querySelector('.aqi-dot')).toBeNull()
+    const section = airQualitySection(container)
+    expect(section?.querySelector('.wf-datastate-unavailable')).not.toBeNull()
+    expect(section?.querySelector('.wx-aq-line')).toBeNull()
+    expect(section?.textContent ?? '').not.toMatch(/\d+\s*µg\/m³/)
+  })
+
+  it('shows a loading placeholder — no number, no "unavailable" — on both surfaces while the GRID is still resolving', () => {
+    // Arrange — the resolver holds the whole reading back while GRID loads,
+    // even with CAMS already in (the flicker fix).
+    mockGeo()
+    mockWeather({ weather: WEATHER_READY })
+    mockGrid({ status: 'loading' })
+    mockCams(camsReady({ current: 21, tier: 'moderate' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    const tile = pm25NowTile(container)
+    expect(tile?.querySelector('.wx-tile__value')?.textContent).toBe('—')
+    expect(tile?.querySelector('.wx-tile__sub')?.textContent).toBe('Loading…')
+    const section = airQualitySection(container)
+    expect(section?.querySelector('.wf-skeleton')).not.toBeNull()
+    expect(section?.querySelector('.wx-aq-line')).toBeNull()
+    expect(section?.querySelector('.wf-datastate')).toBeNull()
+  })
+})
+
+describe('Today — freshness labels keep ticking while the tab stays open (GNET1)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("grows the TrustLine's data age with the wall clock instead of freezing it at mount", () => {
+    // Arrange — the GRID reading was published 30 minutes before the page mounts.
+    const updatedAt = '2026-08-26T00:00:00Z'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(updatedAt).getTime() + 30 * 60_000)
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt, stale: false, distanceKm: 1 })
+    mockCams({ status: 'missing' })
+    const { container } = render(<Today />)
+    const dataAge = () => container.querySelector('[data-testid="trust-line"]')?.textContent ?? ''
+    const atMount = dataAge()
+    // Act — one clock tick, then the tab stays open for 89 more minutes.
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    const afterOneTick = dataAge()
+    act(() => {
+      vi.advanceTimersByTime(89 * 60_000)
+    })
+    // Assert — it moves every minute, not only on some coarser cadence.
+    expect(atMount).toMatch(/data age 30m/)
+    expect(afterOneTick).toMatch(/data age 31m/)
+    expect(dataAge()).toMatch(/data age 2\.0h/)
+  })
+
+  it('marks a CAMS reading of unknown age on the HUD and on both panels, never leaving the panels unflagged', () => {
+    // Arrange — no GRID; the CAMS feed's `generated_at` could not be parsed
+    // (`useTodayCams` reports `stale: null`), so the resolver calls it stale.
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'missing' })
+    mockCams(camsReady({ stale: null, updatedAt: 'not-a-date' }))
+    // Act
+    const { container } = render(<Today />)
+    // Assert
+    expect(container.querySelector('.gobs-live-dot.is-stale')).not.toBeNull()
+    expect(container.querySelector('[data-source="cams"] .today-cell__sub')?.textContent).toMatch(
+      /^publish time unknown · forecast · lead \+0h · valid /,
+    )
+    expect(container.querySelector('.today-evidence')?.textContent).toContain(' · publish time unknown')
+    expect(container.textContent).not.toMatch(/NaN/)
+  })
+
+  it('flags the Why and Evidence panels stale at the same moment as the HUD once the open tab crosses 48h', () => {
+    // Arrange — both sources published 1h before the page mounts, declared
+    // fresh at fetch time; nothing refetches while the tab stays open.
+    const updatedAt = '2026-08-26T00:00:00Z'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(updatedAt).getTime() + 60 * 60_000)
+    openOnInsightTab()
+    mockGeo()
+    mockWeather()
+    mockGrid({ status: 'ready', pm25: 20, updatedAt, stale: false, distanceKm: 1 })
+    mockCams(camsReady({ updatedAt, stale: false }))
+    const { container } = render(<Today />)
+    const snapshot = () => ({
+      hud: container.querySelector('.gobs-live-dot.is-stale') !== null,
+      whyGrid: container.querySelector('[data-source="grid"] .today-cell__sub')?.textContent ?? '',
+      whyCams: container.querySelector('[data-source="cams"] .today-cell__sub')?.textContent ?? '',
+      evidenceStale: (container.querySelector('.today-evidence')?.textContent ?? '').split(' · stale').length - 1,
+    })
+    const atMount = snapshot()
+    // Act — the tab stays open for 48 more hours.
+    act(() => {
+      vi.advanceTimersByTime(48 * 60 * 60_000)
+    })
+    // Assert — fresh everywhere at mount, stale everywhere after: the panels
+    // never contradict the HUD about the same two sources.
+    expect(atMount).toEqual({
+      hud: false,
+      whyGrid: expect.not.stringMatching(/^stale/),
+      whyCams: expect.not.stringMatching(/^stale/),
+      evidenceStale: 0,
+    })
+    expect(snapshot()).toEqual({
+      hud: true,
+      whyGrid: expect.stringMatching(/^stale · analysis/),
+      whyCams: expect.stringMatching(/^stale · forecast/),
+      evidenceStale: 2,
+    })
   })
 })

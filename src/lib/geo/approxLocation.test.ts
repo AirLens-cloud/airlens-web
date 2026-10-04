@@ -120,4 +120,27 @@ describe('getApproxLocation', () => {
     await getApproxLocation()
     expect(window.sessionStorage.getItem(SESSION_KEY)).not.toBeNull()
   })
+
+  it('resolves null once the request exceeds its fetch timeout — never hangs pending forever', async () => {
+    // Arrange — a request that never settles on its own, only on abort
+    // (matches how a real hung/slow edge request behaves under AbortController).
+    vi.useFakeTimers()
+    fetchMock.mockImplementationOnce((_url: string, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+    })
+    const { getApproxLocation } = await import('./approxLocation')
+    // Act
+    const pending = getApproxLocation()
+    await vi.advanceTimersByTimeAsync(3000)
+    const result = await pending
+    // Assert
+    expect(result).toBeNull()
+    vi.useRealTimers()
+  })
 })

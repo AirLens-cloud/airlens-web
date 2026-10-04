@@ -204,7 +204,9 @@
 .np-item-desc { font-size: var(--fs-caption); color: var(--ink-2); margin-top: 2px; }
 .np-item-time { font-size: var(--fs-caption); color: var(--ink-2); flex-shrink: 0; }
 .np-action { background: none; border: none; font-family: var(--mono); font-size: var(--fs-tag); cursor: pointer; padding: 0; }
-.np-action--primary { color: var(--orange); }
+/* F13 (2026-09-28): text on the NotificationPanel's paper `--bg-0` — `--orange`
+   itself is only ~3.1:1 there (see `--orange-ink`'s definition, tokens.css). */
+.np-action--primary { color: var(--orange-ink); }
 .np-action--primary:hover { text-decoration: underline; }
 .np-action--muted { color: var(--ink-2); }
 .np-action--muted:hover { color: var(--ink-1); }
@@ -238,11 +240,19 @@
 /* ---- ChatWidget dock + ChatPanel (mockup §06b "템플릿 E", Wave 4 Block 3, Δ4) ---- */
 .chat-dock {
   position: fixed;
-  right: var(--sp-5);
-  bottom: var(--sp-5);
+  /* F75 — pin above the iOS home indicator / clear of the landscape notch.
+     env() resolves to 0px wherever there is no inset, so desktop is unchanged. */
+  right: calc(var(--sp-5) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
   z-index: var(--z-fab);
   display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
 }
+/* F28 — end-of-page spacer ChatWidget renders next to the dock (SiteChrome
+   'site' shell only). Desktop: the dock is a small corner FAB, nothing to
+   reserve. Mobile: the dock is a full-width bar, so this reserves its height
+   (--fab-size >= the 38px FAB) + its bottom offset + the safe-area inset, so
+   the last content is never left permanently under it. */
+.chat-dock-reserve { display: none; }
 /* Wave 5 Δ5 (B3) — ChatFAB.tsx's spring/drag wrapper around ChatPanel.
    Gesture-table surface (ζ0.8/r0.30 bounce, per the Δ5 motion contract) —
    `translateY` is written imperatively by the spring (ChatFAB.tsx), opacity
@@ -371,10 +381,21 @@
    overrides only the color to ink-1, per the readable-labels rule (design-taxonomy.md
    News/Dispatch Surface Contract #4) — a citation's title is a label, not a decoration. */
 .cite-title { color: var(--ink-1); }
-.cite-open { color: var(--orange); justify-self: end; }
+/* F13 — same paper-surface text-contrast fix as `.np-action--primary` above. */
+.cite-open { color: var(--orange-ink); justify-self: end; }
 
 @media (max-width: 768px) {
-  .chat-dock { right: var(--sp-3); bottom: var(--sp-3); left: var(--sp-3); align-items: stretch; }
+  .chat-dock {
+    right: calc(var(--sp-3) + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+    left: calc(var(--sp-3) + env(safe-area-inset-left, 0px));
+    align-items: stretch;
+  }
+  .chat-dock-reserve {
+    display: block;
+    flex: none;
+    height: calc(var(--fab-size) + var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  }
   .chat-panel { width: 100%; max-width: none; }
 }
 

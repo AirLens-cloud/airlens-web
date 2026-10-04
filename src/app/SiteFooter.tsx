@@ -63,7 +63,15 @@ export default function SiteFooter() {
                   <li key={item.href}>
                     <a href={item.href}>
                       {item.label}
-                      {item.beta && <span className="chrome-nav__beta">Beta</span>}
+                      {item.beta && (
+                        // F27 — see GlobalNav.tsx's matching comment: a
+                        // literal space keeps "Lab" and "Beta" from gluing
+                        // into one textContent/accessible-name word.
+                        <>
+                          {' '}
+                          <span className="chrome-nav__beta">Beta</span>
+                        </>
+                      )}
                     </a>
                   </li>
                 ))}

@@ -24,6 +24,9 @@
 
 .aq-capsule {
   font-family: var(--mono);
+  /* Collapsed bar height; AqiCapsule overrides it inline (COLLAPSED_H = 68,
+     or COMPACT_H = 40 below NAV_DESKTOP). */
+  --aq-capsule-bar-h: 68px;
   transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
 }
 
@@ -83,6 +86,21 @@
   --capsule-dot-active: var(--ink-0);
 }
 
+/* An open capsule is a reading panel laid over page text. The refract tier
+   (fluid-glass.css) bends the backdrop but does not blur it, so the page
+   text behind stayed sharp enough to fight the panel's own lines (seen
+   once the panel actually showed — W2 mobile pass). Open or alerting, it
+   takes the solid tint the `--tint` tier and the reduced-transparency
+   fallback already use (AA measured above); the blur tier already blurs,
+   and the collapsed bar keeps its glass. */
+.aq-capsule:not([data-phase="idle"]) .aq-capsule__glass.liquid-glass--refract.liquid-glass--day {
+  background: var(--glass-opaque);
+}
+
+.aq-capsule:not([data-phase="idle"]) .aq-capsule__glass.liquid-glass--refract.liquid-glass--night {
+  background: var(--glass-night-opaque);
+}
+
 .aq-capsule[data-phase="alerting"] .aq-capsule__glass {
   animation: aq-capsule-pulse 1.1s ease-in-out infinite;
 }
@@ -98,10 +116,15 @@
   justify-content: center;
   gap: 2px;
   width: 100%;
-  /* Height comes from the shell (JS spring, `COLLAPSED_H`/`EXPANDED_H`), not
-     a fixed value here — the idle content is 1 row (loading/missing) or 2
-     rows (ready: location + reading), and both must center within it. */
-  height: 100%;
+  /* The collapsed height, set by AqiCapsule (`--aq-capsule-bar-h` =
+     COLLAPSED_H, or COMPACT_H below NAV_DESKTOP, i.e. <=1023) — the idle content is 1 row
+     (loading/missing, the compact chip) or 2 rows (ready: location +
+     reading), and each must center within it. Not `100%` of the shell:
+     that stretched the bar to the open 300px shell and pushed the panel
+     out of the clipped glass, so an opened capsule showed only the idle
+     row, re-centred (found on the W2 mobile pass, present on main). */
+  height: var(--aq-capsule-bar-h);
+  flex-shrink: 0;
   padding: 0 var(--sp-4);
   border: 0;
   background: transparent;
@@ -147,17 +170,6 @@
   letter-spacing: 0.05em;
 }
 
-/* Positive confirmation, not a warning — deliberately NOT `.aq-capsule__warn`
-   (the solid orange-ink badge means "this isn't your location"; a real
-   geolocation pick is the opposite of that). Muted text like the rest of
-   the idle bar's secondary copy. */
-.aq-capsule__distance {
-  flex-shrink: 0;
-  color: var(--capsule-ink-muted);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
 .aq-capsule__reading-row {
   display: flex;
   align-items: center;
@@ -183,8 +195,48 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* W2 compact chip (below NAV_DESKTOP, `data-compact`): one row — AQI dot, the place
+   or a warn tag, the number — centred in the COMPACT_W x COMPACT_H shell.
+   chrome.css puts it in the nav bar. The tag slot's width budget is
+   "DEFAULT" plus a 3-digit value at the 360px floor, hence the tight
+   gaps and the 2px tag padding. */
+.aq-capsule[data-compact] .aq-capsule__trigger {
+  padding: 0 var(--sp-1);
+}
+
+.aq-capsule__chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.aq-capsule__chip-place {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--fs-tag);
+  font-weight: 600;
+}
+
+.aq-capsule__chip .aq-capsule__warn {
+  font-size: var(--fs-micro);
+  padding: 1px 2px;
+  letter-spacing: 0;
+}
+
+.aq-capsule__chip .aq-capsule__value {
+  font-size: var(--fs-data);
+}
+
 .aq-capsule__panel {
   padding: 0 var(--sp-3) var(--sp-3);
+  /* AqiCapsule sizes the open shell to bar + this panel's content, capped
+     at the viewport; when capped, the panel scrolls instead of clipping. */
+  max-height: calc(100% - var(--aq-capsule-bar-h));
+  overflow-y: auto;
 }
 
 .aq-capsule-panel__viewport {
@@ -233,7 +285,8 @@
 }
 
 .aq-capsule-panel__range,
-.aq-capsule-panel__meta {
+.aq-capsule-panel__meta,
+.aq-capsule-panel__source {
   margin: 0;
   font-size: 12px;
   color: var(--capsule-ink-muted);

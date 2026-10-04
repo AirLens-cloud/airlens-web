@@ -1,6 +1,6 @@
 import { buildSparkline } from '../../lib/sparkline'
 import AqiDot from '../wireframe/AqiDot'
-import { tierFromPm25 } from '../fluid/capsule/useCapsuleData'
+import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
 
 const SPARK_W = 220
 const SPARK_H = 52
@@ -10,11 +10,29 @@ export interface WeatherHeroRailProps {
   /** Same `weather.temperature_2m` array the S2 hourly rail already renders
    * below — no second fetch, just a compact 24h view of it up here. */
   hourlyTemp: (number | null | undefined)[] | undefined
-  /** `weatherData.aq.pm2_5[0]` (Today.tsx already fetches this for the
-   * Conditions tab's `AirQualityLine`) — reused, not refetched. */
-  pm25Now: number | null
+  /** The shared headline resolver's result (W1b commit ③) — the same reading
+   * `/today`'s HUD, Home and the floating capsule show, so the "PM2.5 now"
+   * tile can't be a third number next to them. */
+  reading: PrimaryReading
   uvIndexNow: number | null
   reducedMotion: boolean
+}
+
+/** Under the tile's number: its unit plus which source backs it — a model
+ * analysis is never worded as a measurement (DESIGN.md §8). A CAMS value is
+ * a nearest-city forecast, and this tile sits under the viewer's own place
+ * name, so it names that city and how far it is — otherwise another city's
+ * number reads as the viewer's own. */
+function pm25Sub(reading: PrimaryReading): string {
+  if (reading.status === 'loading') return 'Loading…'
+  if (reading.status === 'unavailable') return 'Unavailable'
+  // The resolver's own staleness verdict (same as the HUD's) — this tile is
+  // on the default tab, where the HUD is not.
+  const stale = reading.stale ? ' · stale' : ''
+  if (reading.source === 'analysis') return `µg/m³ · model analysis${stale}`
+  const cc = reading.place.countryCode ? `, ${reading.place.countryCode}` : ''
+  const km = reading.place.distanceKm != null ? ` · ${Math.round(reading.place.distanceKm)} km` : ''
+  return `µg/m³ · CAMS forecast · ${reading.place.label}${cc}${km}${stale}`
 }
 
 /**
@@ -24,9 +42,9 @@ export interface WeatherHeroRailProps {
  * `.wx-tile` (weather.css S3's own class) so the grammar matches the
  * Conditions-tab grid exactly rather than inventing a second tile style.
  */
-export default function WeatherHeroRail({ hourlyTemp, pm25Now, uvIndexNow, reducedMotion }: WeatherHeroRailProps) {
+export default function WeatherHeroRail({ hourlyTemp, reading, uvIndexNow, reducedMotion }: WeatherHeroRailProps) {
   const spark = buildSparkline((hourlyTemp ?? []).slice(0, SPARK_HOURS), SPARK_W, SPARK_H)
-  const tier = pm25Now !== null ? tierFromPm25(pm25Now) : null
+  const ready = reading.status === 'ready' ? reading : null
 
   return (
     <div className="wx-hero__rail">
@@ -55,10 +73,10 @@ export default function WeatherHeroRail({ hourlyTemp, pm25Now, uvIndexNow, reduc
         <div className="wx-tile wx-hero__rail-tile">
           <span className="wx-tile__label">PM2.5 now</span>
           <div className="wx-tile__value-row">
-            {tier && <AqiDot tier={tier} size={10} />}
-            <span className="wx-tile__value">{pm25Now !== null ? Math.round(pm25Now) : '—'}</span>
+            {ready && <AqiDot tier={ready.tier} size={10} />}
+            <span className="wx-tile__value">{ready ? Math.round(ready.pm25) : '—'}</span>
           </div>
-          <span className="wx-tile__sub">{pm25Now !== null ? 'µg/m³' : 'Not measured'}</span>
+          <span className="wx-tile__sub">{pm25Sub(reading)}</span>
         </div>
         <div className="wx-tile wx-hero__rail-tile">
           <span className="wx-tile__label">UV index</span>

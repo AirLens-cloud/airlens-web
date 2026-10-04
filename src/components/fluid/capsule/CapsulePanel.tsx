@@ -2,20 +2,30 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { projectMomentum, rubberband } from '../../../motion/spring'
 import { useSpring } from '../../../motion/useSpring'
 import AqiDot from '../../wireframe/AqiDot'
-import type { CapsuleDataReady } from './useCapsuleData'
+import { DENIED_NOTICE, type LocationSource } from '../../../lib/location/resolveLocation'
+import type { PrimaryReadingReady } from '../../../lib/reading/resolvePrimaryReading'
+import { readingSourceLine, secondaryForecastLine } from '../../../lib/reading/readingCopy'
+import type { CapsuleDataState } from './useCapsuleData'
 
 export interface CapsulePanelProps {
-  data: CapsuleDataReady
+  /** The shared headline resolver's ready result (W1b commit ②) — same
+   * source `/today` and Home read. Page 1's value/tier/source lines all read
+   * this, never `data` below. */
+  reading: PrimaryReadingReady
+  /** CAMS's own 24h outlook — page 1's range disclosure and page 2's spark
+   * chart stay wired to this regardless of `reading.source`, and are
+   * explicitly labelled as the city forecast so neither reads as the
+   * headline's own uncertainty (Glass-box). May be loading/missing even
+   * when `reading` is ready. */
+  data: CapsuleDataState
   /** Content width in px — one drag page's travel distance. */
   contentWidth: number
-  /** Where the shown reading's location came from — governs the fallback
-   * note and "Use my location" CTA below the city line (UI G1). */
-  locationSource: 'user' | 'approx' | 'none'
-  /** Distance from the visitor's own geolocation pick to the resolved feed
-   * city, in km — null unless `locationSource === 'user'` via an actual
-   * geolocation fix (never for a searched city or the IP-approximate guess;
-   * see `AqiCapsule`'s computation). */
-  distanceKm: number | null
+  /** The visitor's own resolved place name — same as `AqiCapsule`'s idle
+   * bar, never the CAMS feed city. */
+  placeLabel: string
+  /** Where `placeLabel` came from — governs the fallback note and "Use my
+   * location" CTA below it (UI G1). `null` while still resolving. */
+  locationSource: LocationSource | null
   requestingLocation: boolean
   locationDenied: boolean
   onRequestLocation: () => void
@@ -25,7 +35,7 @@ const DRAG_SPRING = { damping: 0.72, response: 0.32 }
 const SPARK_W = 260
 const SPARK_H = 64
 
-const TIER_LABEL: Record<CapsuleDataReady['tier'], string> = {
+const TIER_LABEL: Record<PrimaryReadingReady['tier'], string> = {
   good: 'GOOD',
   moderate: 'MODERATE',
   usg: 'UNHEALTHY (SENSITIVE)',
@@ -42,7 +52,7 @@ interface SparkGeometry {
   endY: number
 }
 
-function buildSparkline(series: CapsuleDataReady['series24h'], w: number, h: number): SparkGeometry | null {
+function buildSparkline(series: Extract<CapsuleDataState, { status: 'ready' }>['series24h'], w: number, h: number): SparkGeometry | null {
   if (series.length === 0) return null
   const values = series.flatMap((p) => [p.p10 ?? p.p50, p.p90 ?? p.p50, p.p50])
   const min = Math.min(...values)
@@ -72,10 +82,11 @@ function buildSparkline(series: CapsuleDataReady['series24h'], w: number, h: num
  * past the edges, and a momentum-projected snap to the nearer page.
  */
 export default function CapsulePanel({
+  reading,
   data,
   contentWidth,
+  placeLabel,
   locationSource,
-  distanceKm,
   requestingLocation,
   locationDenied,
   onRequestLocation,
@@ -137,7 +148,26 @@ export default function CapsulePanel({
     goToPage(projected < -contentWidth / 2 ? 1 : 0, d.velocity)
   }
 
-  const spark = buildSparkline(data.series24h, SPARK_W, SPARK_H)
+  const spark = data.status === 'ready' ? buildSparkline(data.series24h, SPARK_W, SPARK_H) : null
+  const range = data.status === 'ready' ? data.range : null
+  const cityLabel = data.status === 'ready' ? data.city : null
+
+  // The CAMS band disclosure — unconditional on `reading.source` (the 24h
+  // outlook is always CAMS's own), always naming CAMS + the city it is for
+  // so it can never be mistaken for the headline's own uncertainty.
+  // `data` can still be loading while `reading` (grid-gated) is ready — a
+  // fetch in flight is not a failed feed, so it never says "unavailable".
+  const camsLoading = data.status === 'loading'
+  const rangeLine =
+    data.status !== 'ready'
+      ? camsLoading
+        ? 'City forecast (CAMS) loading…'
+        : 'City forecast (CAMS) unavailable'
+      : range
+        ? `City forecast (CAMS) · ${data.city}: expected today ${Math.round(range.lo)}–${Math.round(range.hi)} µg/m³`
+        : `City forecast (CAMS) · ${data.city}: no uncertainty band published`
+
+  const showLocationBlock = locationSource !== null && locationSource !== 'geolocation' && locationSource !== 'search'
 
   return (
     <div className="aq-capsule-panel" style={{ width: contentWidth }}>
@@ -151,29 +181,25 @@ export default function CapsulePanel({
         <div ref={trackRef} className="aq-capsule-panel__track">
           <div className="aq-capsule-panel__page" style={{ width: contentWidth }}>
             <div className="aq-capsule-panel__current">
-              <AqiDot tier={data.tier} size={12} />
-              <span className="aq-capsule-panel__current-value">{Math.round(data.current)}</span>
+              <AqiDot tier={reading.tier} size={12} />
+              <span className="aq-capsule-panel__current-value">{Math.round(reading.pm25)}</span>
               <span className="aq-capsule-panel__current-unit">µg/m³</span>
             </div>
-            <div className="aq-capsule-panel__tier-chip" data-tier={data.tier}>
-              {TIER_LABEL[data.tier]}
+            <div className="aq-capsule-panel__tier-chip" data-tier={reading.tier}>
+              {TIER_LABEL[reading.tier]}
             </div>
-            <p className="aq-capsule-panel__range">
-              {data.range
-                ? `Expected today: ${Math.round(data.range.lo)}–${Math.round(data.range.hi)} µg/m³`
-                : 'No uncertainty band published for this forecast'}
-            </p>
-            <p className="aq-capsule-panel__meta">{data.city}</p>
-            {locationSource === 'user' && distanceKm !== null && (
-              <p className="aq-capsule-panel__location-note t-micro">
-                NEAREST TO YOU · {Math.round(distanceKm)} KM
-              </p>
+            <p className="aq-capsule-panel__meta">{placeLabel}</p>
+            {/* Same wording as HomeHero's source lines (`readingCopy.ts`). */}
+            <p className="aq-capsule-panel__source">{readingSourceLine(reading)}</p>
+            {reading.source === 'analysis' && reading.secondary && (
+              <p className="aq-capsule-panel__source">{secondaryForecastLine(reading.secondary)}</p>
             )}
-            {locationSource !== 'user' && (
+            <p className="aq-capsule-panel__range">{rangeLine}</p>
+            {showLocationBlock && (
               <div className="aq-capsule-panel__location">
-                {locationSource === 'none' && (
+                {locationSource === 'default' && (
                   <p className="aq-capsule-panel__location-note t-micro">
-                    NEAREST FEED CITY — NOT YOUR LOCATION
+                    DEFAULT LOCATION (SEOUL) — NOT YOURS
                   </p>
                 )}
                 <button
@@ -184,22 +210,21 @@ export default function CapsulePanel({
                 >
                   {requestingLocation ? 'Locating…' : 'Use my location'}
                 </button>
-                {locationDenied && locationSource === 'none' && (
-                  <p className="aq-capsule-panel__location-note t-micro">
-                    LOCATION DENIED — SHOWING FEED FALLBACK
-                  </p>
-                )}
-                {locationDenied && locationSource === 'approx' && (
-                  <p className="aq-capsule-panel__location-note t-micro">
-                    LOCATION DENIED — SHOWING APPROXIMATE (IP-BASED)
-                  </p>
+                {locationDenied && locationSource !== null && (
+                  <p className="aq-capsule-panel__location-note t-micro">{DENIED_NOTICE[locationSource]}</p>
                 )}
               </div>
             )}
           </div>
           <div className="aq-capsule-panel__page" style={{ width: contentWidth }}>
             <p className="aq-capsule-panel__meta">
-              {data.range ? '24h forecast · expected range' : '24h forecast · single value, no band'}
+              {data.status !== 'ready'
+                ? camsLoading
+                  ? 'City forecast (CAMS) loading…'
+                  : 'City forecast (CAMS) unavailable'
+                : range
+                  ? `City forecast (CAMS) for ${cityLabel} · expected range`
+                  : `City forecast (CAMS) for ${cityLabel} · single value, no band`}
             </p>
             {spark ? (
               <svg
@@ -207,7 +232,7 @@ export default function CapsulePanel({
                 className="aq-capsule-panel__spark"
                 role="img"
                 aria-label={
-                  data.range
+                  range
                     ? '24-hour PM2.5 forecast with shaded expected range'
                     : '24-hour PM2.5 forecast, no uncertainty band published'
                 }
@@ -217,7 +242,7 @@ export default function CapsulePanel({
                 <circle cx={spark.endX} cy={spark.endY} r={3} className="aq-capsule-panel__spark-dot" />
               </svg>
             ) : (
-              <p className="aq-capsule-panel__meta">NO FEED</p>
+              <p className="aq-capsule-panel__meta">{camsLoading ? 'LOADING…' : 'NO FEED'}</p>
             )}
           </div>
         </div>

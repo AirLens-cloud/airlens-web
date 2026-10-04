@@ -2,9 +2,10 @@
  * approxLocation — client fetch for the IP-approximate location the edge
  * resolves per-request (`functions/edge-geo.ts`).
  *
- * One network call per tab, deduped across concurrent callers (Home's hero
- * and `useGeolocation`/`useLocationPersonalization` can all mount around
- * the same time) via a module-level in-flight promise, and cached in
+ * One network call per tab, deduped across concurrent callers (Today, Home,
+ * and the floating AqiCapsule can all mount `useResolvedLocation` — and so
+ * this — around the same time) via a module-level in-flight promise, and
+ * cached in
  * `sessionStorage` — deliberately NOT `localStorage`: a different network
  * (café wifi vs. home) resolves to a different approximate location, so
  * persisting the result past this browsing session would go stale in a way
@@ -18,12 +19,18 @@
  * `src/api/gridSnapshot.ts` use for their own fallback fetches.
  *
  * Every failure path (network error, non-2xx, `text/html`, `available:false`
- * from the edge, malformed JSON) resolves to `null`, never throws — every
- * caller already has a real next fallback (Seoul / the feed's "thickest
- * air" pick), so a missed approximate location is never a hard error.
+ * from the edge, malformed JSON, or a request that outlasts
+ * `FETCH_TIMEOUT_MS`) resolves to `null`, never throws — every caller
+ * already has a real next fallback (an opt-in choice, or Seoul), so a
+ * missed approximate location is never a hard error.
  */
 const GEO_ENDPOINT = '/edge-geo'
 const SESSION_CACHE_KEY = 'airlens-approx-location'
+/** Caps how long `resolveLocation()`'s "still resolving" (`null`) state can
+ * last — without this, a hung or slow edge request would leave every
+ * caller's `ApproxState` stuck at `pending` indefinitely instead of
+ * degrading to `failed` (Seoul). */
+const FETCH_TIMEOUT_MS = 3000
 
 export interface ApproxLocation {
   lat: number
@@ -69,15 +76,22 @@ function writeCache(value: ApproxLocation | null): void {
 }
 
 async function fetchApprox(): Promise<ApproxLocation | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const res = await fetch(GEO_ENDPOINT)
+    const res = await fetch(GEO_ENDPOINT, { signal: controller.signal })
     const contentType = res.headers?.get('content-type') ?? ''
     if (!res.ok || contentType.includes('text/html')) return null
     const body = (await res.json()) as GeoApiResponse
     if (body.available !== true || !isFiniteCoord(body.lat) || !isFiniteCoord(body.lon)) return null
     return { lat: body.lat, lon: body.lon, city: typeof body.city === 'string' ? body.city : null }
   } catch {
+    // Covers a network error, a non-2xx/html rejection this try never
+    // reaches (those return above), and an abort once FETCH_TIMEOUT_MS
+    // elapses — all degrade the same way, to `null`.
     return null
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

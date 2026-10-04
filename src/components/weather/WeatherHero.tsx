@@ -8,13 +8,22 @@ import { sectionDataState } from './sectionState'
 import { skyPhaseForWeatherAt } from '../../lib/skyPhase'
 import { weatherCodeToCondition, WEATHER_CONDITION_LABEL } from '../../lib/weatherCondition'
 import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
-import type { GeoLocationState } from '../../hooks/useGeolocation'
+import {
+  DENIED_NOTICE,
+  LOCATING_LABEL,
+  SEOUL_DEFAULT,
+  type LocationSource,
+  type ResolvedLocation,
+} from '../../lib/location/resolveLocation'
 import type { WeatherPageStatus } from '../../hooks/useWeatherPageData'
-import type { OpenMeteoAqHourly, OpenMeteoWeatherHourly } from '../../types/forecast'
+import type { OpenMeteoWeatherHourly } from '../../types/forecast'
 import type { WeatherCity } from '../../lib/cityCatalog'
+import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
 
 export interface WeatherHeroProps {
-  location: GeoLocationState
+  /** `null` while the location is still resolving — the place row shows
+   * `LOCATING_LABEL` with no source badge. */
+  location: ResolvedLocation | null
   requestingLocation: boolean
   locationDenied: boolean
   onRequestLocation: () => void
@@ -22,10 +31,10 @@ export interface WeatherHeroProps {
   status: WeatherPageStatus
   configured: boolean
   weather: OpenMeteoWeatherHourly | null
-  /** Same hourly PM2.5 fetch `AirQualityLine` (Conditions tab) already reads
-   * — passed through so the new S1 instrument rail (design-audit V2) can
-   * show a "PM2.5 now" tile without a second fetch. */
-  aq: OpenMeteoAqHourly | null
+  /** The shared headline resolver's result (W1b commit ③), for the S1
+   * instrument rail's "PM2.5 now" tile — the same reading the HUD, Home and
+   * the capsule show. */
+  reading: PrimaryReading
   onRetry: () => void
 }
 
@@ -51,11 +60,18 @@ function round(v: number | null | undefined): number | null {
  * badge, or "Seoul (default)" beside DEFAULT LOCATION (label diet, design-
  * audit 2026-09-05: the same fact stated twice in the hero's top row).
  * Stripping the trailing parenthetical here is display-only — the
- * underlying `location.label`/`useGeolocation` value is untouched, so
- * anything else reading it (CitySearch, capsule, etc.) still sees the full
- * string. */
+ * underlying `location.label` value (from `useResolvedLocation`) is
+ * untouched, so anything else reading it (CitySearch, capsule, etc.) still
+ * sees the full string. */
 function displayPlaceName(label: string): string {
   return label.replace(/\s*\([^)]*\)\s*$/, '')
+}
+
+const PLACE_SOURCE_LABEL: Record<LocationSource, string> = {
+  geolocation: 'MY LOCATION',
+  search: 'CHOSEN LOCATION',
+  approx: 'APPROXIMATE LOCATION',
+  default: 'DEFAULT LOCATION · NOT YOURS',
 }
 
 /**
@@ -75,20 +91,21 @@ export default function WeatherHero({
   status,
   configured,
   weather,
-  aq,
+  reading,
   onRetry,
 }: WeatherHeroProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const reducedMotion = useReducedMotion()
 
   const weatherCode = weather?.weather_code?.[0] ?? null
-  const phase = skyPhaseForWeatherAt(weatherCode, location.lon)
+  // Before the location resolves there is no weather code either, so the phase
+  // only needs a stable clock longitude; Seoul's matches the pre-W1a first paint.
+  const phase = skyPhaseForWeatherAt(weatherCode, location?.lon ?? SEOUL_DEFAULT.lon)
   const condition = weatherCodeToCondition(weatherCode)
 
   const temp = round(weather?.temperature_2m?.[0])
   const feels = round(weather?.apparent_temperature?.[0])
   const { min: lo, max: hi } = finiteMinMax(weather?.temperature_2m)
-  const pm25Now = round(aq?.pm2_5?.[0])
   const uvIndexNow = round(weather?.uv_index?.[0])
 
   const state = sectionDataState(status, configured, weather !== null)
@@ -98,14 +115,8 @@ export default function WeatherHero({
       <div className="wx-hero__inner">
         <div className="wx-hero__top">
           <div className="wx-hero__place">
-            <span className="wx-hero__place-name">{displayPlaceName(location.label)}</span>
-            <span className="wx-hero__place-source">
-              {location.source === 'user'
-                ? 'CHOSEN LOCATION'
-                : location.source === 'approx'
-                  ? 'APPROXIMATE LOCATION'
-                  : 'DEFAULT LOCATION'}
-            </span>
+            <span className="wx-hero__place-name">{location ? displayPlaceName(location.label) : LOCATING_LABEL}</span>
+            {location && <span className="wx-hero__place-source">{PLACE_SOURCE_LABEL[location.source]}</span>}
           </div>
           <div className="wx-hero__actions">
             <button
@@ -129,7 +140,7 @@ export default function WeatherHero({
 
         {locationDenied && (
           <p className="wx-hero__place-source" style={{ marginTop: 8 }}>
-            Location permission was not granted — showing the default location.
+            {DENIED_NOTICE[location?.source ?? 'geolocation']}
           </p>
         )}
 
@@ -171,7 +182,7 @@ export default function WeatherHero({
             </div>
             <WeatherHeroRail
               hourlyTemp={weather?.temperature_2m}
-              pm25Now={pm25Now}
+              reading={reading}
               uvIndexNow={uvIndexNow}
               reducedMotion={reducedMotion}
             />

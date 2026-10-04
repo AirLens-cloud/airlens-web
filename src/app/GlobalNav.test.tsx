@@ -5,8 +5,8 @@
 // `@testing-library/jest-dom` isn't set up in this repo (see
 // Ch1AtmosScene.test.tsx), so attribute checks read `getAttribute()`
 // directly rather than using `toHaveAttribute()`.
-import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, cleanup, screen, fireEvent, act } from '@testing-library/react'
 import GlobalNav from './GlobalNav'
 
 function setPath(path: string): void {
@@ -16,6 +16,8 @@ function setPath(path: string): void {
 afterEach(() => {
   cleanup()
   setPath('/')
+  document.body.style.overflow = ''
+  vi.unstubAllGlobals()
 })
 
 describe('GlobalNav — desktop disclosure', () => {
@@ -191,5 +193,85 @@ describe('GlobalNav — mobile toggle', () => {
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-expanded')).toBe('false')
     expect(screen.getByRole('navigation', { name: 'Primary' }).getAttribute('data-mobile-open')).toBe('false')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open menu' }))
+  })
+})
+
+describe('GlobalNav — mobile menu background scroll lock (F60)', () => {
+  it('locks body scroll when the mobile menu opens', () => {
+    // Arrange
+    render(<GlobalNav variant="site" />)
+    expect(document.body.style.overflow).toBe('')
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    // Assert
+    expect(document.body.style.overflow).toBe('hidden')
+  })
+
+  it('restores the previous inline overflow (not blindly empty) when the toggle closes the menu', () => {
+    // Arrange
+    document.body.style.overflow = 'scroll'
+    render(<GlobalNav variant="site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(document.body.style.overflow).toBe('hidden')
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'Close menu' }))
+    // Assert
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('restores the previous inline overflow when Escape closes the menu', () => {
+    // Arrange
+    document.body.style.overflow = 'scroll'
+    render(<GlobalNav variant="site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    // Act
+    fireEvent.keyDown(document, { key: 'Escape' })
+    // Assert
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('restores the previous inline overflow when the nav unmounts while the menu is open', () => {
+    // Arrange
+    document.body.style.overflow = 'scroll'
+    const { unmount } = render(<GlobalNav variant="site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(document.body.style.overflow).toBe('hidden')
+    // Act
+    unmount()
+    // Assert
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('releases the lock when the viewport widens past the desktop nav, where the menu and its close button are hidden', () => {
+    // Arrange — a tablet in portrait, menu open
+    let desktop = false
+    const listeners = new Set<() => void>()
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      get matches() {
+        return query === '(min-width: 1024px)' && desktop
+      },
+      media: query,
+      addEventListener: (_t: string, cb: () => void) => listeners.add(cb),
+      removeEventListener: (_t: string, cb: () => void) => listeners.delete(cb),
+    }))
+    document.body.style.overflow = 'scroll'
+    render(<GlobalNav variant="site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }))
+    expect(document.body.style.overflow).toBe('hidden')
+    // Act — rotated into landscape past 1024
+    desktop = true
+    act(() => listeners.forEach((cb) => cb()))
+    // Assert
+    expect(document.body.style.overflow).toBe('scroll')
+  })
+
+  it('does not touch body overflow while the menu stays closed (group toggles only)', () => {
+    // Arrange
+    document.body.style.overflow = 'scroll'
+    render(<GlobalNav variant="site" />)
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }))
+    // Assert
+    expect(document.body.style.overflow).toBe('scroll')
   })
 })

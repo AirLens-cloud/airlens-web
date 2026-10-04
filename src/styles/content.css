@@ -140,6 +140,18 @@
 .content-trust--external { color: var(--trust-external); }
 .content-trust--community { color: var(--trust-community); }
 
+/* F29 (W1b ⑤): on a Dispatch list card the trust badge was the 4th mono-caps
+   label in a meta row whose budget is category · source · date (News/Dispatch
+   contract #8) — three cards in view put 12 in one section (DESIGN.md: ≤8).
+   Sentence case in the body face, same colour and border, so the editorial-
+   trust axis still reads as its own badge; the article page keeps its single
+   mono-caps badge. */
+.dispatch-card .content-trust {
+  font-family: var(--sans);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 /* ---- Article ---- */
 
 .article-title { margin: 0; }
@@ -272,7 +284,12 @@
 
 .blogpost-header { display: flex; flex-direction: column; gap: var(--sp-2); }
 .blogpost-title { margin: 0; }
-.blogpost-dek { margin: 0; color: var(--ink-1); }
+/* News Surface Contract §3 — the same column width as `.content-body`
+   (64ch of Inter at 16px ≈ 581px). Capped in rem, not ch: `ch` follows the
+   dek's own font (Crimson Pro at the fluid 18-20px --fs-lede), so 64ch here
+   rendered ~20% wider than the body at 1440. ponytail: 36rem assumes the
+   body stays Inter at the 16px root — re-measure if either changes. */
+.blogpost-dek { margin: 0; color: var(--ink-1); max-width: 36rem; }
 .blogpost-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .blogpost-notfound, .blogpost-error, .blogpost-pending { color: var(--ink-1); }
 .blogpost-back { color: var(--accent); }

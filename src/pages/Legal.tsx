@@ -56,6 +56,7 @@ export default function Legal({ doc }: LegalProps) {
           </div>
 
           {current.id === 'model-card' ? (
+            <div className="legal-model-table-wrap" role="region" aria-label="Deployed models table" tabIndex={0}>
             <table className="legal-model-table">
               <caption>Models actually deployed on airlens-web — no research-only or planned models.</caption>
               <thead>
@@ -87,6 +88,7 @@ export default function Legal({ doc }: LegalProps) {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : null}
 
           <p className="legal-doc__body t-body">

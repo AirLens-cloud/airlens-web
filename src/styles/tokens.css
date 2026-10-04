@@ -241,6 +241,17 @@
     --dqss-c-badge-ink: var(--dqss-c);
     --dqss-d-badge-ink: var(--dqss-d);
     --dqss-f-badge-ink: var(--viz-bad);
+    /* F02 (2026-09-28): dark theme flips *-badge-ink to the raw grade hue
+       (above) but the light-theme :root's pastel *-badge-bg values kept
+       cascading through unchanged — ink-on-pastel measured 1.86-2.87:1.
+       Dark tinted backgrounds (each grade hue at very low luminance) pair
+       with the raw-hue ink to clear 4.5:1 while keeping the grade
+       recognizable (computed: A 5.11:1, B 8.07:1, C 11.16:1, D 7.41:1, F 5.02:1). */
+    --dqss-a-badge-bg: #0e2419;
+    --dqss-b-badge-bg: #241f0a;
+    --dqss-c-badge-bg: #2e2308;
+    --dqss-d-badge-bg: #2a1608;
+    --dqss-f-badge-bg: #210a09;
   }
 }
 
@@ -274,6 +285,14 @@
   --dqss-c-badge-ink: var(--dqss-c);
   --dqss-d-badge-ink: var(--dqss-d);
   --dqss-f-badge-ink: var(--viz-bad);
+  /* F02 — same dark tinted backgrounds as the prefers-color-scheme block
+     above (kept in sync: both dark blocks must agree, tokens.contrast.test.ts
+     asserts it). */
+  --dqss-a-badge-bg: #0e2419;
+  --dqss-b-badge-bg: #241f0a;
+  --dqss-c-badge-bg: #2e2308;
+  --dqss-d-badge-bg: #2a1608;
+  --dqss-f-badge-bg: #210a09;
 }
 
 /* ---- Mobile density (Wave 3 mobile pass, ≤768px) — redefines tokens only,

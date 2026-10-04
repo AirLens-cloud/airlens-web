@@ -1,8 +1,8 @@
 /**
  * Nearest-city lookup for the CAMS forecast payload. `fetchForecast()`
- * returns every city in the feed (Home picks the "thickest air" one
- * regardless of viewer location); Today is location-specific, so it needs
- * the city nearest the viewer's chosen coordinates instead.
+ * returns every city in the feed; Today, Home and the capsule are all
+ * location-specific (W1a — one resolved location), so each needs the city
+ * nearest the viewer's resolved coordinates.
  */
 import type { ForecastCity } from '../../types/forecast'
 

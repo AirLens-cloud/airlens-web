@@ -9,30 +9,39 @@ import Materialize from '../fluid/Materialize'
 import CitySearch from '../weather/CitySearch'
 import HomeHeroRail from './HomeHeroRail'
 import { dataState } from '../../types/dataState'
-import { ACTION_SENTENCE, STALE_THRESHOLD_MS, TIER_LABEL, TIER_TINT_BAND } from '../../lib/config/homeBriefing'
+import { ACTION_SENTENCE, TIER_LABEL, TIER_TINT_BAND } from '../../lib/config/homeBriefing'
 import { formatElapsed, formatUtcTime } from '../../lib/home/whyNow'
 import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
 import type { CapsuleDataState } from '../fluid/capsule/useCapsuleData'
 import type { WeatherCity } from '../../lib/cityCatalog'
+import { DENIED_NOTICE, LOCATING_LABEL, type LocationSource } from '../../lib/location/resolveLocation'
+import type { PrimaryReading } from '../../lib/reading/resolvePrimaryReading'
+import { PRIMARY_READING_SOURCES, readingSourceLine, secondaryForecastLine } from '../../lib/reading/readingCopy'
 import { useSpring } from '../../motion/useSpring'
 import type { SpringConfig } from '../../motion/spring'
 
 export interface HomeHeroProps {
+  /** The shared headline resolver's result (W1b commit ②) — same source
+   * `/today` and the floating capsule read, so all three surfaces show the
+   * same number for the same place and moment. Every headline-facing value
+   * below (number, tier, tint, action sentence, TrustLine, validity/age)
+   * reads from this, never from `data`. */
+  reading: PrimaryReading
+  /** CAMS-only 24h outlook — `HomeHeroRail`'s spark/range/trend keep reading
+   * this, unconditionally, regardless of which source backs `reading` above
+   * (Glass-box: a CAMS forecast band must never be attached to a grid
+   * analysis number). */
   data: CapsuleDataState
-  /** The render's "now", read once by the caller (`Home.tsx`, via a lazy
-   * `useState` initializer) rather than here — calling `Date.now()` inside a
-   * component body is an impure render, which this keeps out of. */
-  nowMs: number
   requestingLocation: boolean
   locationDenied: boolean
-  /** Where the shown location came from — a real opt-in choice, the edge's
-   * IP-approximate location (no opt-in yet), or neither (the feed's
-   * "thickest air" fallback). Governs the eyebrow text, the fallback band,
-   * and CTA visibility below. Deliberately separate from `data.isPersonalized`
-   * (which only says "was any coordinate used", approx included) — the
-   * caller (`Home.tsx`) already tracks its own `choice`/`approx` state and
-   * is the only place that can tell these two apart. */
-  locationSource: 'user' | 'approx' | 'none'
+  /** The visitor's own resolved place name (`location.label`) — read once by
+   * the caller, same as `locationSource` below. Never the CAMS feed city. */
+  placeLabel: string
+  /** Where `placeLabel`/`locationSource` came from (W1a — `useResolvedLocation`'s
+   * priority chain: opt-in choice > IP-approximate > Seoul default). `null`
+   * while still resolving — the eyebrow shows `LOCATING_LABEL` with no source
+   * suffix then, rather than guessing at a default. */
+  locationSource: LocationSource | null
   onRequestLocation: () => void
   onSelectCity: (city: WeatherCity) => void
 }
@@ -43,39 +52,38 @@ const VALUE_SPRING: SpringConfig = { damping: 1.0, response: 0.5 }
 
 /**
  * HomeHero — the "Instrument Band" (approved mockup variant A): a full-width
- * AQI-tinted band showing the featured city's current reading, its 24h-
- * forecast valid time, freshness, and one plain-language action sentence.
+ * AQI-tinted band showing the resolved location's current reading, its
+ * source, freshness, and one plain-language action sentence.
  *
- * UI Tier-1 P1-B (uiux-evaluation-manyfast-2026-09-02 §4 G1): until the
- * visitor personalizes, the featured city is the "thickest air" pick
- * `useCapsuleData` already makes (highest current PM2.5 among the forecast's
- * cities) — very unlikely to be the visitor's own air. The eyebrow, a
- * fallback band, and two CTAs ("see air quality near me" / "search a
- * location") say so explicitly and offer a way out, rather than implying
- * this is "your" air. Once personalized (`locationSource === 'user'`), the
- * band and CTAs drop and the eyebrow reads as a plain observation location.
- *
- * First visit, before any opt-in, `locationSource === 'approx'` covers the
- * middle ground: the edge's IP-approximate location resolved a nearby city,
- * which is closer than the fallback but still not exact — the eyebrow says
- * so ("~ CITY · APPROXIMATE (IP-BASED)") and the CTAs stay up, since the
- * visitor hasn't actually chosen anything yet.
+ * W1a (`useResolvedLocation`'s priority chain): until the visitor opts in,
+ * the shown location is either the edge's IP-approximate lookup
+ * (`locationSource === 'approx'`) or, failing that, a fixed Seoul default
+ * (`'default'`) — never the old "thickest air" worldwide pick, which has
+ * been retired. The eyebrow, a fallback band (default only), and two CTAs
+ * ("see air quality near me" / "search a location") say so explicitly and
+ * offer a way out, rather than implying this is "your" air. Once
+ * personalized via geolocation (`locationSource === 'geolocation'`), the
+ * band and primary CTA drop and the eyebrow reads as a plain observation
+ * location; a `'search'` choice (a city picked by hand) is already the
+ * visitor's own intent, so it also reads as a plain location, but the CTAs
+ * stay up since geolocation itself hasn't been granted.
  */
 export default function HomeHero({
+  reading,
   data,
-  nowMs,
   requestingLocation,
   locationDenied,
+  placeLabel,
   locationSource,
   onRequestLocation,
   onSelectCity,
 }: HomeHeroProps) {
   // Hooks run unconditionally (Rules of Hooks) ahead of the loading/missing
-  // early returns below — `targetValue` is a 0 sentinel until `data` is
+  // early returns below — `targetValue` is a 0 sentinel until `reading` is
   // actually `'ready'`, mirroring the sentinel pattern `useSmoothedProgress`
   // uses for its own mount sync.
-  const isReady = data.status === 'ready'
-  const targetValue = isReady ? data.current : 0
+  const isReady = reading.status === 'ready'
+  const targetValue = isReady ? reading.pm25 : 0
   const valueSpring = useSpring(targetValue, VALUE_SPRING)
   const [displayedValue, setDisplayedValue] = useState(targetValue)
   const hasSyncedRef = useRef(false)
@@ -83,7 +91,7 @@ export default function HomeHero({
   const reducedMotion = useReducedMotion()
 
   // The `.set()`/`.jump()` calls are side effects, not state updates — same
-  // separation ChatFAB's `translateY` effect uses. The first time `data`
+  // separation ChatFAB's `translateY` effect uses. The first time `reading`
   // resolves to `'ready'`, this jumps straight to the value (no animated
   // count-up from the 0 sentinel on initial load); every value after that
   // springs from the previously displayed number to the new one.
@@ -106,7 +114,7 @@ export default function HomeHero({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (data.status === 'loading') {
+  if (reading.status === 'loading') {
     return (
       <section className="home-hero home-hero--loading" aria-busy="true" aria-label="Loading current air quality">
         <div className="home-hero__inner">
@@ -119,29 +127,28 @@ export default function HomeHero({
     )
   }
 
-  if (data.status === 'missing') {
+  if (reading.status === 'unavailable') {
     return (
       <section className="home-hero home-hero--missing" aria-label="Air quality unavailable">
         <div className="home-hero__inner">
           <WfDataState
-            state={dataState('unavailable', { source: 'Open-Meteo CAMS forecast (via HF live-data)' })}
+            state={dataState('unavailable', { source: PRIMARY_READING_SOURCES })}
           />
         </div>
       </section>
     )
   }
 
-  const elapsedMs = nowMs - new Date(data.updatedAt).getTime()
-  const isStale = elapsedMs > STALE_THRESHOLD_MS
-  const tierLabel = TIER_LABEL[data.tier]
-  const tintBand = data.tier === 'unknown' ? undefined : TIER_TINT_BAND[data.tier]
-  const actionSentence = ACTION_SENTENCE[data.tier]
+  // The resolver's own per-source staleness verdict — the same one `/today`'s
+  // HUD reads (`hudStatus`), so the two surfaces never disagree about it.
+  // Not `ageMs > refreshMs`: `refreshMs` is a republish-cadence label only
+  // (`lib/config/readingCadence.ts`), and the upstream cron routinely runs
+  // late, so a cadence comparison would flag nearly every reading as stale.
+  const isStale = reading.stale
+  const tierLabel = TIER_LABEL[reading.tier]
+  const tintBand = reading.tier === 'unknown' ? undefined : TIER_TINT_BAND[reading.tier]
+  const actionSentence = ACTION_SENTENCE[reading.tier]
   const value = Math.round(displayedValue)
-
-  const uncertainty =
-    data.p10 !== null && data.p90 !== null
-      ? { available: true as const, p10: data.p10, p90: data.p90, unit: 'µg/m³' }
-      : { available: false as const, reason: "this forecast doesn't publish a range" }
 
   return (
     <WfGlassCard
@@ -155,12 +162,14 @@ export default function HomeHero({
       <div className="home-hero__inner">
         <div className="home-hero__main">
         <div className="home-hero__eyebrow">
-          {locationSource === 'user' ? (
-            <>MY LOCATION · {data.city}, {data.countryCode}</>
+          {locationSource === null ? (
+            LOCATING_LABEL
           ) : locationSource === 'approx' ? (
-            <>~ {data.city} · APPROXIMATE (IP-BASED)</>
+            <>~ {placeLabel} · APPROXIMATE (IP-BASED)</>
+          ) : locationSource === 'default' ? (
+            <>{placeLabel} · DEFAULT LOCATION — NOT YOURS</>
           ) : (
-            <>NOW · {data.city}, {data.countryCode} · FALLBACK: THICKEST AIR</>
+            placeLabel
           )}
         </div>
 
@@ -172,33 +181,46 @@ export default function HomeHero({
             </div>
           </div>
           <div className="home-hero__tier">
-            <AqiDot tier={data.tier} size={14} />
+            <AqiDot tier={reading.tier} size={14} />
             <span className="home-hero__tier-label">{tierLabel}</span>
             {/* One chip either way: stale merges both states into a single
-                label ("Forecast · Stale 3h") instead of stacking a second
-                chip — the hero section sits at the mono-caps label budget
-                (DESIGN.md §2, ≤8 per section) and a ninth would break it. */}
+                label ("Model analysis · Stale 3h") instead of stacking a
+                second chip — the hero section sits at the mono-caps label
+                budget (DESIGN.md §2, ≤8 per section) and a ninth would break
+                it. */}
             {isStale ? (
               <StateChip
                 variant="stale"
-                label="Forecast · Stale"
-                detail={formatElapsed(elapsedMs)?.replace(/ ago$/, '')}
+                label={reading.source === 'analysis' ? 'Model analysis · Stale' : 'Forecast · Stale'}
+                detail={reading.ageMs === null ? undefined : formatElapsed(reading.ageMs)?.replace(/ ago$/, '')}
                 index={0}
               />
             ) : (
-              <StateChip variant="forecast" index={0} />
+              <StateChip variant={reading.source === 'analysis' ? 'analysis' : 'forecast'} index={0} />
             )}
           </div>
         </div>
 
-        {locationSource === 'none' && (
+        {/* Where the number comes from — replaces the old hard-coded "Open-
+            Meteo CAMS forecast" label (design-audit review: a hero that can
+            now show either source must say which one plainly). The
+            secondary line only appears when the primary is the grid
+            analysis AND CAMS also resolved — Glass-box: it discloses the
+            city forecast's own value, never folded into the analysis
+            number's own (nonexistent) uncertainty band. */}
+        <p className="home-hero__source t-caption">{readingSourceLine(reading)}</p>
+        {reading.source === 'analysis' && reading.secondary && (
+          <p className="home-hero__source t-caption">{secondaryForecastLine(reading.secondary)}</p>
+        )}
+
+        {locationSource === 'default' && (
           <div className="home-hero__fallback-band t-caption">
-            <b>Showing Earth's thickest air right now</b> — not your local reading.
+            <b>Showing Seoul by default</b> — not your location.
           </div>
         )}
 
         <div className="home-hero__location-ctas">
-          {locationSource !== 'user' ? (
+          {locationSource !== 'geolocation' ? (
             <>
               <button
                 type="button"
@@ -229,15 +251,8 @@ export default function HomeHero({
           )}
         </div>
 
-        {locationDenied && locationSource === 'none' && (
-          <p className="home-hero__location-note t-caption">
-            Location permission was not granted — showing the global fallback.
-          </p>
-        )}
-        {locationDenied && locationSource === 'approx' && (
-          <p className="home-hero__location-note t-caption">
-            Location permission was not granted — showing an approximate (IP-based) location instead.
-          </p>
+        {locationDenied && locationSource !== null && (
+          <p className="home-hero__location-note t-caption">{DENIED_NOTICE[locationSource]}</p>
         )}
 
         <Materialize show={searchOpen} origin="top left">
@@ -250,28 +265,28 @@ export default function HomeHero({
         </Materialize>
 
         <div className="home-hero__meta">
-          <span>Valid {formatUtcTime(data.series24h[0]?.time ?? data.updatedAt)}</span>
-          <span aria-hidden="true">·</span>
-          <span className={isStale ? 'home-hero__stale-flag' : undefined}>
-            {isStale ? 'Stale · updated ' : 'Updated '}
-            {formatElapsed(elapsedMs)}
+          <span>
+            {reading.source === 'analysis' ? 'As of' : 'Valid'}{' '}
+            {formatUtcTime(reading.validTimeIso ?? reading.updatedAtIso)}
           </span>
           <span aria-hidden="true">·</span>
-          <span>Open-Meteo CAMS forecast</span>
+          <span className={isStale ? 'home-hero__stale-flag' : undefined}>
+            {/* An unparseable publish time: the resolver marks it stale and
+                reports no age — say so rather than print a made-up one. */}
+            {reading.ageMs === null ? (
+              'Stale · publish time unknown'
+            ) : (
+              <>
+                {isStale ? 'Stale · updated ' : 'Updated '}
+                {formatElapsed(reading.ageMs)}
+              </>
+            )}
+          </span>
         </div>
 
         {actionSentence ? <p className="home-hero__action">{actionSentence}</p> : null}
 
-        {/* `scopeLabel` disambiguates this line from HomeTrustStrip's G8
-            ground-station strip just below it — this one always trust-scores
-            the CAMS *forecast* reading above, never a station observation
-            (design-review 2026-09-05, PR #82). */}
-        <TrustLine
-          ageMs={elapsedMs}
-          dqss={{ available: false, reason: 'not measured by this forecast source' }}
-          uncertainty={uncertainty}
-          scopeLabel="THIS FORECAST"
-        />
+        <TrustLine ageMs={reading.ageMs} dqss={reading.dqss} uncertainty={reading.uncertainty} />
       </div>
 
       <HomeHeroRail data={data} reducedMotion={reducedMotion} />

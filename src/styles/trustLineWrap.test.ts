@@ -3,7 +3,7 @@
 // wrapping inside `.trust-line__item`'s inherited `white-space: nowrap`.
 //
 // The regression this protects against: the item-level nowrap exists to keep a
-// key glued to its value ("obs age 21h" must not split), but a withheld reason
+// key glued to its value ("data age 21h" must not split), but a withheld reason
 // is a sentence, not a value. With nowrap inherited, "p10–p90 not published
 // (this data source publishes no uncertainty range)" measured 469px against a
 // 390px viewport and pushed the whole page sideways (documentElement
@@ -29,7 +29,10 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const CSS = fs.readFileSync(path.join(path.resolve(__dirname), 'trust-line.css'), 'utf8')
+// Comments stripped, so a declaration left inside a `/* … */` does not count.
+const CSS = fs
+  .readFileSync(path.join(path.resolve(__dirname), 'trust-line.css'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
 
 /** Body of the first flat `{ ... }` block for `selectorSource` (a regex source). */
 function blockFor(selectorSource: string): string {
@@ -48,9 +51,27 @@ describe('TrustLine wrapping — withheld reasons wrap instead of forcing page o
 
   it('.trust-line__item keeps nowrap, so key:value pairs still do not split', () => {
     // Arrange / Act — the other half of the pair. Dropping this nowrap would
-    // make the __na override meaningless and let "obs age 21h" break mid-pair.
+    // make the __na override meaningless and let "data age 21h" break mid-pair.
     const item = blockFor(String.raw`\.trust-line__item`)
     // Assert
     expect(item).toMatch(/white-space\s*:\s*nowrap\s*;/)
+  })
+
+  it('.trust-line__k never splits, even inside the band item that re-enables wrapping', () => {
+    // Arrange / Act — the band row is `white-space: normal` and a flex row,
+    // so a shrinkable, wrapping key broke "p10–p90" at the dash (28px wide,
+    // two lines, 360px viewport — W1b ⑤ render check).
+    const key = blockFor(String.raw`\.trust-line__k`)
+    // Assert
+    expect(key).toMatch(/white-space\s*:\s*nowrap\s*;/)
+    expect(key).toMatch(/flex-shrink\s*:\s*0\s*;/)
+  })
+
+  it('.trust-line__withheld is plain inline, so the reason breaks beside the DQSS key', () => {
+    // Arrange / Act — as inline-flex it was capped at the item's full width
+    // rather than the space left after the key: 2px page overflow at 360px.
+    const withheld = blockFor(String.raw`\.trust-line__withheld`)
+    // Assert
+    expect(withheld).toMatch(/display\s*:\s*inline\s*;/)
   })
 })

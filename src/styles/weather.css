@@ -26,15 +26,19 @@
   --wx-wind-line: rgba(240, 244, 250, 0.7);
   --wx-wind-marker: var(--orange);
 
-  --sky-grad-dawn: linear-gradient(180deg, #2a3a6a 0%, #7a5a8a 38%, #e0a0a0 72%, #f4d4b4 100%);
-  --sky-grad-morning: linear-gradient(180deg, #4a7ab0 0%, #8ab4d8 38%, #c0dcef 72%, #eaf4fb 100%);
-  --sky-grad-noon: linear-gradient(180deg, #4f93d4 0%, #74b0e2 38%, #a6d0ef 72%, #dcecfb 100%);
-  --sky-grad-dusk: linear-gradient(180deg, #3a558a 0%, #6a5e98 38%, #c07e8e 72%, #f0b890 100%);
+  /* AA pin (2026-09-28): every stop must carry every text ink of its phase at
+     >=4.5:1 — dark ink by default, white for night/rain/thunder
+     (tokens.contrast.test.ts "sky phases"). Stops that failed were mixed toward
+     white (dark-ink phases) or #0b1a2e (rain) by the minimum amount, keeping hue. */
+  --sky-grad-dawn: linear-gradient(180deg, #8b94ae 0%, #a28cad 38%, #e0a0a0 72%, #f4d4b4 100%);
+  --sky-grad-morning: linear-gradient(180deg, #7297c1 0%, #8ab4d8 38%, #c0dcef 72%, #eaf4fb 100%);
+  --sky-grad-noon: linear-gradient(180deg, #5999d6 0%, #74b0e2 38%, #a6d0ef 72%, #dcecfb 100%);
+  --sky-grad-dusk: linear-gradient(180deg, #8495b6 0%, #978eb7 38%, #c18190 72%, #f0b890 100%);
   --sky-grad-night: linear-gradient(180deg, #0c1430 0%, #1a2450 38%, #2a3868 72%, #3a4a80 100%);
-  --sky-grad-cloudy: linear-gradient(180deg, #6b7a8f 0%, #8a98a8 38%, #aab4c0 72%, #cdd4dc 100%);
-  --sky-grad-fog: linear-gradient(180deg, #8a9098 0%, #a6abb2 38%, #c2c6cc 72%, #dde0e4 100%);
-  --sky-grad-drizzle: linear-gradient(180deg, #5a6b7d 0%, #79899a 38%, #9aa8b6 72%, #c0cad4 100%);
-  --sky-grad-rain: linear-gradient(180deg, #3f4d5e 0%, #566576 38%, #71808f 72%, #94a1ae 100%);
+  --sky-grad-cloudy: linear-gradient(180deg, #8995a5 0%, #8a98a8 38%, #aab4c0 72%, #cdd4dc 100%);
+  --sky-grad-fog: linear-gradient(180deg, #8f949c 0%, #a6abb2 38%, #c2c6cc 72%, #dde0e4 100%);
+  --sky-grad-drizzle: linear-gradient(180deg, #8995a2 0%, #8795a5 38%, #9aa8b6 72%, #c0cad4 100%);
+  --sky-grad-rain: linear-gradient(180deg, #3f4d5e 0%, #566576 38%, #5a6979 72%, #5a6878 100%);
   --sky-grad-snow: linear-gradient(180deg, #9aa6b6 0%, #b8c2cf 38%, #d2dae3 72%, #eef1f5 100%);
   --sky-grad-thunder: linear-gradient(180deg, #23262e 0%, #363a47 38%, #4a4f60 72%, #5e6478 100%);
 }
@@ -59,21 +63,34 @@
   isolation: isolate;
   color: var(--wx-ink-1);
   --wx-ink-1: #0b1a2e;
-  --wx-ink-2: rgba(11, 26, 46, 0.85);
-  --wx-ink-3: rgba(11, 26, 46, 0.68);
+  --wx-ink-2: rgba(11, 26, 46, 0.92);
+  --wx-ink-3: rgba(11, 26, 46, 0.85);
   /* Shared wireframe primitives rendered inside this hero (WfDataState's
      error copy, WfSkeleton's loading pulse) read the global ink/rule/bg-1
      tokens, not the wx-ink-prefixed ones above. Pin them to the same
      dark-ink-default here — independent of the site's own light/dark
      theme, which would otherwise cascade in the wrong ink for this
      backdrop — and flip them alongside wx-ink below. Single
-     data-sky-phase-scoped judgment, no per-component luminance math. */
+     data-sky-phase-scoped judgment, no per-component luminance math.
+     GSKY1 (2026-09-28): a material override must move every token in a
+     "paired" set together, never just one. `--ink-0` was flipped here but
+     its pair `--bg-0` (WfDataState's retry button uses
+     `border/color:var(--ink-0); background:var(--bg-0)`) kept the site
+     theme's own --bg-0 — dark UI theme + this day-phase dark ink collapsed
+     to ~1.09:1. --bg-0 now moves as a pair with --ink-0 in both this block
+     and the night/rain/thunder block below. */
   --ink-0: #0b1a2e;
-  --ink-1: rgba(11, 26, 46, 0.85);
-  --ink-2: rgba(11, 26, 46, 0.68);
-  --ink-3: rgba(11, 26, 46, 0.55);
+  --ink-1: rgba(11, 26, 46, 0.92);
+  --ink-2: rgba(11, 26, 46, 0.85);
+  --ink-3: rgba(11, 26, 46, 0.85);
   --rule: rgba(11, 26, 46, 0.18);
+  --bg-0: #ffffff;
   --bg-1: rgba(11, 26, 46, 0.08);
+  /* Glass controls on the sky (action pills, search panel) are part of the same
+     paired set: the site theme's dark fill is a navy wash (dark ink on it 3.37:1). */
+  --glass-fill: rgba(255, 255, 255, 0.20);
+  --glass-fill-lift: rgba(255, 255, 255, 0.28);
+  --glass-border: rgba(255, 255, 255, 0.40);
   border-radius: var(--r-0);
   overflow: hidden;
   /* Horizontal gutter moved to `.wx-hero__inner` below (design-audit V3):
@@ -91,14 +108,20 @@
 .wx-sky[data-sky-phase='rain'],
 .wx-sky[data-sky-phase='thunder'] {
   --wx-ink-1: #ffffff;
-  --wx-ink-2: rgba(255, 255, 255, 0.85);
-  --wx-ink-3: rgba(255, 255, 255, 0.68);
+  --wx-ink-2: rgba(255, 255, 255, 0.92);
+  --wx-ink-3: rgba(255, 255, 255, 0.85);
   --ink-0: #ffffff;
-  --ink-1: rgba(255, 255, 255, 0.85);
-  --ink-2: rgba(255, 255, 255, 0.68);
-  --ink-3: rgba(255, 255, 255, 0.55);
+  --ink-1: rgba(255, 255, 255, 0.92);
+  --ink-2: rgba(255, 255, 255, 0.85);
+  --ink-3: rgba(255, 255, 255, 0.85);
   --rule: rgba(255, 255, 255, 0.24);
+  /* GSKY1 — --bg-0 paired with the flipped white --ink-0 above (same rule
+     as the day-phase block). */
+  --bg-0: #0b1a2e;
   --bg-1: rgba(255, 255, 255, 0.14);
+  --glass-fill: rgba(11, 26, 46, 0.20);
+  --glass-fill-lift: rgba(11, 26, 46, 0.28);
+  --glass-border: rgba(255, 255, 255, 0.24);
 }
 .wx-sky::before {
   content: '';
@@ -201,7 +224,7 @@
   flex-direction: column;
   gap: var(--sp-5);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .wx-hero__band {
     flex-direction: row;
     align-items: flex-start;
@@ -262,7 +285,7 @@
   flex-direction: column;
   gap: var(--sp-3);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .wx-hero__rail {
     width: clamp(280px, 30vw, 340px);
   }
@@ -332,10 +355,16 @@
   padding: 10px 12px;
   border: 1px solid var(--glass-border);
   border-radius: var(--r-0);
-  background: rgba(255, 255, 255, 0.5);
+  /* A near-opaque field with its own ink, so it reads the same on every tint and sky
+     phase. At 0.5 the placeholder fell to 2.7:1 on the night sky (tokens.contrast.test). */
+  background: rgba(255, 255, 255, 0.8);
   color: var(--tint-ink-dark);
   font-family: var(--sans);
   font-size: 14px;
+}
+.wx-search-input::placeholder {
+  color: var(--tint-ink-dark);
+  opacity: 0.72;
 }
 .wx-search-list {
   margin-top: var(--sp-2);
@@ -508,6 +537,11 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--orange-ink);
+}
+/* Which source backs the number (W1b commit ③) — its own row under the line,
+   same wording as Home's and the capsule's source lines (`readingCopy.ts`). */
+.wx-aq-line__source {
+  flex-basis: 100%;
 }
 
 /* ============================ S5 — wind minimap ========================= */

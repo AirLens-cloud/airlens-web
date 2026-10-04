@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 import '../styles/static.css'
 import { METHODOLOGY_SECTIONS } from '../content/methodologySections'
 import { GLOSSARY_TERMS } from '../content/glossaryTerms'
@@ -11,6 +11,11 @@ import { GLOSSARY_TERMS } from '../content/glossaryTerms'
  * method is actually visible, and to its related Glossary terms.
  */
 export default function Methodology() {
+  // One-column layouts collapse the 14-link TOC behind this toggle (CSS-only
+  // breakpoint switch, no matchMedia); the links stay in the DOM either way.
+  const [tocOpen, setTocOpen] = useState(false)
+  const tocId = useId()
+
   return (
     <main className="static-page" data-tier="hub">
       <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
@@ -22,8 +27,18 @@ export default function Methodology() {
       </header>
 
       <div className="methodology-layout fluid-enter" style={{ '--enter-i': 1 } as CSSProperties}>
-        <nav aria-label="Methodology sections">
-          <ol className="methodology-toc">
+        <nav className="methodology-nav" aria-label="Methodology sections">
+          <button
+            type="button"
+            className="methodology-toc-toggle t-tag"
+            aria-expanded={tocOpen}
+            aria-controls={tocId}
+            onClick={() => setTocOpen((open) => !open)}
+          >
+            <span>On this page</span>
+            <span aria-hidden="true">{tocOpen ? '−' : '+'}</span>
+          </button>
+          <ol id={tocId} className="methodology-toc" data-state={tocOpen ? 'expanded' : 'collapsed'}>
             {METHODOLOGY_SECTIONS.map((s) => (
               <li key={s.sectionId}>
                 <a href={`#${s.sectionId}`}>{s.title}</a>

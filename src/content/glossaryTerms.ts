@@ -426,6 +426,21 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     natureTag: 'quality',
   },
   {
+    termId: 'data-age',
+    term: 'Data age',
+    definition:
+      'How long ago the source published the value you are looking at — for an analysis or forecast, the model run behind it. It is not the time anything was measured. On a current analysis or forecast it keeps counting while the page stays open; an annual figure shows the year it covers instead.',
+    definitionKo:
+      '지금 보고 있는 값을 출처가 발행한 뒤 흐른 시간입니다 — 분석값·예보라면 그 값을 만든 모델 실행이 기준입니다. 무언가를 측정한 시각이 아닙니다. 현재 분석값·예보는 페이지를 열어 둔 동안 계속 늘어나고, 연간 수치는 그 대신 다루는 연도를 보여 줍니다.',
+    example: '"data age 16h" on a model analysis means the grid it came from was published 16 hours ago.',
+    relations: [
+      { type: 'seeAlso', target: 'freshness' },
+      { type: 'seeAlso', target: 'stale' },
+      { type: 'seeAlso', target: 'analysis' },
+    ],
+    natureTag: 'quality',
+  },
+  {
     termId: 'source-tier',
     term: 'Source tier',
     definition:

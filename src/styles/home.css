@@ -55,10 +55,12 @@
   flex-direction: column;
   gap: var(--sp-5);
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .home-hero__inner {
     flex-direction: row;
-    align-items: flex-start;
+    /* GTAB3: stretch (was flex-start) so the rail column takes the main
+       column's height instead of ending ~1/3 of the way down the card. */
+    align-items: stretch;
     justify-content: space-between;
     gap: var(--sp-6);
   }
@@ -126,10 +128,23 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-/* State chips (stale/forecast) render via the shared `<StateChip>` component
-   now (design-audit 2026-09-05 §7 #1) — visual rules live in state-chip.css,
-   not here. Nothing hero-local to add: `.home-hero__tier`'s flex+gap above
-   already lays the chips out inline with the tier label. */
+/* State chips (stale/forecast/analysis) render via the shared `<StateChip>`
+   component now (design-audit 2026-09-05 §7 #1) — visual rules live in
+   state-chip.css, not here. Nothing hero-local to add: `.home-hero__tier`'s
+   flex+gap above already lays the chips out inline with the tier label. */
+
+/* Where the number comes from (W1b commit ②) — `color: inherit` rides the
+   hero's own AQI-tint ink axis (`--glass-card-ink`), same reasoning as
+   `.home-hero__fallback-band.t-caption` below: `.t-caption`'s own `--ink-2`
+   under-contrasts against a tinted glass card. No opacity knock on the
+   secondary line — the unhealthy tint already dropped `.home-hero__meta` to
+   4.25:1 that way once (F03 root cause, comment further down). */
+.home-hero__source {
+  margin: var(--sp-1) 0 0;
+}
+.home-hero__source.t-caption {
+  color: inherit;
+}
 
 .home-hero__meta {
   display: flex;
@@ -138,7 +153,7 @@
   font-family: var(--mono);
   font-size: 11px; /* design-lint-ok: typography — hero meta micro label, not prose (matches chrome.css control labels) */
   letter-spacing: 0.04em;
-  opacity: 0.88;
+  /* no opacity: on the unhealthy tint 0.88 dropped this line to 4.25:1 (F03 root cause) */
 }
 .home-hero__stale-flag {
   font-weight: 700;
@@ -216,7 +231,6 @@
 
 .home-hero__location-note {
   margin: var(--sp-1) 0 0;
-  opacity: 0.85;
 }
 .home-hero__location-note.t-caption {
   color: inherit;
@@ -236,13 +250,20 @@
   gap: var(--sp-3);
   color: var(--glass-card-ink, var(--tint-ink-dark));
 }
-@media (min-width: 768px) {
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
   .home-hero__rail {
     width: clamp(280px, 30vw, 340px);
   }
 }
+/* F03 (2026-09-28): `.t-micro`/`.t-caption` set their own `color:var(--ink-2)`
+   (typography.css), which beat this rail's inherited `--glass-card-ink`
+   (the hero's AQI-tint ink axis, set on `.home-hero__rail` above) by
+   selector specificity — opacity:0.72 on top of that mismatched ink then
+   measured as low as 1.01-1.16:1 on hazard/very-unhealthy tints. Hierarchy
+   between label/value/sub now comes from weight+size only (already
+   distinct via t-micro/t-caption/rail-tile-value), not opacity. */
 .home-hero__rail-head.t-micro {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .home-hero__rail-svg {
   width: 100%;
@@ -263,8 +284,8 @@
 .home-hero__rail-dot {
   fill: var(--orange);
 }
-.home-hero__rail-empty {
-  opacity: 0.72;
+.home-hero__rail-empty.t-caption {
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 /* DRAW verb (Wave 2A entrance vocabulary, motion.css) — same left-to-right
  * hairline grow as WeatherHeroRail's divider. `.motion-draw` is applied
@@ -273,6 +294,31 @@
   height: 1px;
   background: currentColor;
   opacity: 0.24;
+}
+@media (min-width: 769px) { /* design-lint-ok: breakpoint — exclusive complement of canonical 768 (BP.LG, max-width side), not a new breakpoint */
+  /* GTAB3: the rail is stretched to the main column's height (see
+     `.home-hero__inner`), so it needs a deliberate vertical rhythm rather than
+     an empty tail: head + plot stay together at the top, and the divider's
+     `margin-top: auto` absorbs the free space so the two stat tiles anchor to
+     the card's bottom edge, level with the main column's last line. The
+     sparkline grows into a plot area (hairline gridlines below); its glyph
+     stays aspect-locked (`viewBox` meet) and centres in that area, and
+     `max-height` stops it becoming a tall mostly-empty box on narrow tablets. */
+  .home-hero__rail-svg {
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 52px;
+    max-height: 176px;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, currentColor 12%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 100% 25%;
+  }
+  .home-hero__rail-divider {
+    margin-top: auto;
+  }
 }
 .home-hero__rail-stats {
   display: grid;
@@ -287,7 +333,7 @@
   border-top: 1px solid color-mix(in srgb, currentColor 24%, transparent);
 }
 .home-hero__rail-tile-label.t-micro {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .home-hero__rail-tile-value {
   font-family: var(--mono);
@@ -296,7 +342,7 @@
   font-variant-numeric: tabular-nums;
 }
 .home-hero__rail-tile-sub.t-caption {
-  opacity: 0.72;
+  color: var(--glass-card-ink, var(--tint-ink-dark));
 }
 
 /* ============================= G8 trust strip ============================= */
@@ -343,7 +389,6 @@
    uppercase+tracking), so this needs no case/tracking overrides of its own. */
 .home-trust-strip__sublabel {
   color: var(--ink-2);
-  opacity: 0.75;
 }
 .home-trust-strip__value {
   display: inline-flex;
@@ -472,7 +517,7 @@ a.home-trust-strip__value:hover {
 .home-why-now__unknown-tag {
   display: inline-block;
   margin-right: var(--sp-2);
-  color: var(--ink-3);
+  color: var(--ink-2); /* --ink-3 is 3.59:1 in dark */
 }
 
 .home-act-on-it__ctas {
@@ -560,9 +605,11 @@ a.home-trust-strip__value:hover {
 .home-story-card__title {
   color: var(--ink-0);
 }
+/* F13 — same paper-surface text-contrast fix as composites.css's
+   `.np-action--primary`/`.cite-open`. */
 .home-story-card__link:hover .home-story-card__title,
 .home-story-card__link:focus-visible .home-story-card__title {
-  color: var(--orange);
+  color: var(--orange-ink);
 }
 .home-story-card__meta {
   color: var(--ink-2);

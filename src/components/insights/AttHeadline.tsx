@@ -124,7 +124,7 @@ export default function AttHeadline({
       )}
 
       <footer className="ins-headline-foot">
-        <DqssBadge dqss={fitGrade(summary.fitScore)} variant="default" className="ins-fit-badge" />
+        <DqssBadge dqss={fitGrade(summary.fitScore)} variant="default" label="Panel fit" className="ins-fit-badge" />
         <span className="ins-headline-fit-note">
           Panel fit — how well the synthetic control tracked this country before
           treatment. Not the sensor DQSS scale.

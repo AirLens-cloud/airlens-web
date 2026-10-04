@@ -43,6 +43,20 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   color: var(--glass-card-ink, var(--tint-ink-dark));
+  /* The typography classes (.t-numeric/.t-micro/.t-caption…) paint with the site-theme
+     ink set, which beats the card's inherited colour. On an AQI tint that ink is wrong
+     in both themes (light: #000 on hazard 2.07:1 · dark: #f4f1e8 on the light tints).
+     Remap the whole set to the tint's ink — the same pair rule as `.wx-sky` (GSKY1).
+     Hierarchy inside the card comes from weight/size, never from a lighter ink.
+     Nested search panel is translucent glass on the same tint, so it follows too —
+     its rows paint --wx-ink-*, which only `.wx-sky` defines, so remap those as well. */
+  --ink-0: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-1: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-2: var(--glass-card-ink, var(--tint-ink-dark));
+  --ink-3: var(--glass-card-ink, var(--tint-ink-dark));
+  --wx-ink-1: var(--glass-card-ink, var(--tint-ink-dark));
+  --wx-ink-2: var(--glass-card-ink, var(--tint-ink-dark));
+  --wx-ink-3: var(--glass-card-ink, var(--tint-ink-dark));
 }
 .glass-card.glass-card--lift {
   background: var(--glass-fill-lift);
@@ -52,6 +66,7 @@
   background: var(--glass-night-fill);
   border-color: var(--glass-night-border);
   color: #ffffff;
+  --glass-card-ink: #ffffff;
 }
 /* AQI-tint backdrop the glass card sits on. Ink pairing is measured (see header) —
    unhealthy keeps dark ink (white fails AA at 3.59:1); hazard alone flips to white.
@@ -59,10 +74,19 @@
    (e.g. the hero's primary CTA): it must ride this same AQI-tint axis, never the
    site theme — a site-theme token (`--bg-0`) on a tint-axis fill goes dark-on-dark
    when site=dark meets a light tint (measured 1.06:1, 2026-09-05 audit F2). */
+/* Nested glass on a tint (the hero's city search panel) paints --glass-fill. The site
+   theme's dark fill is a navy wash — dark ink on navy-over-unhealthy measured 2.97:1 —
+   so the fill is part of the tint's paired set: a white wash under dark ink, and a navy
+   wash under hazard's white ink. Same rule as the `.wx-sky` phase blocks. */
+.glass-card[data-aqi] {
+  --glass-fill: rgba(255, 255, 255, 0.20);
+  --glass-fill-lift: rgba(255, 255, 255, 0.28);
+  --glass-border: rgba(255, 255, 255, 0.40);
+}
 .glass-card[data-aqi="good"] { background-color: var(--tint-good); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
 .glass-card[data-aqi="moderate"] { background-color: var(--tint-moderate); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
 .glass-card[data-aqi="unhealthy"] { background-color: var(--tint-unhealthy); --glass-card-ink: var(--tint-ink-dark); --glass-card-ink-contrast: #ffffff; }
-.glass-card[data-aqi="hazard"] { background-color: var(--tint-hazard); --glass-card-ink: #ffffff; --glass-card-ink-contrast: var(--tint-ink-dark); }
+.glass-card[data-aqi="hazard"] { background-color: var(--tint-hazard); --glass-card-ink: #ffffff; --glass-card-ink-contrast: var(--tint-ink-dark); --glass-fill: rgba(11, 26, 46, 0.20); --glass-fill-lift: rgba(11, 26, 46, 0.28); --glass-border: rgba(255, 255, 255, 0.24); }
 @media (prefers-reduced-transparency: reduce) {
   .glass-card {
     background: var(--glass-opaque);

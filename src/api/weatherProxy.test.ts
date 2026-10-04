@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const dataSources = vi.hoisted(() => ({ COMMUNITY_API_BASE: '', HF_LIVE_BASE: 'https://hf.example/live' }))
 vi.mock('../lib/config/dataSources', () => dataSources)
 
-import { fetchAqHourly, fetchWeatherGridMslp, fetchWeatherHourly } from './weatherProxy'
+import { fetchWeatherGridMslp, fetchWeatherHourly } from './weatherProxy'
 
 function mockFetch(responder: (url: string) => Response | Promise<Response>) {
   const spy = vi.fn(async (url: string) => responder(url))
@@ -65,27 +65,6 @@ describe('fetchWeatherHourly', () => {
     const hourly = await fetchWeatherHourly(37.5665, 126.978)
 
     expect(hourly).toBeNull()
-  })
-})
-
-describe('fetchAqHourly', () => {
-  it('skips the request entirely when the proxy base is not configured', async () => {
-    const spy = mockFetch(() => jsonResponse({ hourly: { time: [], pm2_5: [] } }))
-
-    const hourly = await fetchAqHourly(37.5665, 126.978)
-
-    expect(hourly).toBeNull()
-    expect(spy).not.toHaveBeenCalled()
-  })
-
-  it('returns the pm2_5 series verbatim on a successful response', async () => {
-    dataSources.COMMUNITY_API_BASE = 'https://api.example'
-    const payload = { hourly: { time: ['2026-08-26T00:00'], pm2_5: [12.3] } }
-    mockFetch(() => jsonResponse(payload))
-
-    const hourly = await fetchAqHourly(37.5665, 126.978)
-
-    expect(hourly).toEqual(payload.hourly)
   })
 })
 

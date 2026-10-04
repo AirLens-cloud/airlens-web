@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent } from '@testing-library/react'
 import TrustLine from './TrustLine'
 
 afterEach(() => cleanup())
@@ -16,13 +16,13 @@ describe('TrustLine', () => {
     )
     // Assert
     const text = getByTestId('trust-line').textContent ?? ''
-    expect(text).toMatch(/obs age.*2\.3h/)
+    expect(text).toMatch(/data age.*2\.3h/)
     expect(text).toMatch(/DQSS.*withheld \(not measured\)/)
     expect(text).toMatch(/not published \(deterministic source\)/)
     expect(text).toMatch(/Why this number\?/)
   })
 
-  it('renders a real DQSS score and p10/p90 band when both are available', () => {
+  it('renders a real DQSS score as its grade badge, and the p10/p90 band, when both are available', () => {
     // Arrange / Act
     const { getByTestId } = render(
       <TrustLine
@@ -32,10 +32,67 @@ describe('TrustLine', () => {
       />,
     )
     // Assert
-    const text = getByTestId('trust-line').textContent ?? ''
-    expect(text).toMatch(/obs age.*45m/)
-    expect(text).toMatch(/DQSS.*78\/100/)
+    const line = getByTestId('trust-line')
+    const text = line.textContent ?? ''
+    expect(text).toMatch(/data age.*45m/)
+    // 78.4 falls in the B band (65 ≤ score < 80) — shown as the badge, the
+    // raw score only in the tooltip (F53).
+    const badge = line.querySelector('.dqss-badge')
+    expect(badge?.getAttribute('data-dqss')).toBe('B')
+    expect(text).not.toMatch(/\/100/)
+    // One "DQSS" label only: the line's own key, then the letter-only badge.
+    expect(line.querySelector('.trust-line__graded .dqss-badge--compact')).not.toBeNull()
+    expect(line.querySelectorAll('.dqss-badge-prefix')).toHaveLength(0)
+    // The raw score stays reachable — tooltip and accessible name of a
+    // focusable link to the DQSS methodology, not visible text.
+    const graded = line.querySelector('a.trust-line__graded')
+    expect(graded?.getAttribute('href')).toBe('/methodology#dqss')
+    expect(graded?.getAttribute('title')).toBe('DQSS score 78/100')
+    // The name starts with the visible letter (WCAG 2.5.3 label in name) —
+    // an aria-label replaces the badge's own "DQSS B — Good" name, so the
+    // grade must be in it, not only the score.
+    expect(graded?.getAttribute('aria-label')).toBe('DQSS B, score 78/100 — how DQSS is graded')
+    expect(text).not.toMatch(/withheld/)
     expect(text).toMatch(/30\.0–55\.0 µg\/m³/)
+  })
+
+  it.each([
+    [80, 'A', 80],
+    [79.9, 'B', 79],
+    [65, 'B', 65],
+    [64.9, 'C', 64],
+    [50, 'C', 50],
+    [49.9, 'D', 49],
+    [20, 'D', 20],
+    [19.9, 'F', 19],
+    [0, 'F', 0],
+  ])('grades a DQSS score of %s as %s, and its tooltip never names a score across the cutoff (%s/100)', (value, grade, shown) => {
+    // Arrange / Act
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: true, value }} uncertainty={{ available: false }} />,
+    )
+    // Assert
+    const line = getByTestId('trust-line')
+    expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe(grade)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe(`DQSS score ${shown}/100`)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('aria-label')).toBe(
+      `DQSS ${grade}, score ${shown}/100 — how DQSS is graded`,
+    )
+  })
+
+  it('shows the unknown-grade badge, never a made-up grade, when an available score is not a finite number', () => {
+    // Arrange / Act
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: true, value: Number.NaN }} uncertainty={{ available: false }} />,
+    )
+    // Assert
+    const line = getByTestId('trust-line')
+    expect(line.querySelector('.dqss-badge')?.getAttribute('data-dqss')).toBe('unknown')
+    expect(line.textContent).not.toMatch(/NaN/)
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('title')).toBe('DQSS score not available')
+    expect(line.querySelector('.trust-line__graded')?.getAttribute('aria-label')).toBe(
+      'DQSS grade unknown, score not available — how DQSS is graded',
+    )
   })
 
   it('honors an explicit ageLabel over a computed ms value (annual-aggregate surfaces)', () => {
@@ -48,7 +105,7 @@ describe('TrustLine', () => {
       />,
     )
     // Assert
-    expect(getByTestId('trust-line').textContent).toMatch(/obs age.*as of 2024/)
+    expect(getByTestId('trust-line').textContent).toMatch(/data age.*as of 2024/)
   })
 
   it('shows "unknown" (never a fabricated age) when neither ageMs nor ageLabel is given', () => {
@@ -57,24 +114,38 @@ describe('TrustLine', () => {
       <TrustLine dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
     // Assert
-    expect(getByTestId('trust-line').textContent).toMatch(/obs age.*unknown/)
+    expect(getByTestId('trust-line').textContent).toMatch(/data age.*unknown/)
   })
 
-  it('renders no scope tag by default, and the given one when scopeLabel is set', () => {
+  it('makes each of its three keys a glossary TermLink, and renders no scope tag', () => {
     // Arrange / Act
-    const unscoped = render(
-      <TrustLine dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
+    const { getByTestId } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
-    const scoped = render(
-      <TrustLine
-        dqss={{ available: false, reason: 'n/a' }}
-        uncertainty={{ available: false }}
-        scopeLabel="THIS FORECAST"
-      />,
+    // Assert — F48: "data age", "DQSS" and "p10–p90" each explain themselves.
+    const line = getByTestId('trust-line')
+    const triggers = Array.from(line.querySelectorAll('.trust-line__k .knowledge-termlink__trigger'))
+    expect(triggers.map((b) => b.textContent)).toEqual(['data age', 'DQSS', 'p10–p90'])
+    expect(triggers.every((b) => b.getAttribute('aria-haspopup') === 'dialog')).toBe(true)
+    // F70: the "THIS FORECAST" scope tag is gone for good.
+    expect(line.querySelector('.trust-line__scope')).toBeNull()
+  })
+
+  it('opens the "data age" definition, which says it is not a measurement time', () => {
+    // Arrange
+    const { getByTestId, getByRole } = render(
+      <TrustLine ageMs={60_000} dqss={{ available: false, reason: 'n/a' }} uncertainty={{ available: false }} />,
     )
+    // Act
+    fireEvent.click(getByRole('button', { name: 'data age' }))
     // Assert
-    expect(unscoped.container.querySelector('.trust-line__scope')).toBeNull()
-    expect(scoped.container.querySelector('.trust-line__scope')?.textContent).toBe('THIS FORECAST')
+    const popover = getByTestId('trust-line').querySelector('[role="dialog"]')
+    expect(popover?.textContent).toContain('Data age')
+    expect(popover?.textContent).toContain('It is not the time anything was measured')
+    // The same popover shows on Country pages, where the key reads "as of
+    // <year>" and never ticks — the definition must not promise it does.
+    expect(popover?.textContent).toContain('an annual figure shows the year it covers instead')
+    expect(popover?.querySelector('a[href="/glossary#data-age"]')).not.toBeNull()
   })
 
   it('links "Why this number?" to /methodology by default, or a custom href when given', () => {

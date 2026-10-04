@@ -90,7 +90,7 @@ describe('CountryProfile', () => {
     // Assert
     await waitFor(() => expect(screen.getByTestId('trust-line')).toBeTruthy())
     const text = screen.getByTestId('trust-line').textContent ?? ''
-    expect(text).toMatch(/obs age.*as of 2019/)
+    expect(text).toMatch(/data age.*as of 2019/)
     expect(text).toMatch(/10\.1–38\.2/)
     // No DQSS field exists on CountryPanelPoint — always withheld, honestly.
     expect(text).toMatch(/DQSS.*withheld/)
