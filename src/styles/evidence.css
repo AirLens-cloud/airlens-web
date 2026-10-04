@@ -1,0 +1,76 @@
+.scholarly-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin-top: var(--sp-7);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--rule);
+}
+
+.scholarly-evidence__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-4);
+}
+.scholarly-evidence__heading h2,
+.scholarly-evidence__heading p { margin: 0; }
+.scholarly-evidence__heading p { color: var(--ink-2); max-width: 64ch; }
+
+.scholarly-evidence__locale {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  flex-shrink: 0;
+}
+.scholarly-evidence__locale button {
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: var(--bg-0);
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.scholarly-evidence__locale button + button { border-left: 1px solid var(--rule); }
+.scholarly-evidence__locale button[aria-pressed='true'] { background: var(--ink-0); color: var(--bg-0); }
+.scholarly-evidence__locale button:focus-visible { outline: 2px solid var(--orange-ink); outline-offset: 2px; }
+
+.scholarly-claim {
+  padding: var(--sp-4);
+  border: 1px solid var(--rule);
+  background: var(--bg-1);
+}
+.scholarly-claim[data-status='contradicted'],
+.scholarly-claim[data-status='withdrawn'] { border-left: 3px solid var(--orange-ink); }
+.scholarly-claim[data-status='mixed'],
+.scholarly-claim[data-status='insufficient'] { border-left: 3px dashed var(--ink-2); }
+
+.scholarly-claim__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.scholarly-claim__status { color: var(--ink-0); }
+.scholarly-claim__date { color: var(--ink-3); }
+.scholarly-claim__statement { max-width: 72ch; margin: var(--sp-3) 0; }
+.scholarly-claim__label { color: var(--ink-2); margin: var(--sp-3) 0 var(--sp-1); }
+.scholarly-claim__references,
+.scholarly-claim__artifacts,
+.scholarly-claim__limitations { margin: 0; padding-left: var(--sp-5); color: var(--ink-1); }
+.scholarly-claim__references li,
+.scholarly-claim__artifacts li,
+.scholarly-claim__limitations li { margin-block: var(--sp-1); overflow-wrap: anywhere; }
+.scholarly-claim__notice {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  color: var(--orange-ink);
+  text-transform: uppercase;
+}
+.scholarly-evidence__error { color: var(--orange-ink); }
+
+@media (max-width: 768px) {
+  .scholarly-evidence__heading,
+  .scholarly-claim__header { flex-direction: column; align-items: stretch; }
+  .scholarly-evidence__locale { width: 100%; }
+  .scholarly-evidence__locale button { flex: 1; }
+}

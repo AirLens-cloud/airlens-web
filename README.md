@@ -114,6 +114,17 @@ runs Vite 8, the monorepo pinned Vite 7). It still imports nothing from
 `packages/shared-types` or `packages/design-tokens`; the two codebases share
 no build-time dependency, only the one-way HF dataset feed described above.
 
+## Scholarly evidence
+
+AirLens-platform is the producer of the versioned scholarly-claim contract.
+This app checks in its public-safe output at
+`public/data/evidence/scholarly_claims.v1.json` and renders the same records on
+Methodology, Research, Trust, and model-card surfaces. The browser never calls
+Scite: only stable identifiers, AirLens review decisions, review dates,
+limitations, and links to AirLens evaluation artifacts cross the public
+boundary. Keep this static copy byte-identical to the producer artifact when a
+reviewed evidence PR is accepted.
+
 One convention survives from that earlier plan and is still worth keeping:
 every import in `src/` stays relative, no `@/*` alias
 (`grep -r "from '@/'" src` returns nothing) — it costs nothing and keeps

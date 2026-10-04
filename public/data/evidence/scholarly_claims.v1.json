@@ -1,0 +1,603 @@
+{
+  "schema_version": "scholarly_claims.v1",
+  "generated_at": "2026-09-06T22:40:00Z",
+  "claims": [
+    {
+      "schemaVersion": "1.0",
+      "claimId": "ground-observations-are-primary",
+      "domain": "purpose",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "AirLens는 지상 관측을 1차 신호로 사용하고 위성·재분석·ML 추정은 보완 신호로 구분한다.",
+        "en": "AirLens treats ground observations as the primary signal and labels satellite, reanalysis, and ML estimates as complementary signals."
+      },
+      "references": [
+        {
+          "idType": "guideline",
+          "id": "WHO-AQG-2021",
+          "title": "WHO global air quality guidelines",
+          "role": "authority",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.1021/acs.est.0c01764",
+          "title": "Global Estimates and Long-Term Trends of Fine Particulate Matter Concentrations (1998–2018)",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "README.md"
+      ],
+      "limitations": {
+        "ko": [
+          "관측이 없는 위치의 추정치는 관측값으로 해석할 수 없으며 지상 센서 자체에도 보정·입지 편향이 있다."
+        ],
+        "en": [
+          "An estimate at an unmonitored location is not an observation, and ground sensors still have calibration and siting biases."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "quantified-uncertainty-preserves-source-trust",
+      "domain": "positioning",
+      "risk": "standard",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "수치 범위로 불확실성을 전달하는 것은 정보 출처에 대한 신뢰를 반드시 낮추지는 않는다.",
+        "en": "Communicating uncertainty as a numeric range does not necessarily reduce trust in the information source."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1073/pnas.1913678117",
+          "title": "The effects of communicating uncertainty on public trust in facts and numbers",
+          "role": "primary",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.1098/rsos.230604",
+          "title": "The effects of communicating uncertainty around statistics, on public trust",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "수치 범위는 출처 신뢰에는 영향이 없었지만 숫자 자체의 신뢰를 소폭 낮춘 실험이 있으며, 효과는 국가·표현·맥락에 따라 달랐다."
+        ],
+        "en": [
+          "Numeric ranges did not reduce source trust in these experiments, but sometimes slightly reduced trust in the number itself; effects varied by country, format, and context."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "conformal-quantile-interval-method",
+      "domain": "method",
+      "risk": "standard",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "AirLens의 예측구간 교정은 conformalized quantile regression 방법을 기준으로 평가한다.",
+        "en": "AirLens evaluates prediction-interval calibration using the conformalized quantile regression method."
+      },
+      "references": [
+        {
+          "idType": "arxiv",
+          "id": "1905.03222",
+          "title": "Conformalized Quantile Regression",
+          "role": "primary",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.1002/sta4.261",
+          "title": "A Comparison of Some Conformal Quantile Regression Methods",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/eval/aod/serving_qhat.py"
+      ],
+      "limitations": {
+        "ko": [
+          "CQR의 기본 보장은 주변부 커버리지이며 농도 밴드별 조건부 커버리지를 보장하지 않는다. 시공간 분포 이동은 AirLens 자체 전방 평가로 따로 측정해야 한다."
+        ],
+        "en": [
+          "CQR's baseline guarantee is marginal, not concentration-band conditional coverage. AirLens must measure spatiotemporal distribution shift with its own forward evaluation."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "aod-forward-band-coverage-is-regime-limited",
+      "domain": "performance",
+      "risk": "high",
+      "status": "mixed",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "AOD 파이프라인의 +1시간 예측구간 커버리지는 전체 표본에서는 측정됐지만 고농도 구간은 표본 부족으로 확정할 수 없다.",
+        "en": "The AOD pipeline has measured one-hour-ahead interval coverage overall, while high-pollution coverage remains inconclusive because of limited samples."
+      },
+      "references": [
+        {
+          "idType": "arxiv",
+          "id": "1905.03222",
+          "title": "Conformalized Quantile Regression",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/eval/aod/reports/gate_accumulator_baseline_2026-09-03.json"
+      ],
+      "limitations": {
+        "ko": [
+          "ge35 표본은 사전등록 최소 표본 수에 미달하며 ge150 표본은 0이다."
+        ],
+        "en": [
+          "The ge35 slice is below its preregistered minimum sample size and the ge150 slice has no observations."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "history-feature-regime-remains-withheld",
+      "domain": "performance",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "OpenAQ history 피처 레짐은 단일 시점 평가에서 echo 기준선보다 낮아 서빙 전환이 보류됐다.",
+        "en": "The OpenAQ history-feature regime remains withheld from serving after underperforming the echo baseline in a single-snapshot evaluation."
+      },
+      "references": [],
+      "airlensEvidenceRefs": [
+        "models/eval/aod/reports/history_regime_picp_comparison_2026-09-03.json"
+      ],
+      "limitations": {
+        "ko": [
+          "history 평가는 단일 발행 스냅샷이며 echo 기준선보다 시간 다양성이 낮다."
+        ],
+        "en": [
+          "The history evaluation uses one publication snapshot and has less temporal diversity than the echo baseline."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "idw-beats-canonical-gnn-on-matched-holdout",
+      "domain": "performance",
+      "risk": "standard",
+      "status": "mixed",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "동일 snapshot·seed·20% station holdout을 지향한 기록에서는 IDW RMSE가 canonical GNN보다 낮았지만 평가 행 수가 달라 엄격한 동조건 우위로 확정할 수 없다.",
+        "en": "In a recorded comparison targeting the same snapshot, seed, and 20% station holdout, IDW had lower RMSE than the canonical GNN, but differing evaluation row counts prevent a strict like-for-like conclusion."
+      },
+      "references": [],
+      "airlensEvidenceRefs": [
+        "models/eval/gnn/reports/idw-baseline-2026-09-02.json"
+      ],
+      "limitations": {
+        "ko": [
+          "IDW는 25,691행, canonical GNN 참조는 25,814행을 사용했다. 행 집합을 완전히 일치시켜 재평가하기 전에는 다른 지역·시점이나 일반적 모델 우위로 확장하지 않는다."
+        ],
+        "en": [
+          "IDW used 25,691 rows while the canonical GNN reference used 25,814. Until the row sets are identical, this is not generalized to other places, periods, or overall model superiority."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "sdid-requires-identification-diagnostics",
+      "domain": "causal",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "AirLens의 SDID 정책 효과는 불확실성 구간과 식별 진단을 함께 제시할 때만 인과 결과로 해석한다.",
+        "en": "AirLens interprets an SDID policy estimate causally only when uncertainty intervals and identification diagnostics accompany it."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1257/aer.20190159",
+          "title": "Synthetic Difference-in-Differences",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "apps/web/public/data/policy-impact/KR.json"
+      ],
+      "limitations": {
+        "ko": [
+          "방법론의 타당성이 개별 추정치의 식별 타당성을 보장하지 않는다. 현재 KR 아티팩트는 placebo가 실패하고 두 교차검증 lane이 추정치를 내지 못했으므로 인과 결론으로 공개할 수 없다."
+        ],
+        "en": [
+          "A valid method does not establish identification for an individual estimate. The current KR artifact fails its placebo check and both cross-check lanes lack estimates, so it cannot support a public causal conclusion."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "health-guidance-is-authority-bounded",
+      "domain": "health",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T22:40:00Z",
+      "statement": {
+        "ko": "AirLens의 공개 건강 문구는 권위기관의 일반 정보 범위로 제한하며 개인 의료 조언을 제공하지 않는다.",
+        "en": "AirLens limits public health language to general information from authoritative bodies and does not provide individualized medical advice."
+      },
+      "references": [
+        {
+          "idType": "guideline",
+          "id": "WHO-AQG-2021",
+          "title": "WHO global air quality guidelines",
+          "role": "authority",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.1016/j.envint.2022.107556",
+          "title": "Update of the WHO Global Air Quality Guidelines: Systematic Reviews – An Introduction",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/tests/test_advisory_curate.py"
+      ],
+      "limitations": {
+        "ko": [
+          "Health Advisor LLM은 별도 안전성·인용 정확도 게이트 통과 전 공개 대상이 아니다."
+        ],
+        "en": [
+          "The Health Advisor LLM is not a public surface until separate safety and citation-accuracy gates pass."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "satellite-fusion-complements-sparse-monitoring",
+      "domain": "method",
+      "risk": "standard",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "위성 AOD·재분석·화학수송모델은 지상 관측망의 공간 공백을 보완할 수 있지만 지상 관측을 대체하는 직접 측정은 아니다.",
+        "en": "Satellite AOD, reanalysis, and chemical transport models can complement spatial gaps in ground monitoring, but they are not direct replacements for ground observations."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1021/acs.est.0c01764",
+          "title": "Global Estimates and Long-Term Trends of Fine Particulate Matter Concentrations (1998–2018)",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/pipeline/predict_grid.py"
+      ],
+      "limitations": {
+        "ko": [
+          "융합 산출물의 품질은 지상 관측 밀도, AOD 결측, 기상·배출 자료와 지역별 보정에 의존한다."
+        ],
+        "en": [
+          "Fusion quality depends on monitor density, AOD missingness, meteorology, emissions data, and regional calibration."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "aod-pm25-transfer-requires-regional-validation",
+      "domain": "method",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "AOD와 지표 PM2.5의 관계는 시공간적으로 달라지므로 새로운 지역·시점에 적용할 때 독립적인 지역 검증이 필요하다.",
+        "en": "The relationship between AOD and surface PM2.5 varies in space and time, so deployment to new regions or periods requires independent regional validation."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.3390/rs13163102",
+          "title": "Evaluation of MODIS Aerosol Optical Depth and Surface Data Using an Ensemble Modeling Approach to Assess PM2.5 Temporal and Spatial Distributions",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/eval/aod/spatial_cv.py"
+      ],
+      "limitations": {
+        "ko": [
+          "한 지역의 교차검증 성능을 다른 기후·배출·센서 체계로 일반화할 수 없다."
+        ],
+        "en": [
+          "Cross-validation performance in one region cannot be generalized to different climates, emissions, or monitoring systems."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "exposure-model-error-can-bias-health-inference",
+      "domain": "method",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "모델 추정 PM2.5를 건강 노출의 대리값으로 사용할 때 측정오차는 농도–반응 추정에 편향을 만들 수 있다.",
+        "en": "When modeled PM2.5 is used as a proxy for health exposure, measurement error can bias estimated concentration-response relationships."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1289/ehp10389",
+          "title": "The Impact of Exposure Measurement Error on the Estimated Concentration–Response Relationship between Long-Term Exposure to PM2.5 and Mortality",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "편향의 방향과 크기는 오차 구조와 연구 설계에 따라 달라지며 AirLens가 건강 효과를 직접 추정했다는 뜻이 아니다."
+        ],
+        "en": [
+          "The direction and magnitude of bias depend on the error structure and study design; AirLens has not directly estimated health effects."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "aqi-awareness-may-support-protective-behavior",
+      "domain": "positioning",
+      "risk": "high",
+      "status": "mixed",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "AQI 인지도와 사용은 오염 회피 행동을 도울 가능성이 있지만, 정보 제공만으로 모든 집단의 행동 변화가 보장되지는 않는다.",
+        "en": "AQI awareness and use may support pollution-avoidance behavior, but information alone does not guarantee behavior change across populations."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1186/s12889-018-5418-5",
+          "title": "Assessing air quality index awareness and use in Mexico City",
+          "role": "primary",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.5620/eaht.2022014",
+          "title": "Public awareness and practices towards health impacts of PM2.5 in the Kingdom of Bahrain",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "관찰된 연관성은 지역·교육·건강상태·정보 접근성에 따라 달라지며 AirLens 사용자 효과는 아직 측정되지 않았다."
+        ],
+        "en": [
+          "Observed associations vary by place, education, health status, and information access; AirLens user effects have not yet been measured."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "single-pollutant-aqi-is-not-personal-risk-score",
+      "domain": "positioning",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "단일 오염물질 중심 AQI는 공공 위험소통 지표이며 개인의 건강위험을 완전하게 정량화하는 점수로 해석해서는 안 된다.",
+        "en": "A single-pollutant AQI is a public risk-communication index and should not be interpreted as a complete quantitative score of an individual's health risk."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1038/jes.2015.43",
+          "title": "Accuracy of quantification of risk using a single-pollutant Air Quality Index",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        "models/tests/test_advisory_eval.py"
+      ],
+      "limitations": {
+        "ko": [
+          "AQI는 여전히 이해 가능한 경보 수단이지만 오염물질 혼합, 개인 노출, 기저질환을 모두 담지 않는다."
+        ],
+        "en": [
+          "AQI remains a useful warning tool, but it does not capture pollutant mixtures, personal exposure, or underlying health conditions."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "citizen-monitoring-needs-quality-and-governance",
+      "domain": "positioning",
+      "risk": "standard",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "시민 대기질 관측은 참여와 지역 지식 형성에 기여할 수 있지만, 공공 의사결정에 쓰려면 센서 품질·교육·기관 협력이 필요하다.",
+        "en": "Citizen air monitoring can support participation and local knowledge, but public decision-making use requires sensor quality controls, education, and institutional collaboration."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.1089/env.2016.0044",
+          "title": "A Citizen Science and Government Collaboration: Developing Tools to Facilitate Community Air Monitoring",
+          "role": "primary",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.3390/s22072543",
+          "title": "Towards the Development of a Sensor Educational Toolkit to Support Community and Citizen Science",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "참여 증가가 곧 규제 채택이나 건강 개선을 의미하지 않으며 저비용 센서는 기준 측정기와 동일하지 않다."
+        ],
+        "en": [
+          "More participation does not itself establish policy adoption or health improvement, and low-cost sensors are not reference monitors."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "citizen-science-policy-uptake-remains-limited",
+      "domain": "positioning",
+      "risk": "standard",
+      "status": "mixed",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "대기질 시민과학은 과학–정책–사회 연결의 잠재력이 있지만 공식 모니터링과 정책 집행에 실제로 편입된 정도는 제한적이다.",
+        "en": "Air-quality citizen science can strengthen science-policy-society links, while its actual integration into official monitoring and policy implementation remains limited."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.3390/su13073973",
+          "title": "Citizen Science for Transformative Air Quality Policy in Germany and Niger",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "제도·지역 맥락이 달라 AirLens의 공익 효과는 별도 영향평가 없이는 확정할 수 없다."
+        ],
+        "en": [
+          "Institutional and local contexts differ, so AirLens public-interest impact requires its own impact evaluation."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "rag-citations-require-correctness-and-completeness-eval",
+      "domain": "method",
+      "risk": "high",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "RAG 답변의 인용은 존재 여부만이 아니라 해당 문장을 실제로 지지하는 정확성과 필요한 주장에 빠짐없이 붙는 완전성을 평가해야 한다.",
+        "en": "RAG citations should be evaluated for whether they actually support the cited statement and whether all claims needing support are covered, not merely for citation presence."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.18653/v1/2023.emnlp-main.398",
+          "title": "Enabling Large Language Models to Generate Text with Citations",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        ".github/workflows/chatbot-model-ab.yml"
+      ],
+      "limitations": {
+        "ko": [
+          "자동 인용 지표는 인간 검토를 대체하지 않으며 검색 코퍼스가 부정확하면 충실한 답변도 만들 수 없다."
+        ],
+        "en": [
+          "Automatic citation metrics do not replace human review, and a faithful answer cannot be built from an inaccurate corpus."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "rag-evaluation-separates-retriever-and-generator",
+      "domain": "method",
+      "risk": "standard",
+      "status": "supported",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "RAG 품질 평가는 검색 실패와 생성 실패를 분리하고 claim 단위의 근거 충실성을 진단해야 개선 원인을 식별할 수 있다.",
+        "en": "RAG evaluation should separate retrieval failures from generation failures and diagnose claim-level grounding to identify actionable causes."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.52202/079017-0692",
+          "title": "RAGChecker: A Fine-grained Framework for Diagnosing Retrieval-Augmented Generation",
+          "role": "primary",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [
+        ".github/workflows/chatbot-model-ab.yml"
+      ],
+      "limitations": {
+        "ko": [
+          "프레임워크를 채택하는 것만으로 도메인별 정답셋과 신뢰할 수 있는 judge가 확보되지는 않는다."
+        ],
+        "en": [
+          "Adopting a framework does not itself supply a domain-specific gold set or a trustworthy judge."
+        ]
+      }
+    },
+    {
+      "schemaVersion": "1.0",
+      "claimId": "air-quality-warning-benefit-needs-impact-evaluation",
+      "domain": "positioning",
+      "risk": "high",
+      "status": "mixed",
+      "verifiedAt": "2026-09-06T23:30:00Z",
+      "statement": {
+        "ko": "대기오염 경보와 행동 안내는 취약집단의 대응을 도울 수 있지만 AirLens의 공익 효과는 사용자 행동·형평성·정책 활용을 직접 평가해야 확정할 수 있다.",
+        "en": "Air-pollution warnings and advice can support responses among vulnerable groups, but AirLens public-interest impact requires direct evaluation of behavior, equity, and policy use."
+      },
+      "references": [
+        {
+          "idType": "doi",
+          "id": "10.3390/ijerph16101817",
+          "title": "Evaluation of the Impacts of a Phone Warning and Advising System for Individuals Vulnerable to Smog",
+          "role": "primary",
+          "notice": "none"
+        },
+        {
+          "idType": "doi",
+          "id": "10.1186/s13690-023-01031-4",
+          "title": "Science communication on the public health risks of air pollution",
+          "role": "supporting",
+          "notice": "none"
+        }
+      ],
+      "airlensEvidenceRefs": [],
+      "limitations": {
+        "ko": [
+          "다른 전달 수단과 지역에서 얻은 결과를 AirLens의 효과로 직접 이전할 수 없다."
+        ],
+        "en": [
+          "Effects from other communication channels and regions cannot be transferred directly to AirLens."
+        ]
+      }
+    }
+  ]
+}

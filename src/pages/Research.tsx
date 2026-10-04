@@ -12,6 +12,7 @@
  */
 import type { CSSProperties } from 'react'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
+import ScholarlyEvidencePanel from '../components/evidence/ScholarlyEvidencePanel'
 import '../styles/research.css'
 
 const RECEIPT_ANATOMY =
@@ -47,6 +48,8 @@ export default function Research() {
           <p className="rsc-anatomy__label t-micro">Receipt anatomy</p>
           <p className="rsc-anatomy__chain t-data">{RECEIPT_ANATOMY}</p>
         </section>
+
+        <ScholarlyEvidencePanel />
       </div>
     </PublicPageContainer>
   )
