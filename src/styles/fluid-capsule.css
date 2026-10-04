@@ -24,6 +24,9 @@
 
 .aq-capsule {
   font-family: var(--mono);
+  /* Collapsed bar height; AqiCapsule overrides it inline (COLLAPSED_H = 68,
+     or COMPACT_H = 40 below NAV_DESKTOP). */
+  --aq-capsule-bar-h: 68px;
   transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
 }
 
@@ -114,13 +117,13 @@
   gap: 2px;
   width: 100%;
   /* The collapsed height, set by AqiCapsule (`--aq-capsule-bar-h` =
-     COLLAPSED_H, or COMPACT_H at <=768) — the idle content is 1 row
+     COLLAPSED_H, or COMPACT_H below NAV_DESKTOP, i.e. <=1023) — the idle content is 1 row
      (loading/missing, the compact chip) or 2 rows (ready: location +
      reading), and each must center within it. Not `100%` of the shell:
      that stretched the bar to the open 300px shell and pushed the panel
      out of the clipped glass, so an opened capsule showed only the idle
      row, re-centred (found on the W2 mobile pass, present on main). */
-  height: var(--aq-capsule-bar-h, 100%);
+  height: var(--aq-capsule-bar-h);
   flex-shrink: 0;
   padding: 0 var(--sp-4);
   border: 0;
@@ -232,7 +235,7 @@
   padding: 0 var(--sp-3) var(--sp-3);
   /* AqiCapsule sizes the open shell to bar + this panel's content, capped
      at the viewport; when capped, the panel scrolls instead of clipping. */
-  max-height: calc(100% - var(--aq-capsule-bar-h, 0px));
+  max-height: calc(100% - var(--aq-capsule-bar-h));
   overflow-y: auto;
 }
 

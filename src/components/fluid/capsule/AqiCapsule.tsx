@@ -459,7 +459,7 @@ export default function AqiCapsule({ variant = 'night' }: AqiCapsuleProps = {}):
           <span className="aq-capsule__unit">µg/m³</span>
           <span
             className="aq-capsule__countdown"
-            data-stale={remaining === null || remaining <= 0 || undefined}
+            data-stale={reading.stale || undefined}
             title={countdownTitle}
           >
             {countdownText}

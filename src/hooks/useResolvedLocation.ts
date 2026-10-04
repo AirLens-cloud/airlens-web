@@ -19,7 +19,7 @@
  * default) — `location` is `null` only while genuinely still resolving
  * (no choice, and the approximate lookup hasn't settled either way yet).
  */
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useLocationChoiceStore, type LocationChoice } from '../store/locationChoiceStore'
 import { resolveLocation, type ApproxState, type ResolvedLocation } from '../lib/location/resolveLocation'
 import type { WeatherCity } from '../lib/cityCatalog'
@@ -88,8 +88,10 @@ export function useResolvedLocation(): UseResolvedLocationResult {
     [setChoice, setDenied],
   )
 
+  const location = useMemo(() => resolveLocation(choice, approx), [choice, approx])
+
   return {
-    location: resolveLocation(choice, approx),
+    location,
     choice,
     approx,
     requesting,

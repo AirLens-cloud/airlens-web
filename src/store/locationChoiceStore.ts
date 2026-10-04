@@ -231,9 +231,11 @@ export const useLocationChoiceStore = create<LocationChoiceState>((set, get) => 
   loadApprox: () => {
     if (get().approxRequested) return
     set({ approxRequested: true })
-    getApproxLocation().then((location) => {
-      set({ approx: location !== null ? { status: 'ready', location } : { status: 'failed' } })
-    })
+    getApproxLocation()
+      .then((location) => {
+        set({ approx: location !== null ? { status: 'ready', location } : { status: 'failed' } })
+      })
+      .catch(() => set({ approx: { status: 'failed' } }))
   },
   requesting: false,
   setRequesting: (requesting) => set({ requesting }),

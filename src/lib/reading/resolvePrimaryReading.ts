@@ -29,6 +29,8 @@ import type { AqiTier } from '../../components/wireframe/AqiDot'
 import type { SourceAgreement } from '../today/sourceAgreement'
 import type { TrustLineDqss, TrustLineDqssReady } from '../../components/wireframe/TrustLine'
 
+const finiteOrNull = (n: number): number | null => (Number.isFinite(n) ? n : null)
+
 export type ReadingSource = 'analysis' | 'forecast'
 
 export interface PrimaryReadingInput {
@@ -181,7 +183,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
       // label (the pre-fix behaviour) rendered "Busan, KR, KR".
       place: { label: location.label, countryCode: null, distanceKm: usableGrid.distanceKm },
       validTimeIso: usableGrid.updatedAt,
-      validTimeMs: new Date(usableGrid.updatedAt).getTime(),
+      validTimeMs: finiteOrNull(new Date(usableGrid.updatedAt).getTime()),
       ageMs: gridAgeMs,
       natureLabel: '[ANALYSIS]',
       secondary,
@@ -221,7 +223,7 @@ export function resolvePrimaryReading(input: PrimaryReadingInput): PrimaryReadin
       stale: camsStale,
       place: { label: cams.cityName, countryCode: cams.countryCode, distanceKm: cams.distanceKm },
       validTimeIso: first?.time ?? cams.updatedAt,
-      validTimeMs: first ? new Date(first.time).getTime() : null,
+      validTimeMs: first ? finiteOrNull(new Date(first.time).getTime()) : null,
       ageMs: camsAgeMs,
       natureLabel: '[FORECAST]',
       secondary: null,

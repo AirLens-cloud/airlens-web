@@ -211,7 +211,8 @@ describe('AqiCapsule', () => {
     // Assert
     const countdown = container.querySelector('.aq-capsule__countdown')
     expect(countdown?.textContent).toBe('7h ago')
-    expect(countdown?.getAttribute('data-stale')).toBe('true')
+    // Overdue vs. cadence is not "stale" — that is `reading.stale` (48h).
+    expect(countdown?.hasAttribute('data-stale')).toBe(false)
   })
 
   it('shows no countdown and no made-up age when the publish time is unknown', () => {
@@ -574,7 +575,7 @@ describe('AqiCapsule — analysis refresh cadence (3h, distinct from the 6h fore
     // Assert
     const countdown = container.querySelector('.aq-capsule__countdown')
     expect(countdown?.textContent).toBe('4h ago')
-    expect(countdown?.getAttribute('data-stale')).toBe('true')
+    expect(countdown?.hasAttribute('data-stale')).toBe(false)
     expect(countdown?.getAttribute('title')).toBe('This analysis is older than its usual 3h refresh window')
   })
 })
