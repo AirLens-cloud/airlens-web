@@ -1,6 +1,6 @@
 {
   "schema_version": "scholarly_claims.v1",
-  "generated_at": "2026-09-06T22:40:00Z",
+  "generated_at": "2026-10-04T16:04:00Z",
   "claims": [
     {
       "schemaVersion": "1.0",
@@ -8,7 +8,7 @@
       "domain": "purpose",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T22:40:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AirLens는 지상 관측을 1차 신호로 사용하고 위성·재분석·ML 추정은 보완 신호로 구분한다.",
         "en": "AirLens treats ground observations as the primary signal and labels satellite, reanalysis, and ML estimates as complementary signals."
@@ -123,7 +123,7 @@
       "domain": "performance",
       "risk": "high",
       "status": "mixed",
-      "verifiedAt": "2026-09-06T22:40:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AOD 파이프라인의 +1시간 예측구간 커버리지는 전체 표본에서는 측정됐지만 고농도 구간은 표본 부족으로 확정할 수 없다.",
         "en": "The AOD pipeline has measured one-hour-ahead interval coverage overall, while high-pollution coverage remains inconclusive because of limited samples."
@@ -155,7 +155,7 @@
       "domain": "performance",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T22:40:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "OpenAQ history 피처 레짐은 단일 시점 평가에서 echo 기준선보다 낮아 서빙 전환이 보류됐다.",
         "en": "The OpenAQ history-feature regime remains withheld from serving after underperforming the echo baseline in a single-snapshot evaluation."
@@ -203,7 +203,7 @@
       "domain": "causal",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T22:40:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AirLens의 SDID 정책 효과는 불확실성 구간과 식별 진단을 함께 제시할 때만 인과 결과로 해석한다.",
         "en": "AirLens interprets an SDID policy estimate causally only when uncertainty intervals and identification diagnostics accompany it."
@@ -235,7 +235,7 @@
       "domain": "health",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T22:40:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AirLens의 공개 건강 문구는 권위기관의 일반 정보 범위로 제한하며 개인 의료 조언을 제공하지 않는다.",
         "en": "AirLens limits public health language to general information from authoritative bodies and does not provide individualized medical advice."
@@ -306,7 +306,7 @@
       "domain": "method",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AOD와 지표 PM2.5의 관계는 시공간적으로 달라지므로 새로운 지역·시점에 적용할 때 독립적인 지역 검증이 필요하다.",
         "en": "The relationship between AOD and surface PM2.5 varies in space and time, so deployment to new regions or periods requires independent regional validation."
@@ -338,7 +338,7 @@
       "domain": "method",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "모델 추정 PM2.5를 건강 노출의 대리값으로 사용할 때 측정오차는 농도–반응 추정에 편향을 만들 수 있다.",
         "en": "When modeled PM2.5 is used as a proxy for health exposure, measurement error can bias estimated concentration-response relationships."
@@ -368,7 +368,7 @@
       "domain": "positioning",
       "risk": "high",
       "status": "mixed",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "AQI 인지도와 사용은 오염 회피 행동을 도울 가능성이 있지만, 정보 제공만으로 모든 집단의 행동 변화가 보장되지는 않는다.",
         "en": "AQI awareness and use may support pollution-avoidance behavior, but information alone does not guarantee behavior change across populations."
@@ -405,7 +405,7 @@
       "domain": "positioning",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "단일 오염물질 중심 AQI는 공공 위험소통 지표이며 개인의 건강위험을 완전하게 정량화하는 점수로 해석해서는 안 된다.",
         "en": "A single-pollutant AQI is a public risk-communication index and should not be interpreted as a complete quantitative score of an individual's health risk."
@@ -504,7 +504,7 @@
       "domain": "method",
       "risk": "high",
       "status": "supported",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "RAG 답변의 인용은 존재 여부만이 아니라 해당 문장을 실제로 지지하는 정확성과 필요한 주장에 빠짐없이 붙는 완전성을 평가해야 한다.",
         "en": "RAG citations should be evaluated for whether they actually support the cited statement and whether all claims needing support are covered, not merely for citation presence."
@@ -568,7 +568,7 @@
       "domain": "positioning",
       "risk": "high",
       "status": "mixed",
-      "verifiedAt": "2026-09-06T23:30:00Z",
+      "verifiedAt": "2026-10-04T16:04:00Z",
       "statement": {
         "ko": "대기오염 경보와 행동 안내는 취약집단의 대응을 도울 수 있지만 AirLens의 공익 효과는 사용자 행동·형평성·정책 활용을 직접 평가해야 확정할 수 있다.",
         "en": "Air-pollution warnings and advice can support responses among vulnerable groups, but AirLens public-interest impact requires direct evaluation of behavior, equity, and policy use."
