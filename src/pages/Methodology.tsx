@@ -1,7 +1,8 @@
 import { useId, useState, type CSSProperties } from 'react'
 import '../styles/static.css'
-import { METHODOLOGY_SECTIONS } from '../content/methodologySections'
+import { METHODOLOGY_SECTIONS, METHODOLOGY_CLAIM_IDS } from '../content/methodologySections'
 import { GLOSSARY_TERMS } from '../content/glossaryTerms'
+import ScholarlyEvidencePanel from '../components/evidence/ScholarlyEvidencePanel'
 
 /**
  * Methodology — `/methodology`. The method library: one section per method,
@@ -90,8 +91,24 @@ export default function Methodology() {
                   })}
                 </div>
               ) : null}
+
+              {section.claimIds?.length ? (
+                <div className="methodology-section__related" aria-label="Scholarly evidence references">
+                  {section.claimIds.map((claimId) => (
+                    <a
+                      key={claimId}
+                      href={`#claim-${claimId}`}
+                      className="t-tag"
+                      aria-label={`Evidence review: ${section.title} (${claimId})`}
+                    >
+                      Evidence review
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </section>
           ))}
+          <ScholarlyEvidencePanel claimIds={METHODOLOGY_CLAIM_IDS} />
         </div>
       </div>
     </main>

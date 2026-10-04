@@ -1,7 +1,14 @@
 import type { CSSProperties } from 'react'
 import PublicPageContainer from '../components/wireframe/PublicPageContainer'
+import ScholarlyEvidencePanel from '../components/evidence/ScholarlyEvidencePanel'
 import '../styles/static.css'
-import { LEGAL_DOCS, KOREAN_PENDING_NOTICE, DEPLOYED_MODELS, type LegalDocId } from '../content/legal'
+import {
+  LEGAL_DOCS,
+  KOREAN_PENDING_NOTICE,
+  DEPLOYED_MODELS,
+  MODEL_CARD_CLAIM_IDS,
+  type LegalDocId,
+} from '../content/legal'
 
 export interface LegalProps {
   doc: LegalDocId
@@ -66,6 +73,7 @@ export default function Legal({ doc }: LegalProps) {
                   <th scope="col">Nature</th>
                   <th scope="col">HF technical card</th>
                   <th scope="col">Last published</th>
+                  <th scope="col">Evidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,11 +92,28 @@ export default function Legal({ doc }: LegalProps) {
                     <td>
                       {m.lastPublished ?? <span className="legal-model-table__tbd">TBD — next update</span>}
                     </td>
+                    <td>
+                      {m.claimIds.length > 0 ? (
+                        <ul className="legal-model-table__claims">
+                          {m.claimIds.map((claimId, index) => (
+                            <li key={claimId}>
+                              <a href={`#claim-${claimId}`} aria-label={`Open evidence claim ${claimId}`}>
+                                Evidence {index + 1} ↘
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <span className="legal-model-table__tbd">No reviewed claim</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             </div>
+          ) : null}
+
+          {current.id === 'model-card' ? (
+            <ScholarlyEvidencePanel claimIds={MODEL_CARD_CLAIM_IDS} />
           ) : null}
 
           <p className="legal-doc__body t-body">

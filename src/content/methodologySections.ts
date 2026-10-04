@@ -20,6 +20,7 @@ export interface MethodologySection {
   why: string
   limitations: string
   relatedTermIds: string[]
+  claimIds?: string[]
   exampleHref?: string
   exampleLabel?: string
 }
@@ -42,6 +43,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     why: 'The most direct evidence AirLens has — no model or interpolation stands between the sensor and the number.',
     limitations: 'Ground sensors have their own calibration drift and siting bias; "observed" does not mean "error-free," only "not modeled."',
     relatedTermIds: ['nature', 'coverage'],
+    claimIds: ['ground-observations-are-primary'],
   },
   {
     sectionId: 'nature-analysis',
@@ -84,6 +86,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     why: 'Some questions ("did this policy work?") cannot be answered by measurement alone; inference is the only path to an answer, so AirLens labels it plainly as one.',
     limitations: 'Inferred values depend on modeling assumptions (e.g. the validity of a synthetic control) that can be wrong in ways a simple measurement error cannot.',
     relatedTermIds: ['sdid', 'att'],
+    claimIds: ['sdid-requires-identification-diagnostics'],
     exampleLabel: 'See inference on Insights',
     exampleHref: '/insights',
   },
@@ -110,6 +113,10 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     why: 'A single number invites false confidence. The range is the model’s own statement of how sure it is.',
     limitations: 'The p10–p90 band reflects the model’s internal uncertainty estimate, not a guarantee — real-world surprises (sensor failure, sudden events) can fall outside it.',
     relatedTermIds: ['p10-p90', 'dqss'],
+    claimIds: [
+      'conformal-quantile-interval-method',
+      'aod-forward-band-coverage-is-regime-limited',
+    ],
   },
   {
     sectionId: 'sdid',
@@ -150,3 +157,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
 export function findMethodologySection(sectionId: string): MethodologySection | undefined {
   return METHODOLOGY_SECTIONS.find((s) => s.sectionId === sectionId)
 }
+
+export const METHODOLOGY_CLAIM_IDS = [
+  ...new Set(METHODOLOGY_SECTIONS.flatMap((section) => section.claimIds ?? [])),
+]

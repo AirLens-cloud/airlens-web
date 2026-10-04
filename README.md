@@ -36,3 +36,14 @@
 > repo is `disabled_manually`; the data plane is now Hugging Face datasets
 > (`Robeedau/airlens-live`) read directly by Cloudflare Workers and the clients. Sections
 > below describe the current pipeline, not the 2026-08 Supabase architecture.
+
+## Scholarly evidence
+
+AirLens-platform is the producer of the versioned scholarly-claim contract.
+This app checks in its public-safe output at
+`public/data/evidence/scholarly_claims.v1.json` and renders the same records on
+Methodology, Research, Trust, and model-card surfaces. The browser never calls
+Scite: only stable identifiers, AirLens review decisions, review dates,
+limitations, and links to AirLens evaluation artifacts cross the public
+boundary. Keep this static copy byte-identical to the producer artifact when a
+reviewed evidence PR is accepted.

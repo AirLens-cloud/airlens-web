@@ -132,6 +132,7 @@ export interface DeployedModelCardEntry {
   lastPublished: string | null
   contentHash: string | null
   status: 'published' | 'tbd'
+  claimIds: string[]
 }
 
 /**
@@ -155,6 +156,10 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     lastPublished: null,
     contentHash: null,
     status: 'tbd',
+    claimIds: [
+      'conformal-quantile-interval-method',
+      'aod-forward-band-coverage-is-regime-limited',
+    ],
   },
   {
     name: 'Weather-linked PM2.5 forecast',
@@ -164,6 +169,7 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     lastPublished: null,
     contentHash: null,
     status: 'tbd',
+    claimIds: [],
   },
   {
     name: 'SDID policy impact (ROI)',
@@ -173,6 +179,7 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     lastPublished: null,
     contentHash: null,
     status: 'tbd',
+    claimIds: ['sdid-requires-identification-diagnostics'],
   },
   {
     name: 'Field Assistant (gemma-4-26b-a4b-it via Cloudflare Workers AI)',
@@ -182,5 +189,10 @@ export const DEPLOYED_MODELS: DeployedModelCardEntry[] = [
     lastPublished: null,
     contentHash: null,
     status: 'tbd',
+    claimIds: [],
   },
+]
+
+export const MODEL_CARD_CLAIM_IDS = [
+  ...new Set(DEPLOYED_MODELS.flatMap((model) => model.claimIds)),
 ]
