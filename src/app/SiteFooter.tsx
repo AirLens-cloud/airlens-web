@@ -83,7 +83,8 @@ export default function SiteFooter() {
 
       <div className="chrome-footer__base">
         <span className="chrome-footer__copyright">
-          © {year} AirLens · <a href="/about">About</a> · <a href="/faq">FAQ</a>
+          © {year} AirLens · <a href="/about">About</a> · <a href="/faq">FAQ</a> ·{' '}
+          <a href="mailto:joy@airlens.cloud">joy@airlens.cloud</a>
         </span>
         <span className="chrome-footer__legal">
           {legalDocs.map((doc, index) => (
