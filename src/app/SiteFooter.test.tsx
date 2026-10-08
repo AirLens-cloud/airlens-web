@@ -96,3 +96,13 @@ describe('SiteFooter — brand column', () => {
     expect(screen.getByRole('link', { name: /AirLens home/i }).getAttribute('href')).toBe('/')
   })
 })
+
+describe('SiteFooter — contact email', () => {
+  it('shows the company contact address as a mailto link', () => {
+    // Arrange / Act
+    render(<SiteFooter />)
+    // Assert
+    const link = screen.getByRole('link', { name: 'joy@airlens.cloud' })
+    expect(link.getAttribute('href')).toBe('mailto:joy@airlens.cloud')
+  })
+})
