@@ -65,6 +65,44 @@ jobs:
       - name: Build
         run: npm run build
 
+  # workers/api and workers/public-api are standalone npm projects (own
+  # lockfile, own tsconfig, own vitest config). The root `npm run test:run`
+  # already sweeps their *.test.ts under the root jsdom config — the same way it
+  # treats workers/assistant — but that is not their runtime (workerd/node) and
+  # the root `tsc -b` only covers src/. This job runs each Worker's own
+  # type-check and test scripts, exactly what its deploy workflow gates on.
+  # workers/assistant is deliberately not listed: its own `tsc --noEmit` fails
+  # on main today (src/liveData.test.ts, src/rag.test.ts), so adding it here
+  # would turn CI red for a reason unrelated to this change.
+  workers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [api, public-api]
+    defaults:
+      run:
+        working-directory: workers/${{ matrix.worker }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/${{ matrix.worker }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run type-check
+
+      - name: Test
+        run: npm test
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
