@@ -13,7 +13,7 @@
 
 import { resolveCors } from './cors';
 import { handleObservationSubmit, handleTrainingSampleSubmit } from './submissions';
-import { handleAdminBlogModerate, handleAdminObservationModerate, handleAdminObservationsList } from './admin';
+import { handleAdminObservationModerate, handleAdminObservationsList } from './admin';
 import { handleOpenMeteoProxy, type ProxyRoute } from './proxy';
 import { handleGoogleAqProxy } from './googleAq';
 
@@ -48,17 +48,13 @@ export interface Env {
    * same as ACCESS_TEAM_DOMAIN/ACCESS_AUD.
    */
   ACCESS_ALLOWED_EMAILS?: string;
-  /** Supabase project URL — Phase 3 blog-moderation PostgREST bridge. Secret; unset by default. */
-  SUPABASE_URL?: string;
-  /** Supabase service_role key — Phase 3 blog-moderation PostgREST bridge. Secret; unset by default. */
-  SUPABASE_SERVICE_ROLE_KEY?: string;
   /**
    * Google Air Quality API key (`currentConditions:lookup`) — Today
    * "Instrument Sheet" PM2.5·GOOGLE cross-check cell (2026-08-26). Secret,
    * set via `wrangler secret put Google_AQ_API` (never a `[vars]` entry —
    * see wrangler.toml). Unset by default in test envs; `googleAq.ts` fails
    * closed with 503 `google_aq_not_configured` while it's missing, same
-   * dormant-until-provisioned pattern as SUPABASE_URL above.
+   * dormant-until-provisioned pattern as ACCESS_TEAM_DOMAIN above.
    */
   Google_AQ_API?: string;
 }
@@ -168,8 +164,7 @@ export async function handleRequest(request: Request, env: Env, ctx?: ExecutionC
   const isSubmissionRoute = url.pathname === '/api/observations' || url.pathname === '/api/training-samples';
   const isAdminObservationsList = url.pathname === '/api/admin/observations';
   const isAdminObservationsModerate = url.pathname === '/api/admin/observations/moderate';
-  const isAdminBlogModerate = url.pathname === '/api/admin/blog/moderate';
-  const isAdminRoute = isAdminObservationsList || isAdminObservationsModerate || isAdminBlogModerate;
+  const isAdminRoute = isAdminObservationsList || isAdminObservationsModerate;
 
   if (request.method === 'OPTIONS' && (isSubmissionRoute || isAdminRoute)) {
     const cors = resolveCors(env, origin);
@@ -239,8 +234,6 @@ export async function handleRequest(request: Request, env: Env, ctx?: ExecutionC
       response = await handleAdminObservationsList(request, env);
     } else if (request.method === 'POST' && isAdminObservationsModerate) {
       response = await handleAdminObservationModerate(request, env);
-    } else if (request.method === 'POST' && isAdminBlogModerate) {
-      response = await handleAdminBlogModerate(request, env);
     } else {
       response = Response.json({ error: 'not_found' }, { status: 404 });
     }

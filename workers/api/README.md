@@ -101,9 +101,8 @@ access_not_configured`, checked before the header so a dormant deploy always
 fails closed the same way.
 
 Once authenticated, each surface has its own per-admin (`sub`) rate limit —
-observations (`GET`/`POST` list+moderate) share a 60 req/min budget, blog
-moderation gets its own 30 req/min budget — so a burst against one surface
-can't starve the other (`src/ratelimit.ts`'s `checkAdminRateLimit`,
+observations (`GET`/`POST` list+moderate) share a 60 req/min budget
+(`src/ratelimit.ts`'s `checkAdminRateLimit`,
 `rl:admin:<surface>:` key space, fails open on a KV outage same as the
 submission limiter).
 
@@ -137,20 +136,6 @@ no-store` — moderation queue contents and decisions are never cacheable.
   outcome is reported back as `audit: 'ok'|'degraded'` rather than silently
   swallowed. Success: `200 { id, status, moderated_at, rejection_reason,
   actor, audit }`.
-- `POST /api/admin/blog/moderate` — body `{ post_id, action: 'publish'|'reject' }`
-  (unrecognized keys → `400`, mirrors the Edge Function's `.strict()`
-  contract). `blog_posts` has no D1 sibling yet (Phase 5 decides its final
-  home), so this bridges to Supabase directly via PostgREST (`SUPABASE_URL`/
-  `SUPABASE_SERVICE_ROLE_KEY` — Worker secrets, not `wrangler.toml` vars;
-  checked *before* the Access/rate-limit gate above, so an unconfigured
-  bridge always fails closed with `503 blog_moderation_not_configured`
-  regardless of who's asking). `post_id` is UUID-format-validated before
-  being interpolated into the PostgREST filter query string. The patch
-  stamps `updated_at` on every moderation (not just publish), matching the
-  Edge Function. Same guarded-`PATCH ... status=eq.draft` + follow-up-`GET`
-  404/409 disambiguation as the observations endpoint. Success: `200 { id,
-  slug, status, published_at }` (mirrors the `blog-moderate` Edge Function's
-  response shape).
 
 ## Frontend integration
 

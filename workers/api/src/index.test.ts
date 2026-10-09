@@ -583,28 +583,6 @@ describe('handleRequest — /api/admin/* gate', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('routes POST /api/admin/blog/moderate to the blog handler and 503s without Supabase secrets', async () => {
-    // Arrange — Access passes, but Supabase secrets are unset (dormant bridge).
-    const env = accessConfiguredEnv();
-    const request = new Request('https://airlens.cloud/api/admin/blog/moderate', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'Cf-Access-Jwt-Assertion': VALID_ACCESS_TOKEN,
-        Origin: 'https://airlens.cloud',
-      },
-      body: JSON.stringify({ post_id: '22222222-2222-2222-2222-222222222222', action: 'publish' }),
-    });
-
-    // Act
-    const response = await handleRequest(request, env);
-    const body = (await response.json()) as { error: string };
-
-    // Assert
-    expect(response.status).toBe(503);
-    expect(body.error).toBe('blog_moderation_not_configured');
-  });
-
   it('returns 404 for an unsupported method on an admin path', async () => {
     // Arrange — Origin + JSON content-type clear the CSRF gate first, so
     // this actually exercises route-dispatch's not_found fallthrough.

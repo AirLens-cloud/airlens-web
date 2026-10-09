@@ -92,9 +92,3 @@ OBS_RATE_PER_DAY = "20"
 # email allowlist, (3) re-run the deploy workflow — no code change.
 # (A one-off `wrangler deploy --var ACCESS_TEAM_DOMAIN:... --var ACCESS_AUD:...
 # --var ACCESS_ALLOWED_EMAILS:...` works the same way for a manual/local deploy.)
-#
-# SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY back the blog-moderate PostgREST
-# bridge (src/admin.ts) and are secrets, not vars — never committed here.
-# Set with `wrangler secret put SUPABASE_URL` / `wrangler secret put
-# SUPABASE_SERVICE_ROLE_KEY`. Until both are set, `POST /api/admin/blog/moderate`
-# fails closed with 503 `blog_moderation_not_configured`.
