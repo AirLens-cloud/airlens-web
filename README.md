@@ -1,49 +1,58 @@
-<p align="center">
-  <img src=".github/assets/readme/hero.svg" alt="AirLens — The Story of Our Atmosphere. A sky window cycling dawn, noon, dusk and night above a HUD showing a p10–p90 uncertainty band, a DQSS data-quality grade, and AQI tiers." width="1200" />
-</p>
+# airlens-web
 
-<p align="center">
-  Glass-box air quality intelligence — observation-conditioned PM2.5 nowcasts, causal policy
-  analysis, and uncertainty you can <em>see</em>, across 120+ countries.
-</p>
+The web app behind **[airlens.cloud](https://airlens.cloud)**: free, no-account global air-quality observation, with the uncertainty (p10–p90) and data-quality grade (DQSS) shown next to every estimate.
 
-<p align="center">
-  <a href="https://airlens.cloud">
-    <img src="https://img.shields.io/badge/Live-airlens.cloud-blue?style=flat-square" alt="Live Demo" />
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0 License" />
-  </a>
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 7" />
-  <img src="https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
-</p>
+[![Live](https://img.shields.io/badge/Live-airlens.cloud-blue?style=flat-square)](https://airlens.cloud)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square)](LICENSE)
 
-<p align="center">
-  <strong>▶ <a href="https://airlens.cloud">Live demo → airlens.cloud</a></strong>
-</p>
+## What is in this repo
 
----
+| Path | What it is | Deploys to |
+|---|---|---|
+| `src/` | React 19 + Vite 7 + TypeScript single-page app, including the Three.js globe | Cloudflare Pages project `airlens` |
+| `functions/` | Pages Functions: `today`, `insights`, `dispatch`, `blog/`, `news/`, `country/`, `data/`, dynamic sitemap, edge middleware | Same Pages project |
+| `workers/assistant/` | The air-quality interpretation assistant (`airlens-assistant`): Workers AI with Vectorize retrieval, guardrails, KV quota, rate limiting, chat logs to R2 | Cloudflare Worker |
+| `public/` | Static assets plus a baked data snapshot used as a fallback (see [`docs/DATA-SNAPSHOT.md`](docs/DATA-SNAPSHOT.md)) | Pages |
 
-> **Repository scope (2026-08-26 →).** This repo is the **data + ML pipeline**: sidecar
-> collection, ETL, Hugging Face publishing, model training, and the deployed Cloudflare
-> Workers. New web product development moved to a separate repo (`airlens-web`), which is
-> what serves [airlens.cloud](https://airlens.cloud). `apps/web` here is frozen — kept for
-> its data-surface maintenance and CI, not for new features.
->
-> **Supabase has been retired from the live path.** Every Supabase-touching workflow in this
-> repo is `disabled_manually`; the data plane is now Hugging Face datasets
-> (`Robeedau/airlens-live`) read directly by Cloudflare Workers and the clients. Sections
-> below describe the current pipeline, not the 2026-08 Supabase architecture.
+The app does not run its own data pipeline. It reads the public Hugging Face dataset [`Robeedau/airlens-live`](https://huggingface.co/datasets/Robeedau/airlens-live), which the `airlens-data` collectors publish. The base URL is set in `src/lib/config/dataSources.ts` and can be overridden with `VITE_HF_LIVE_BASE`.
+
+## Develop
+
+```bash
+npm ci
+npm run dev          # Vite dev server
+npm run build        # prefetch fallback data, type-check, build
+npm run lint         # ESLint
+npm run typecheck    # tsc --noEmit
+npm run lint:design  # design-token lint
+npm run test:run     # Vitest
+```
+
+The assistant Worker has its own package:
+
+```bash
+cd workers/assistant
+npm ci
+npx vitest run
+```
+
+Activate the pre-commit secret scan once per clone with `npm run setup-hooks`.
+
+## Deploy
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `deploy.yml` | push to `main`, manual | Builds and uploads to Cloudflare Pages, then verifies the deployment |
+| `ci.yml` | push / PR to `main` | Type-check, lint, design lint, tests, build, gitleaks |
+| `assistant-generation-smoke.yml` | push / PR touching the assistant | Live generation gates for the assistant |
+| `assistant-model-ab.yml`, `cf-account-probe.yml` | manual | Model A/B evaluation, Cloudflare account checks |
+
+Organization-wide architecture (repos, data flow, free-tier budget) lives in the AirLens organization docs.
 
 ## Scholarly evidence
 
-AirLens-platform is the producer of the versioned scholarly-claim contract.
-This app checks in its public-safe output at
-`public/data/evidence/scholarly_claims.v1.json` and renders the same records on
-Methodology, Research, Trust, and model-card surfaces. The browser never calls
-Scite: only stable identifiers, AirLens review decisions, review dates,
-limitations, and links to AirLens evaluation artifacts cross the public
-boundary. Keep this static copy byte-identical to the producer artifact when a
-reviewed evidence PR is accepted.
+AirLens-platform is the producer of the versioned scholarly-claim contract. This app checks in its public-safe output at `public/data/evidence/scholarly_claims.v1.json` and renders the same records on Methodology, Research, Trust, and model-card surfaces. The browser never calls Scite: only stable identifiers, AirLens review decisions, review dates, limitations, and links to AirLens evaluation artifacts cross the public boundary. Keep this static copy byte-identical to the producer artifact when a reviewed evidence PR is accepted.
+
+## License
+
+AGPL-3.0. See [`LICENSE`](LICENSE), [`NOTICE`](NOTICE) and [`ATTRIBUTION.md`](ATTRIBUTION.md). Upstream data keeps its original license.
