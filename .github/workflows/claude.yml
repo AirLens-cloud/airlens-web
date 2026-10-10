@@ -13,10 +13,10 @@ name: Claude (@claude mention)
 #   workflows and repository_hooks write.
 # - Public repo: only comments by the listed members, claude[bot] and the requester
 #   (github.actor) are passed to Claude (include_comments_by_actor). Add new members to the list.
-# - Billing: secret ANTHROPIC_API_KEY draws on the personal Platform org's API promo
-#   credit ($100, expires 2026-10-28 UTC). If runs fail with credit errors after that,
-#   remove this file, claude-review.yml and the secret, or switch to
-#   CLAUDE_CODE_OAUTH_TOKEN (billed to a seat).
+# - Billing: secret CLAUDE_CODE_OAUTH_TOKEN (a subscription token from `claude setup-token`)
+#   draws on that account's subscription limits. API-key promo credit does not cover this
+#   action's requests (400 "Credit balance is too low", checked 2026-10-10). If the token
+#   leaks, revoke it on claude.ai and replace the secret.
 
 on:
   issue_comment:
@@ -85,7 +85,7 @@ jobs:
       - name: Run Claude Code
         uses: anthropics/claude-code-action@46a42b43239748e5b25771606bf1f551c3b1b517  # v1.0.232
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_commit_signing: true
           additional_permissions: |
             actions: read
