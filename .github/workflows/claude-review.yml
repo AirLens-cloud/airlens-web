@@ -1,0 +1,60 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    branches: [main]
+    # Review when a PR is opened, reopened or marked ready, not on every push, to save credit.
+    # For another review, ask on the PR, e.g. "@claude review this PR" (claude.yml).
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  review:
+    name: Claude Review
+    # Billing, expiry and App token scope: see the header of claude.yml. Skips drafts, bots (Dependabot etc.) and fork PRs.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Job-level, so runs skipped by `if` never join the group.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false  # public repo only; see claude.yml
+
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@46a42b43239748e5b25771606bf1f551c3b1b517  # v1.0.232
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # actions: read is unused here; setting a value makes the action request a scoped App token (see claude.yml).
+          additional_permissions: |
+            actions: read
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this PR. Read the change with `gh pr diff`, and read repository files when you need context.
+
+            - Look for: bugs (logic, edge cases, async, error handling), security (secret exposure, injection, permissions), data safety, missing tests.
+            - Skip: formatting and naming preferences.
+            - Put each concrete issue in an inline comment on the line, with the evidence and a suggested fix.
+            - Finish with exactly one summary comment via `gh pr comment`: blocking issues / suggestions / what you could not verify.
+            - If there are no issues, say so briefly in the summary.
+            - Write in Korean.
+          # No gh pr view: its --comments flag would pull in outsiders' comments.
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 15
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*)"

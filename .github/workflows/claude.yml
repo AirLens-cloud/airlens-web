@@ -1,0 +1,95 @@
+name: Claude (@claude mention)
+
+# Mention @claude in an issue or PR comment to run Claude Code (anthropics/claude-code-action).
+# - Trigger: the job starts only when both the issue/PR author and the commenter are
+#   OWNER, MEMBER or COLLABORATOR (author_association). The action re-checks write access and rejects bots.
+# - Fork PRs are refused: review events by the same-repo check in `if`, issue_comment in the
+#   first step. issue_comment runs with base-repo secrets even on fork PRs, and the action
+#   checks out the fork's head.
+# - Commits go through the API only (use_commit_signing; no git push tool): to the PR's
+#   branch on PRs, or to a new claude/ branch for issues.
+# - The App token is scoped down to contents/pull_requests/issues write plus actions read
+#   (additional_permissions). Left empty, it gets every installed permission, including
+#   workflows and repository_hooks write.
+# - Public repo: only comments by the listed members, claude[bot] and the requester
+#   (github.actor) are passed to Claude (include_comments_by_actor). Add new members to the list.
+# - Billing: secret ANTHROPIC_API_KEY draws on the personal Platform org's API promo
+#   credit ($100, expires 2026-10-28 UTC). If runs fail with credit errors after that,
+#   remove this file, claude-review.yml and the secret, or switch to
+#   CLAUDE_CODE_OAUTH_TOKEN (billed to a seat).
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened]
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.comment.body, '@claude') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) ||
+      (github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.review.body, '@claude') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) ||
+      (github.event_name == 'issues' &&
+       (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Requests on the same issue/PR run one at a time (no branch races or double billing).
+    # Only one request waits; a newer one cancels the waiting request.
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read  # read CI results on PRs (the github_ci tool uses the workflow token)
+    steps:
+      - name: Refuse fork PRs
+        if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.issue.number }}
+        run: |
+          head="$(gh api "repos/$REPO/pulls/$PR" --jq '.head.repo.full_name // ""')"
+          if [ "$head" != "$REPO" ]; then
+            echo "::error::@claude is disabled on fork PRs (head: ${head:-unknown})"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
+          # Works only while this repo is public: the action runs git fetch before it
+          # installs its own token. Drop this line if the repo goes private.
+          persist-credentials: false
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@46a42b43239748e5b25771606bf1f551c3b1b517  # v1.0.232
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          use_commit_signing: true
+          additional_permissions: |
+            actions: read
+          include_comments_by_actor: "joymin5655,claude[bot],${{ github.actor }}"
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 20
