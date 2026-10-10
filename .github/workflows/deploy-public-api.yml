@@ -1,0 +1,76 @@
+name: Deploy Public API Worker
+
+# Ported from the AirLens monorepo (.github/workflows/deploy-public-api.yml).
+# Deploys workers/public-api (Worker `airlens-public-api`, served at
+# https://api.airlens.cloud/v1/* via a Custom Domain bound in the Cloudflare
+# dashboard — wrangler.toml deliberately carries no `routes`).
+#
+# TRIGGER: workflow_dispatch ONLY, on purpose. The monorepo workflow of the same
+# name still deploys this Worker on push to its main. A push trigger here would
+# double-deploy. At cutover (see the cutover checklist in the PR that added this
+# file), (1) add the secret below, (2) uncomment the push trigger, (3) disable
+# the monorepo workflow.
+#
+# Required repo secrets (names only):
+#   CLOUDFLARE_WORKERS_TOKEN — Workers-Scripts-edit scoped token
+#   CLOUDFLARE_ACCOUNT_ID    — account that owns the Worker
+#
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'workers/public-api/**'
+#       - '.github/workflows/deploy-public-api.yml'
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workers-deploy-public-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/public-api
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/public-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check + unit tests (gate before deploy)
+        run: |
+          npm run type-check
+          npm test
+
+      - name: Preflight — deploy credentials present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=0
+          [ -n "$TOKEN" ] || { echo "::error::CLOUDFLARE_WORKERS_TOKEN is not set"; missing=1; }
+          [ -n "$ACCOUNT" ] || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not set"; missing=1; }
+          [ "$missing" = "0" ] || exit 1
+          echo "deploy credentials present (values masked)"
+
+      # The lockfile-pinned wrangler is used directly instead of
+      # cloudflare/wrangler-action, so no new third-party action SHA is needed.
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy

@@ -1,0 +1,52 @@
+name = "airlens-public-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+# ── Route ────────────────────────────────────────────────────────────────────
+#
+# Left to the dashboard on purpose: `api.airlens.cloud` does not exist yet, and
+# a `routes` entry naming a hostname with no DNS record makes `wrangler deploy`
+# fail outright — the worker would not even reach its workers.dev URL. Until the
+# custom domain is bound, the deploy lands at
+# https://airlens-public-api.<account>.workers.dev, which is enough to verify
+# `GET /v1/health`. To pin the route in code instead of the dashboard, add:
+#
+# routes = [{ pattern = "api.airlens.cloud/*", zone_name = "airlens.cloud" }]
+
+[vars]
+# Origin serving the public aq-data/** snapshots. DQSS W4 (2026-09-03) moved this
+# from the Cloudflare Pages /data/** mirror to the HF dataset directly — Pages no
+# longer republishes every snapshot the models pipeline writes (aq-data/data_quality.json
+# in particular is HF-only). The worker reshapes those files and never reads the
+# database, so there are no secrets in this worker — nothing here is server-only
+# (contrast: the chatbot worker's SUPABASE_* secrets).
+DATA_ORIGIN = "https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main"
+# Per-IP budget for the KV counter. Matches ratelimit.ts's built-in fallback
+# (120 req / 60s) — declared explicitly so the effective limit is visible here
+# rather than only in code.
+RATE_LIMIT_MAX = "120"
+RATE_LIMIT_WINDOW_SECONDS = "60"
+# A keyless public read API is meant to be callable from anywhere, including
+# third-party pages and notebooks; the data it returns is already public under
+# aq-data/**. Restricting CORS would not protect anything, only break that use.
+ALLOWED_ORIGINS = "*"
+
+# ── Rate-limit counter store (ratelimit.ts, layer 2 of 3) ────────────────────
+#
+# Bound 2026-09-04. The namespace was empty at bind time, and `ratelimit.ts`
+# writes only short-TTL per-IP counters — nothing to migrate, nothing lost if it
+# is ever recreated.
+#
+# `RL_KV` stays optional in `Env` and `ratelimit.ts` still fails **open** when
+# the binding is absent, which is what keeps `wrangler dev` and any unbound
+# environment working. This block only means production no longer runs one layer
+# short.
+#
+# Kept last on purpose: in TOML every key after a table header belongs to that
+# table, so a top-level key added below this point (`routes = …`, say) would be
+# silently swallowed into `kv_namespaces` instead of erroring. Add new top-level
+# keys ABOVE the first table header.
+
+[[kv_namespaces]]
+binding = "RL_KV"
+id = "03cf5a45eaf74c3191f07811a96be562"

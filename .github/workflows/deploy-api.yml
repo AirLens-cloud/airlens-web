@@ -1,0 +1,103 @@
+name: Deploy API Worker
+
+# Ported from the AirLens monorepo (.github/workflows/deploy-api.yml).
+# Deploys workers/api (Worker `airlens-api`, route airlens.cloud/api/*).
+#
+# TRIGGER: workflow_dispatch ONLY, on purpose. The monorepo workflow of the same
+# name still deploys this Worker. A push trigger here would double-deploy. At
+# cutover (see the cutover checklist in the PR that added this file), (1) add
+# the secret below, (2) uncomment the push trigger, (3) disable the monorepo
+# workflow.
+#
+# Required repo secrets (names only):
+#   CLOUDFLARE_WORKERS_TOKEN — Workers-Scripts-edit token. This Worker binds D1
+#                              (`airlens-db`) and KV, and `wrangler deploy`
+#                              validates bindings, so the token may also need
+#                              D1 read (or mint a dedicated Workers+D1 token).
+#   CLOUDFLARE_ACCOUNT_ID    — account that owns the Worker
+# Optional repo variables (names only; unset = /api/admin/* stays 503):
+#   ACCESS_TEAM_DOMAIN, ACCESS_AUD, ACCESS_ALLOWED_EMAILS
+#
+# Worker runtime secrets (TURNSTILE_SECRET_KEY, SUBMITTER_HASH_SECRET,
+# Google_AQ_API) live in the deployed Worker and are NOT touched by a deploy.
+#
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'workers/api/**'
+#       - '.github/workflows/deploy-api.yml'
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workers-deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/api
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: workers/api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check + unit tests (gate before deploy)
+        run: |
+          npm run type-check
+          npm test
+
+      - name: Preflight — deploy credentials present
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=0
+          [ -n "$TOKEN" ] || { echo "::error::CLOUDFLARE_WORKERS_TOKEN is not set"; missing=1; }
+          [ -n "$ACCOUNT" ] || { echo "::error::CLOUDFLARE_ACCOUNT_ID is not set"; missing=1; }
+          [ "$missing" = "0" ] || exit 1
+          echo "deploy credentials present (values masked)"
+
+      # ACCESS_* (Phase 3 admin gate, src/access.ts) are repo variables, not
+      # wrangler.toml vars, and deliberately unset by default. Dormant state:
+      # deploy without --var, so env.ACCESS_* is undefined and /api/admin/*
+      # fails closed with 503 access_not_configured. Activation is a repo
+      # variable set + re-run, no code change.
+      #
+      # The lockfile-pinned wrangler is used directly instead of
+      # cloudflare/wrangler-action, so no new third-party action SHA is needed.
+      - name: Deploy Worker (Access dormant — repo vars unset)
+        if: vars.ACCESS_TEAM_DOMAIN == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      - name: Deploy Worker (Access configured)
+        if: vars.ACCESS_TEAM_DOMAIN != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_TEAM_DOMAIN: ${{ vars.ACCESS_TEAM_DOMAIN }}
+          ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+          ACCESS_ALLOWED_EMAILS: ${{ vars.ACCESS_ALLOWED_EMAILS }}
+        run: |
+          npx wrangler deploy \
+            --var "ACCESS_TEAM_DOMAIN:${ACCESS_TEAM_DOMAIN}" \
+            --var "ACCESS_AUD:${ACCESS_AUD}" \
+            --var "ACCESS_ALLOWED_EMAILS:${ACCESS_ALLOWED_EMAILS}"

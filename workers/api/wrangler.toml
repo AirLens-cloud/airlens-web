@@ -1,0 +1,94 @@
+name = "airlens-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+# ── Route ────────────────────────────────────────────────────────────────────
+#
+# TOML gotcha: this MUST stay above the first table header ([[d1_databases]]
+# etc.) — a top-level `routes = ...` placed after a table is parsed as a key
+# of that table (e.g. vars.routes) and silently ships as an env var instead
+# of a route binding.
+#
+# Bound in Phase 2 (first real endpoints). Pre-bind check (2026-08-20): the
+# only `/api/*` reference in apps/web is a Paperclip localhost dev-tool URL —
+# nothing on airlens.cloud serves /api/*, and zone Worker routes take
+# precedence over the Pages custom domain, so this intercepts only paths that
+# previously fell through to the SPA shell. Same-origin is a hard Phase 3
+# prerequisite (Cloudflare Access cookies are same-origin only).
+routes = [{ pattern = "airlens.cloud/api/*", zone_name = "airlens.cloud" }]
+
+# Security review (2026-08-20): the zone route above is the ONLY public
+# surface for this worker. workers.dev is a second, unauthenticated write
+# path to the exact same submission endpoints that bypasses whatever the
+# zone eventually gains (WAF rules, Cloudflare Access on /api/admin/* in
+# Phase 3) — so it stays off rather than serving as a "secondary
+# verification surface". Verify against the zone route or `wrangler dev`.
+workers_dev = false
+
+# ── D1: application database (Track 2 migration target) ─────────────────────
+#
+# Created in Phase 0 (`npx wrangler d1 create airlens-db`). Schema landed in
+# Phase 2 (`migrations/0001_community_submissions.sql` — community_observations,
+# moderation_queue, community_training_samples).
+[[d1_databases]]
+binding = "airlens_db"
+database_name = "airlens-db"
+database_id = "1a1507b0-6445-43d8-a8f9-e0998a18c7f1"
+
+# ── Rate-limit counter store (Phase 2 consumer) ──────────────────────────────
+#
+# Created in Phase 0 (`npx wrangler kv namespace create RL_KV`, title "RL_KV").
+# Optional in `Env` — Phase 2's per-IP limiter (src/ratelimit.ts) fails OPEN
+# when unbound, so a missing binding degrades gracefully instead of blocking.
+[[kv_namespaces]]
+binding = "RL_KV"
+id = "03cf5a45eaf74c3191f07811a96be562"
+
+# ── Vars (Phase 2) ────────────────────────────────────────────────────────────
+#
+# CORS allowlist + submission rate-limit caps. Secrets (TURNSTILE_SECRET_KEY,
+# SUBMITTER_HASH_SECRET) are NOT here — set via `wrangler secret put <name>`,
+# values never committed.
+#
+# No localhost origin here (security review, 2026-08-20): a production var
+# is shipped to everyone who reads this file/the deployed worker, so it must
+# not carry a local dev origin. Local development injects its own via
+# `.dev.vars` or `wrangler dev --var ALLOWED_ORIGINS:http://localhost:5181`
+# instead of overloading the deployed value.
+[vars]
+ALLOWED_ORIGINS = "https://airlens.pages.dev,https://airlens.cloud,https://www.airlens.cloud,https://airlens-web.pages.dev"
+OBS_RATE_PER_MIN = "3"
+OBS_RATE_PER_DAY = "20"
+
+# ── Vars (Phase 3 — deliberately UNSET) ──────────────────────────────────────
+#
+# ACCESS_TEAM_DOMAIN / ACCESS_AUD gate `/api/admin/*` (src/access.ts). The
+# Cloudflare Access application has not been created yet, so both are
+# intentionally absent here — `env.ACCESS_TEAM_DOMAIN`/`env.ACCESS_AUD` come
+# back `undefined` at runtime, and every `/api/admin/*` request fails closed
+# with 503 `access_not_configured` until they're set. Same dormant-until-
+# flipped pattern as Phase 2's ANON_SUBMISSIONS_ENABLED.
+#
+# ACCESS_ALLOWED_EMAILS (security review, 2026-08-25) is the second,
+# independent authorization gate behind the Access JWT itself — a verified
+# token proves *who* the caller is, not that the Access application's policy
+# is scoped tightly enough to only admins (see the comment above
+# `verifyAccessJwt`'s allowlist check in src/access.ts). Comma-separated,
+# trimmed, case-insensitive; also intentionally unset here — until it's set,
+# `/api/admin/*` stays 503 `access_not_configured` the same as the two vars
+# above, even once ACCESS_TEAM_DOMAIN/ACCESS_AUD are flipped on. Example
+# value (not a real admin list — set the real one as a repo variable, never
+# here): "admin1@example.com,admin2@example.com".
+#
+# These are NOT set here as literal values — `.github/workflows/deploy-api.yml`
+# passes them as `--var` at deploy time from GitHub Actions repo variables
+# (`vars.ACCESS_TEAM_DOMAIN` / `vars.ACCESS_AUD` / `vars.ACCESS_ALLOWED_EMAILS`),
+# the same repo-vars-flip pattern as `deploy.yml`'s `VITE_ANON_SUBMISSIONS`.
+# Activation order: (1) create a Cloudflare Zero Trust team + an Access
+# application scoped to `airlens.cloud/admin*` and `airlens.cloud/api/admin/*`
+# (same-origin — see the route comment above), (2) set the three repo
+# variables (Settings → Secrets and variables → Actions → Variables) to the
+# team subdomain, the application's AUD tag, and the comma-separated admin
+# email allowlist, (3) re-run the deploy workflow — no code change.
+# (A one-off `wrangler deploy --var ACCESS_TEAM_DOMAIN:... --var ACCESS_AUD:...
+# --var ACCESS_ALLOWED_EMAILS:...` works the same way for a manual/local deploy.)
