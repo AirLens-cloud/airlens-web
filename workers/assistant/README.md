@@ -41,6 +41,8 @@ Everything below is declared in `wrangler.toml`.
 
 When `CHAT_QUOTA` is bound but KV itself errors, the guards fail closed instead: the per-minute and daily guards answer 503 `quota_unavailable`, and the budget guard hands the request to the retrieval-only reply.
 
+The `SESSION_RATE_LIMIT` check does not fail closed. `isRateLimited` in `src/index.ts` reports "not limited" when the binding is absent and also when the `limit()` call throws, and logs `rate limiter unavailable, failing open` in the second case. During a limiter outage, `POST /api/session` and `POST /api/admin/reindex` therefore run without the per-IP throttle; the Turnstile check and the admin secret check still run.
+
 The caller key behind the counters is a hash of the client IP, salted with the UTC date and peppered with `SESSION_HMAC_SECRET` (`resolveIdentifier` in `src/session.ts`). A hash of the session id is used only when a request carries no IP.
 
 ### Variables
@@ -169,8 +171,9 @@ The buffer is drained by a collector in the `airlens-data` repository; see [`e2-
   ```
 
   This needs Node 22.6 or newer. `worker-url` defaults to `http://localhost:8787` (`wrangler dev`). The script refuses to run without the secret and posts the chunks in batches of 80. CI never runs it; an operator runs it against the deployed Worker.
+- **Removed entries.** A refresh only upserts (`reindexChunks` in `src/rag.ts` calls `VECTORIZE.upsert`), and nothing in this Worker deletes vectors. When a content file drops an entry, its vector therefore stays in the index: the assistant can still retrieve and cite it, and the citation's `source_url` can point at an anchor that no longer exists. Delete such ids separately with Vectorize's delete-by-id command, `npx wrangler vectorize delete-vectors airlens-assistant-corpus --ids <id> [<id> ...]` (`npx wrangler vectorize delete-vectors --help` lists the options). It acts on the live index, so an operator runs it. The two Lab-related FAQ entries removed in 2026-10, `faq:what-is-lab` and `faq:open-bundle`, stay in an index built before that removal until their ids are deleted this way.
 - **Endpoint.** `POST /api/admin/reindex` needs `ADMIN_REINDEX_SECRET` in the `x-admin-secret` header. It accepts at most 500 chunks per request. Each chunk needs a non-empty `id`, `text` (at most 4000 characters), `source_title`, a `source_url` that is http(s) or a same-origin path, and a `category` of `methodology`, `faq`, `glossary`, `about`, `legal` or `static`. The Worker embeds in batches of up to 100 and answers `{ "indexed": n, "batches": m }`. Without the `VECTORIZE` binding it fails with an error instead of indexing nothing.
-- **Known gap.** `literature.ts` labels its chunks `category: 'literature'`, which is not in the list above (nor in `CorpusChunkCategory` in `src/types.ts`), so a request that contains those chunks is rejected with 400.
+- **Known gap.** `literature.ts` labels its chunks `category: 'literature'`, which is not in the list above (nor in `CorpusChunkCategory` in `src/types.ts`). The endpoint validates every chunk before it embeds anything, so a single such chunk fails the whole request with 400, not just that chunk. `scripts/build-corpus.mjs` stops at the first failed batch, and with the current content its first batch of 80 already contains literature chunks, so a run indexes nothing. Until the Worker accepts `literature` or the script leaves those chunks out, the script cannot refresh the corpus.
 - **At query time.** The Worker embeds the question with `EMBEDDING_MODEL` and asks the index for the `RAG_TOP_K` nearest chunks. Each vector carries its chunk's `source_title`, `source_url`, `category` and an excerpt, which become the citation cards and the grounded-context block. Without `VECTORIZE`, or when the query fails, retrieval returns nothing and the assistant answers without citations.
 
 ## Evaluation

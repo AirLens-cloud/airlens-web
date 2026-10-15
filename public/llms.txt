@@ -12,8 +12,10 @@ Locales: English (default, `/…`) and Korean (`/ko/…` — rolling out).
 
 ## Main pages
 
-- [Home](https://airlens.cloud/): OBSERVATORY — a scroll-driven flight over live
-  global PM2.5, wind advection, and fire detections.
+- [Home](https://airlens.cloud/): a live air-quality briefing — the current PM2.5
+  estimate for the visitor's location (chosen, IP-approximate, or a labeled
+  Seoul default), tagged model analysis or forecast with its age, plus a 24h
+  city forecast with a p10-p90 band when published.
 - [Today](https://airlens.cloud/today): real-time PM2.5 at the visitor's
   coordinates with a p10-p90 uncertainty band, DQSS grade, weather, nearby
   pollutants and a 48h forecast. Readings are per-visitor; cite the method,

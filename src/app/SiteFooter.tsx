@@ -64,8 +64,8 @@ export default function SiteFooter() {
                     <a href={item.href}>
                       {item.label}
                       {item.beta && (
-                        // F27 — see GlobalNav.tsx's matching comment: a
-                        // literal space keeps "Lab" and "Beta" from gluing
+                        // F27 — see GlobalNav.tsx's matching comment: a literal
+                        // space keeps a nav label and its "Beta" tag from gluing
                         // into one textContent/accessible-name word.
                         <>
                           {' '}

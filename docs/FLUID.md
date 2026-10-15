@@ -438,26 +438,33 @@ empty series (§1 honest-absence).
 type CapsuleAlert = 'worsening' | 'steady' | 'unknown'
 type CapsuleDataState =
   | { status: 'loading' }
-  | { status: 'ready'; city: string; current: number; tier: AqiTier;
-      range: { lo: number; hi: number }; series24h: CapsuleSeriesPoint[];
-      updatedAt: string; alert: CapsuleAlert }
+  | { status: 'ready'; city: string; lat: number; lon: number;
+      countryCode: string; current: number; tier: AqiTier;
+      range: { lo: number; hi: number } | null;
+      p10: number | null; p90: number | null;
+      series24h: CapsuleSeriesPoint[]; updatedAt: string;
+      alert: CapsuleAlert }
   | { status: 'missing' }
-function useCapsuleData(): CapsuleDataState
+function useCapsuleData(location: ResolvedLocation | null): CapsuleDataState
 ```
 
-Sources from `loadTft()` (`src/lib/tftMirror.ts`, the shared TFT
-forecast mirror) and picks the "featured city" as the one with the highest
-**current-hour** PM2.5 (`pickFeaturedCity`, `useCapsuleData.ts:64-72`) — an
-independent implementation of the "thickest air first" pattern also used by
-a landing chapter's `useDawnBriefingData` (deleted with /landing in 2026-10),
-explicitly *not* a shared/promoted
-helper (`useCapsuleData.ts:60-63`). `tierFromPm25` uses cut points
-`15/35/55/75/150` (6-tier AQI, `useCapsuleData.ts:41-48`) — shares the
-`15/35/75` convention with `src/api/gridSnapshot.ts`'s 4-tier
-`gradeFromPm25`, extended with two more EPA-style breakpoints.
-`detectAlert` returns `'unknown'` (not `'steady'`) whenever the forward
-window has zero finite PM2.5 readings — never silently defaults to
-`'steady'` on missing data (`useCapsuleData.ts:74-85`).
+Takes the location the caller resolved (`useResolvedLocation`) and reports
+`'loading'` without fetching while that is `null`, and again until the fetch
+for a newly changed point lands. Reads the live forecast feed with
+`fetchForecast()` (`src/lib/today/forecastSource.ts`) — not the `tft.json`
+mirror, which only `src/lib/cityCatalog.ts` reads — and takes the feed city
+nearest that location (`pickNearestCity`, `src/lib/today/nearestCity.ts`),
+not a worldwide "thickest air" pick. A failed fetch, no city, or a
+non-finite current reading yields `'missing'`. `range`, `p10` and `p90` are
+`null` when the source publishes no bound — a zero-width band is never
+fabricated. `tierFromPm25`, `detectAlert` and `summarizeWindow24h` live in
+`src/lib/reading/tier.ts`; the hook re-exports `tierFromPm25` and the types.
+`tierFromPm25` uses cut points `15/35/55/75/150` (6-tier AQI,
+`tier.ts:32-39`) — shares the `15/35/75` convention with
+`src/api/gridSnapshot.ts`'s 4-tier `gradeFromPm25`, extended with two more
+EPA-style breakpoints. `detectAlert` returns `'unknown'` (not `'steady'`)
+whenever the forward window has zero finite PM2.5 readings — never silently
+defaults to `'steady'` on missing data (`tier.ts:51-62`).
 
 ### `SkyOrb` (`src/components/fluid/SkyOrb.tsx`)
 
