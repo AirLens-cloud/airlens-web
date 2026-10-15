@@ -11,7 +11,9 @@ The web app behind **[airlens.cloud](https://airlens.cloud)**: free, no-account 
 |---|---|---|
 | `src/` | React 19 + Vite 7 + TypeScript single-page app, including the Three.js globe | Cloudflare Pages project `airlens` |
 | `functions/` | Pages Functions: `today`, `insights`, `dispatch`, `blog/`, `news/`, `country/`, `data/`, dynamic sitemap, edge middleware | Same Pages project |
-| `workers/assistant/` | The air-quality interpretation assistant (`airlens-assistant`): Workers AI with Vectorize retrieval, guardrails, KV quota, rate limiting, chat logs to R2 | Cloudflare Worker |
+| `workers/assistant/` | The air-quality interpretation assistant (`airlens-assistant`): Workers AI with Vectorize retrieval, guardrails, KV quota, rate limiting, chat logs to R2. See [`workers/assistant/README.md`](workers/assistant/README.md) | Cloudflare Worker (manual, see [Deploy](#deploy)) |
+| `workers/api/` | The application API (Worker `airlens-api`, D1 and KV), served at `airlens.cloud/api/*`. See [`workers/api/README.md`](workers/api/README.md) | Cloudflare Worker (CI on push to `main`, see [Deploy](#deploy)) |
+| `workers/public-api/` | The keyless, read-only public data API and MCP server (Worker `airlens-public-api`), served at `api.airlens.cloud/v1/*`. See [`workers/public-api/README.md`](workers/public-api/README.md) | Cloudflare Worker (CI on push to `main`, see [Deploy](#deploy)) |
 | `public/` | Static assets plus a baked data snapshot used as a fallback (see [`docs/DATA-SNAPSHOT.md`](docs/DATA-SNAPSHOT.md)) | Pages |
 
 The app does not run its own data pipeline. It reads the public Hugging Face dataset [`Robeedau/airlens-live`](https://huggingface.co/datasets/Robeedau/airlens-live), which the `airlens-data` collectors publish. The base URL is set in `src/lib/config/dataSources.ts` and can be overridden with `VITE_HF_LIVE_BASE`.
@@ -45,13 +47,27 @@ Activate the pre-commit secret scan once per clone with `npm run setup-hooks`.
 | `deploy.yml` | push to `main`, manual | Builds and uploads to Cloudflare Pages, then verifies the deployment |
 | `ci.yml` | push / PR to `main` | Type-check, lint, design lint, tests, build, gitleaks |
 | `assistant-generation-smoke.yml` | push / PR touching the assistant | Live generation gates for the assistant |
+| `deploy-api.yml` | push to `main` touching `workers/api/**` or the workflow, manual | Type-checks and tests `workers/api`, then runs `wrangler deploy` for `airlens-api` |
+| `deploy-public-api.yml` | push to `main` touching `workers/public-api/**` or the workflow, manual | Type-checks and tests `workers/public-api`, then runs `wrangler deploy` for `airlens-public-api` |
 | `assistant-model-ab.yml`, `cf-account-probe.yml` | manual | Model A/B evaluation, Cloudflare account checks |
+
+The two API workflows need the repo secrets `CLOUDFLARE_WORKERS_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. This repo is the only deployer of those two Workers; the same-named workflows of the older monorepo must stay disabled, because re-enabling them would deploy twice (see the header comment of each workflow). `workers/assistant/` has no deploy workflow: it is deployed by hand with `wrangler deploy` (see [`workers/assistant/README.md`](workers/assistant/README.md#develop-and-deploy)).
 
 Organization-wide architecture (repos, data flow, free-tier budget) lives in the AirLens organization docs.
 
 ## Scholarly evidence
 
-AirLens-platform is the producer of the versioned scholarly-claim contract. This app checks in its public-safe output at `public/data/evidence/scholarly_claims.v1.json` and renders the same records on Methodology, Research, Trust, and model-card surfaces. The browser never calls Scite: only stable identifiers, AirLens review decisions, review dates, limitations, and links to AirLens evaluation artifacts cross the public boundary. Keep this static copy byte-identical to the producer artifact when a reviewed evidence PR is accepted.
+The private ML pipeline produces the versioned scholarly-claim contract. This app checks in its public-safe output at `public/data/evidence/scholarly_claims.v1.json` and renders the same records on Methodology, Research, Trust, and model-card surfaces. The browser never calls Scite: only stable identifiers, AirLens review decisions, review dates, limitations, and links to AirLens evaluation artifacts cross the public boundary. Keep this static copy byte-identical to the producer artifact when a reviewed evidence PR is accepted.
+
+## Docs
+
+- [`DESIGN.md`](DESIGN.md): the web design norms
+- [`workers/assistant/README.md`](workers/assistant/README.md): the assistant Worker, including how chat turns are stored
+- [`docs/DATA-SNAPSHOT.md`](docs/DATA-SNAPSHOT.md): the baked fallback data snapshot
+- airlens-data [`README.md`](https://github.com/AirLens-cloud/airlens-data/blob/main/README.md): the collectors and the dataset
+- airlens-data [`contracts/README.md`](https://github.com/AirLens-cloud/airlens-data/blob/main/contracts/README.md): the schemas and the DQSS definition
+- airlens-data [`contracts/EVIDENCE_CONTRACT.md`](https://github.com/AirLens-cloud/airlens-data/blob/main/contracts/EVIDENCE_CONTRACT.md): the Evidence Contract (every displayed value carries its unit, nature, valid time and source)
+- airlens-data [`DATA_SOURCES.md`](https://github.com/AirLens-cloud/airlens-data/blob/main/DATA_SOURCES.md): sources and licenses
 
 ## License
 

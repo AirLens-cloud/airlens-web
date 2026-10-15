@@ -1,6 +1,6 @@
 /**
  * BlogPost — /blog/:slug. Field Note body. Spec:
- * `Obsidian-airlens/raw/docs/web/page-specs/blog-field-notes.md`.
+ * `page-specs/blog-field-notes.md` (internal).
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { fetchBlogPostBySlug } from '../api/blog'

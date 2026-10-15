@@ -81,12 +81,12 @@ moved into the tables above. One remains unresolved:
   source: no git commit message, no reference anywhere in `src/` (the file
   appears unused — confirmed by grep — and a same-day design-audit doc already
   flags it for consolidation into a new icon sheet), and it was not carried
-  over from the AirLens-platform monorepo this project was ported from. It may
+  over from the private monorepo this project was ported from. It may
   be originally authored for this repo; that could not be confirmed either.
 
 ## What is deliberately *not* claimed here
 
 Satellite aerosol retrieval (NASA MAIAC AOD) exists in the AirLens pipeline but
 carries **no weight in the serving grid** this app renders, so it is not listed
-above as a source of what you see. See the README's engine caveat. Listing an
-input that contributes nothing would be attribution theatre.
+above as a source of what you see. Listing an input that contributes nothing
+would be attribution theatre.

@@ -1,7 +1,7 @@
 /**
  * gpuParticleCompute — P3 GPU-advected wind particles (Stage B of the
- * nullschool realtime architecture, see wiki/synthesis
- * globe-nullschool-realtime-architecture-2026-07-12.md §6.1, §7 P3).
+ * nullschool realtime architecture, see the internal design note
+ * globe-nullschool-realtime-architecture §6.1, §7 P3).
  *
  * Two halves, deliberately separated:
  *  - Pure functions (tier→count mapping, ring index arithmetic, shader

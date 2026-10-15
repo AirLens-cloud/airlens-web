@@ -5,15 +5,16 @@
  * Definitions are written to be consistent with this repo's own evidence
  * vocabulary as described in the approved page specs (DataNature-style
  * classification, p10-p90 uncertainty, DQSS quality grade, stale/withheld
- * status). EVIDENCE_CONTRACT.md itself was not locatable in this worktree at
- * authoring time — cross-check these definitions against it before treating
- * this file as the final SSOT (methodology-glossary-knowledge-system.md §8-2
- * requires definition-schema parity; that check is still open, see
- * Glossary.tsx header note).
+ * status). The Evidence Contract lives in airlens-data
+ * (https://github.com/AirLens-cloud/airlens-data/blob/main/contracts/EVIDENCE_CONTRACT.md)
+ * and the DQSS definition in its contracts/README.md#dqss
+ * (https://github.com/AirLens-cloud/airlens-data/blob/main/contracts/README.md#dqss).
+ * Cross-check these definitions against them before treating this file as the
+ * final SSOT (methodology-glossary-knowledge-system.md §8-2 requires
+ * definition-schema parity; that check is still open).
  *
  * O1/O2 ontology extension (2026-09-02, design SOT:
- * AirLens-platform Obsidian-airlens/wiki/synthesis/
- * aq-ontology-feasibility-2026-09-02.md §3):
+ * internal design note aq-ontology-feasibility §3):
  *
  * - `relations` replaces the old flat `relatedTerms: string[]` as the single
  *   source of truth for how terms connect — each edge is typed

@@ -1,7 +1,6 @@
 # airlens-api
 
 Track 2 (Supabase → Cloudflare Workers + D1) application API worker.
-Plan: `~/.claude/plans/supabase-tidy-coral.md` §Track 2.
 
 ## Phase status
 

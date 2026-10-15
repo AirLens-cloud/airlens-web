@@ -21,7 +21,7 @@ export interface ChatMessage {
 }
 
 // ── Field Assistant v2 API wire types (C1 scaffold: workers/assistant/) ────
-// See Obsidian-airlens/wiki/synthesis/field-assistant-v2-design-2026-09-02.md §2.
+// See workers/assistant/README.md and workers/assistant/src/types.ts (the design note itself is internal).
 // C1 is SSE echo only — no RAG, no LLM — so `citations` is typed for the
 // contract's sake but the C1 worker never emits it (Glass-box: never imply a
 // search happened when it didn't). `intent` is always `'general'` until the
