@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from '../../motion/useReducedMotion'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
 import { sectionDataState } from './sectionState'

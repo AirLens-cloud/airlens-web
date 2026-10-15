@@ -1,6 +1,6 @@
 /**
  * NewsArticle — /news/:slug. Evidence-aware article detail.
- * Spec: `Obsidian-airlens/raw/docs/web/page-specs/dispatch-article-signal-desk.md`.
+ * Spec: `page-specs/dispatch-article-signal-desk.md` (internal).
  *
  * No router in this repo (`App.tsx` comment) — `slug` arrives as a prop from
  * the caller's pathname parse, per this task's ownership split.

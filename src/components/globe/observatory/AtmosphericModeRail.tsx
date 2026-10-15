@@ -13,8 +13,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
  * `glyph` renders two ways (03-globe-sprite-kit.md §교체순서 3): a
  * `globe-icons.svg` symbol id (any `mode-*` string — `atmosphericModes.ts`'s
  * real data) becomes `<svg><use href="/icons/globe-icons.svg#{glyph}"/></svg>`
- * so it tints via `currentColor`; anything else (e.g. DesignGallery's literal
- * "●"/"▲" mocks) still renders as plain text, unchanged.
+ * so it tints via `currentColor`; anything else (e.g. a literal "●" glyph
+ * character) still renders as plain text, unchanged.
  *
  * Selection is shown two ways: the `.is-active` class (instant color/background
  * swap on the pressed button) plus a single shared `.atmos-mode-indicator`
@@ -37,7 +37,7 @@ export interface AtmosphericModeRailItem {
 }
 
 const GLOBE_ICONS_SHEET = '/icons/globe-icons.svg'
-/** `atmosphericModes.ts` symbol ids all follow this shape; anything else (DesignGallery's literal glyph chars) falls back to plain text. */
+/** `atmosphericModes.ts` symbol ids all follow this shape; anything else (a literal glyph character) falls back to plain text. */
 const isIconSymbol = (glyph: string) => /^mode-[a-z]+$/.test(glyph)
 
 export interface AtmosphericModeRailProps {

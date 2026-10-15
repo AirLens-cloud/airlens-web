@@ -1,11 +1,11 @@
 /**
  * City catalog for the Weather page's location search. Reuses the bundled
- * TFT forecast mirror's city list (`loadTft()`, `src/landing/shared/data/loaders.ts`)
+ * TFT forecast mirror's city list (`loadTft()`, `src/lib/tftMirror.ts`)
  * — the same 50-city set already fetched for the AqiCapsule — rather than
  * shipping a second city dataset.
  */
-import { loadTft } from '../landing/shared/data/loaders'
-import type { TftCity } from '../landing/shared/data/loaders'
+import { loadTft } from './tftMirror'
+import type { TftCity } from './tftMirror'
 
 export interface WeatherCity {
   name: string

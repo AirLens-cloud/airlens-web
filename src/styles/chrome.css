@@ -409,7 +409,8 @@
 /* ---- Capsule collision (design brief §"Globe overlay"): any chrome variant
    that renders GlobalNav (site or overlay) needs the fixed AQI capsule
    (`fluid-capsule.css`) pushed below the nav bar instead of overlapping it.
-   'bare' pages (/landing) have no nav, so they keep the original anchor. */
+   'bare' pages (the legacy-path redirect shims) have no nav, so they keep the
+   original anchor. */
 .chrome-shell--site .fluid-chrome__overlay,
 .chrome-shell--overlay .fluid-chrome__overlay {
   --fluid-chrome-top: calc(var(--nav-height) + var(--sp-3));
@@ -500,8 +501,8 @@
 
 /* ---- SiteFooter (PR-N2) — renders on `chrome: 'site'` routes only
    (App.tsx via SiteChrome.tsx); absent on 'overlay' (/globe, a 100vh
-   immersive stage with no scroll-to-footer) and 'bare' (/landing, /design,
-   /probe). Structure follows the approved mockup's footer draft (§02):
+   immersive stage with no scroll-to-footer) and 'bare' (the legacy-path
+   redirect shims). Structure follows the approved mockup's footer draft (§02):
    brand column + 5 NAV_GROUPS columns + a base bar (copyright/About/FAQ +
    LEGAL_DOCS). Namespaced chrome-footer-* to match this file's chrome-nav-*
    convention, not the mockup's f-* prefix. Tokens only — --shell/--pad-x

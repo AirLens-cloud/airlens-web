@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Spring, SpringEngine, type SpringConfig } from './spring'
-import { useReducedMotion } from '../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from './useReducedMotion'
 
 export interface UseSpringHandle {
   get(): number

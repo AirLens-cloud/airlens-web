@@ -271,9 +271,9 @@ function NavGroupDisclosure({
               {item.label}
               {item.beta && (
                 // F27 (2026-09-28): a literal space text node before the
-                // badge — without it, the label and "Beta" glue into one
-                // accessible-name/textContent word ("LabBeta"). Visual gap
-                // comes from `.chrome-nav__beta`'s `margin-left` (chrome.css).
+                // badge — without it, a nav label and its "Beta" tag glue into
+                // one accessible-name/textContent word. Visual gap comes from
+                // `.chrome-nav__beta`'s `margin-left` (chrome.css).
                 <>
                   {' '}
                   <span className="chrome-nav__beta">Beta</span>

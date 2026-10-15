@@ -661,7 +661,7 @@
    Globe.tsx's `showEvidencePanel` is true (a station/prediction/country is
    focused, or the engine failed and needs to say so). It renders with its
    own unmodified vertical-card layout (composites.css `.atmos-evidence` and
-   friends — the same shape DesignGallery's mock already uses), positioned as
+   friends), positioned as
    an absolute overlay on `.globe-stage-main` instead of the old horizontal
    strip's `display: contents` flattening. Opening/closing it never reflows
    the canvas, the legend, or the compare tray's anchors. */

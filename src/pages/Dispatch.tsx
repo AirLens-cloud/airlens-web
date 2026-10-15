@@ -1,6 +1,6 @@
 /**
  * Dispatch — /dispatch. The Signal Desk: a curated air-quality news card
- * grid. Spec: `Obsidian-airlens/raw/docs/web/page-specs/dispatch-article-signal-desk.md`.
+ * grid. Spec: `page-specs/dispatch-article-signal-desk.md` (internal).
  *
  * Category chips and pagination are client-side over one feed fetch (400
  * rows today) — no server-side filtering endpoint exists, and the feed is

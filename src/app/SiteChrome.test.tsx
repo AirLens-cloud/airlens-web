@@ -69,8 +69,8 @@ describe('SiteChrome — mobile nav focus trap', () => {
 })
 
 // ChatWidget (Field Assistant FAB, Wave 4 Block 3) mounts only for chrome:'site'
-// — /globe (overlay) and /design (bare) own their own chrome and must not gain
-// a floating dock on top of it.
+// — /globe (overlay) and the legacy-path redirect shims (bare) own their own
+// chrome and must not gain a floating dock on top of it.
 describe('SiteChrome — ChatWidget mount scope', () => {
   it('mounts the chat dock for variant="site"', () => {
     // Arrange / Act

@@ -45,9 +45,9 @@ import GlobeMapView from '../components/globe/views/GlobeMapView'
 import GlobeTableView from '../components/globe/views/GlobeTableView'
 import '../styles/globe-stage.css'
 
-// Only the engine is code-split. GlobeFallback is a static SVG that the
-// landing flight and the design gallery already import eagerly, so lazying it
-// here would split nothing (rolldown says as much) while implying it does.
+// Only the engine is code-split. GlobeFallback is a static SVG that
+// GlobeMapView already imports eagerly (and App imports this page eagerly),
+// so lazying it here would split nothing while implying it does.
 const Globe3DScene = lazy(() => import('../components/globe/three/Globe3DScene'))
 
 const CAM = GLOBE_CONFIG.GLOBE_V2.CAMERA

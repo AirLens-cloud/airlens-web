@@ -1,6 +1,6 @@
 // Coverage for the 04-motion-system.md "모드 레일" upgrade: (1) a globe-icons.svg
-// symbol id renders as <use>, while a literal glyph character (DesignGallery's
-// mocks) still renders as plain text; (2) the shared sliding indicator mounts
+// symbol id renders as <use>, while a literal glyph character still renders
+// as plain text; (2) the shared sliding indicator mounts
 // with axis-appropriate inline geometry for the active item, per orientation.
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
@@ -23,7 +23,7 @@ describe('AtmosphericModeRail — icon symbol vs. literal glyph', () => {
     expect(use?.getAttribute('href')).toBe('/icons/globe-icons.svg#mode-live')
   })
 
-  it('falls back to a plain text glyph for a non-symbol string (DesignGallery-style mock)', () => {
+  it('falls back to a plain text glyph for a non-symbol string (a literal glyph character)', () => {
     // Arrange
     const literalItems: AtmosphericModeRailItem[] = [
       { id: 'live', number: '01', label: 'Live', detail: 'Current observations', glyph: '●', active: true },

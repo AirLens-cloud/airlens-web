@@ -4,7 +4,7 @@ import AqiCapsule, { type AqiCapsuleProps } from '../components/fluid/capsule/Aq
 export interface FluidChromeProps {
   children: ReactNode
   /** Glass variant for the floating capsule. Defaults to 'night' — the
-   * landing flight and Globe stay unchanged. /weather passes 'day' to
+   * Globe stays unchanged. /weather passes 'day' to
    * match its light sky-glass hero (position stays the site-standard
    * top-center float; this only changes the glass tint). */
   capsuleVariant?: AqiCapsuleProps['variant']
@@ -12,7 +12,7 @@ export interface FluidChromeProps {
 
 /**
  * FluidChrome — the global chrome layer for surfaces that opt in (the
- * landing flight, the Globe page, and /weather). Renders its children
+ * Globe page and /weather). Renders its children
  * untouched, then mounts the floating AQI capsule in a fixed top-center
  * overlay above them.
  */

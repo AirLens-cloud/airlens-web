@@ -5,12 +5,11 @@
 // resolves *where*; this hook only resolves *what the feed says there*).
 //
 // Source: `fetchForecast` (HF `aq-data/forecast.json`, cron-refreshed, with a
-// bundled static fallback). It used to read `loadTft` — the landing chapters'
-// `public/mirror/data/tft.json`, a snapshot committed once and never
+// bundled static fallback). It used to read `loadTft` — the
+// `public/mirror/data/tft.json` snapshot, committed once and never
 // refreshed, which had the capsule reporting a reading four months old on
-// every surface. The landing chapters keep that mirror: it is a narrative
-// surface, and its sparkline/band sections hard-depend on the TFT p10/p90
-// fields the live deterministic feed does not carry.
+// every surface. That mirror is now read only for the city catalogue
+// (`lib/cityCatalog.ts`).
 //
 // That is the trade this makes explicit: the live source (Open-Meteo CAMS) is
 // deterministic and publishes NO uncertainty band, so `range` is null there

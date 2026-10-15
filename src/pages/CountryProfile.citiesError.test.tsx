@@ -7,7 +7,7 @@
  * no-coverage/unavailable confusion `fetchCountrySeries` already avoids one
  * level up, reappearing one level down. Kept in its own file (rather than
  * alongside `CountryProfile.test.tsx`'s other cases) because
- * `landing/shared/data/loaders.ts` caches its `tft.json` fetch at module
+ * `lib/tftMirror.ts` caches its `tft.json` fetch at module
  * scope keyed only by `'tft'` — once any test in a shared file resolves it
  * successfully, every later test in that file would see the cached success
  * regardless of what this test's mock returns. A fresh module registry per

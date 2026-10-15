@@ -1,7 +1,8 @@
 /**
  * tokens.css — AirLens design tokens (ported from AirLens-platform apps/web/src/reado.css).
  *
- * Source: /Volumes/WD_BLACK/AirLens-platform/apps/web/src/reado.css (SOT, 4957 lines).
+ * Source: apps/web/src/reado.css in the original monorepo (4957 lines at port time).
+ * In this repo tokens.css is the source of truth (DESIGN.md §1).
  * That file scopes tokens under `@scope (.reado-shell)`; this port flattens them onto
  * bare `:root` — this repo has no paper/ink-v9 vs reado dual-theme cascade to isolate
  * from, so the @scope indirection has no job here.

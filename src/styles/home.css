@@ -529,7 +529,7 @@ a.home-trust-strip__value:hover {
 }
 /* Solid primary CTA and the disabled pill below it (notePlacement="below")
    share --control-h-md so the two-CTA row reads as one height — the disabled
-   pill's own two-line box (Lab's default) has no adjacent button to match. */
+   pill's own two-line box (the `inline` default) has no adjacent button to match. */
 .home-act-on-it__primary,
 .home-act-on-it__ctas .wf-disabled-cta--pill {
   height: var(--control-h-md);
@@ -647,24 +647,4 @@ a.home-trust-strip__value:hover {
   margin: var(--sp-2) 0 0;
   color: var(--ink-1);
   max-width: 56ch;
-}
-
-/* ============================== Flight link ================================ */
-
-.home-flight-link {
-  max-width: var(--shell);
-  margin: var(--sp-7) auto 0;
-  padding: 0 var(--pad-x);
-}
-.home-flight-link a {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  text-decoration: none;
-}
-.home-flight-link a:hover,
-.home-flight-link a:focus-visible {
-  color: var(--ink-0);
 }

@@ -90,9 +90,6 @@ export default function Learn() {
           <p className="lrn-footer__note t-caption">
             Step-by-step mode opens with the Lab — until then each card links its dataset on /datasets.
           </p>
-          <a className="lrn-footer__link" href="/lab">
-            Open Lab ↗
-          </a>
         </footer>
       </div>
     </PublicPageContainer>

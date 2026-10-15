@@ -2,8 +2,8 @@
 // hero elements, the null-range/no-band guarantee, the stale-data wording,
 // the honest missing-data state, and (documenting the "no motion in this
 // page" design choice) that reduced-motion has nothing to disable. Routing
-// (`/` -> Home, `/probe` -> DataProbe) is covered at the App level in
-// App.test.tsx, not duplicated here.
+// (`/` -> Home) is covered at the App level in App.test.tsx, not duplicated
+// here.
 //
 // W1b commit ②: the hero's headline (value/tier/nature badge/valid time/
 // freshness/TrustLine/staleness) now reads the shared `usePrimaryReading`

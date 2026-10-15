@@ -3,8 +3,8 @@ import { render, act } from '@testing-library/react'
 import Materialize from './Materialize'
 
 beforeEach(() => {
-  // rAF stub, same pattern as the landing scene tests (queueMicrotask so it
-  // settles without depending on real animation-frame timing in CI).
+  // rAF stub (queueMicrotask so it settles without depending on real
+  // animation-frame timing in CI).
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
     queueMicrotask(() => cb(0))
     return 1

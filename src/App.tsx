@@ -1,6 +1,3 @@
-import { DataProbe } from './pages/DataProbe'
-import DesignGallery from './pages/DesignGallery'
-import LandingFlight from './pages/LandingFlight'
 import Globe from './pages/Globe'
 import { Suspense, lazy, useEffect, type JSX } from 'react'
 import Today from './pages/Today'
@@ -23,7 +20,6 @@ import Faq from './pages/Faq'
 import Methodology from './pages/Methodology'
 import Glossary from './pages/Glossary'
 import Learn from './pages/Learn'
-import Lab from './pages/Lab'
 import Research from './pages/Research'
 import NotFound from './pages/NotFound'
 import SiteChrome, { type ChromeVariant } from './app/SiteChrome'
@@ -60,7 +56,7 @@ const Insights = lazy(() => import('./pages/Insights'))
  *
  *   'site'    → GlobalNav (default — every briefing/static/catalog page)
  *   'overlay' → GlobalNav, transparent-on-dark, no footer (/globe)
- *   'bare'    → no chrome at all (/design, /landing, /probe)
+ *   'bare'    → no chrome at all (the legacy-path redirect shims)
  */
 interface RouteRender {
   element: JSX.Element
@@ -73,11 +69,7 @@ interface RouteRender {
  * of the design-system porting brief). Matched in order; the first hit wins.
  * FluidChrome (and the AQI capsule it mounts) wraps only /globe, /today and
  * /insights — every other page (briefing surfaces and static content alike)
- * renders unwrapped, same as Home. /landing is deliberately excluded too
- * (P1 fix, 2026-09-05 audit): it is its own bare cinematic snapshot world
- * (LandingFlight owns its own chrome, per the 'bare' chrome variant below),
- * and the live capsule's real-time reading clashed with that world and
- * covered the Chapter 4 hero typography mid-scroll.
+ * renders unwrapped, same as Home.
  *
  * Named export (not just used locally) so `nav.test.ts` can verify every
  * nav/footer href resolves here, and that no `chrome: 'site'` route is
@@ -85,12 +77,10 @@ interface RouteRender {
  */
 // eslint-disable-next-line react-refresh/only-export-components -- route data, not a component
 export const routes: Array<Route<RouteRender>> = [
-  { path: '/design', render: () => ({ element: <DesignGallery />, chrome: 'bare' }) },
-  { path: '/landing', render: () => ({ element: <LandingFlight />, chrome: 'bare' }) },
-  // G2: Chapter 5's CTA now lands on the real observation deck (the WebGL
-  // globe + its observatory chrome). GlobePlaceholder, which stood in while
-  // the engine was unported, is retired — Globe falls back to GlobeFallback
-  // itself when WebGL is unavailable.
+  // G2: /globe is the real observation deck (the WebGL globe + its
+  // observatory chrome). GlobePlaceholder, which stood in while the engine
+  // was unported, is retired — Globe falls back to GlobeFallback itself when
+  // WebGL is unavailable.
   {
     path: '/globe',
     render: () => ({
@@ -146,7 +136,6 @@ export const routes: Array<Route<RouteRender>> = [
       chrome: 'site',
     }),
   },
-  { path: '/probe', render: () => ({ element: <DataProbe />, chrome: 'bare' }) },
   { path: '/dispatch', render: () => ({ element: <Dispatch />, chrome: 'site' }) },
   { path: '/news/:slug', render: ({ slug }) => ({ element: <NewsArticle slug={slug} />, chrome: 'site' }) },
   { path: '/blog', render: () => ({ element: <Blog />, chrome: 'site' }) },
@@ -171,7 +160,6 @@ export const routes: Array<Route<RouteRender>> = [
   { path: '/methodology', render: () => ({ element: <Methodology />, chrome: 'site' }) },
   { path: '/glossary', render: () => ({ element: <Glossary />, chrome: 'site' }) },
   { path: '/learn', render: () => ({ element: <Learn />, chrome: 'site' }) },
-  { path: '/lab', render: () => ({ element: <Lab />, chrome: 'site' }) },
   { path: '/research', render: () => ({ element: <Research />, chrome: 'site' }) },
   // Home (`/`) IS the briefing surface — it renders its own current-reading
   // hero, so it is not wrapped in FluidChrome (that would mount a second,

@@ -1,6 +1,6 @@
 /**
  * persist.ts — the only code path in this worker that writes a conversation
- * anywhere (plan zazzy-herding-nautilus §2-4/§2-6).
+ * anywhere (see workers/assistant/README.md).
  *
  * Shape of the pipeline: the worker sanitizes at the edge and drops one JSON
  * object into an R2 buffer; a timer on airlens-e2 pulls those objects into

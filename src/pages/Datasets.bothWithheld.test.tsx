@@ -7,7 +7,7 @@
  * earlier test in that file resolves it, a later test in the same file would
  * see the cached success regardless of what its own mock returns (the same
  * class of problem `CountryProfile.citiesError.test.tsx` isolates for
- * `landing/shared/data/loaders.ts`'s `tft.json` cache). Kept in its own file
+ * `lib/tftMirror.ts`'s `tft.json` cache). Kept in its own file
  * so vitest's per-file module isolation gives the grid fetch a cold cache,
  * making the true 2/2-withheld edge (`fetchDatasetCatalog`'s `withheldCount`
  * counting both candidates, and the page's empty-catalog honesty copy)

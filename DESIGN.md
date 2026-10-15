@@ -1,7 +1,7 @@
 # DESIGN.md — airlens-web 로컬 디자인 규범
 
 > 2026-09-05 디자인 캠페인("B · Instrument Panel" 시안 확정)에서 창설.
-> 상위 규범: `~/Dev_joy/Design/reference-hub/DOCTRINE.md` (Paper-Ink 프리셋 · 8축 · 안티슬롭 12금지) — 이 문서는 그 아래의 **airlens-web 로컬 규범**이며 충돌 시 사용자 결정이 최우선.
+> 상위 규범: 소유자의 비공개 디자인 규범(Paper-Ink 프리셋 · 8축 · 안티슬롭 12금지) — 이 문서는 그 아래의 **airlens-web 로컬 규범**이고 이 레포에서는 이 문서가 정본이다. 충돌 시 사용자 결정이 최우선.
 > 감사 원칙 3(§8)의 발원: `docs/design-reports/2026-09-05-design-audit/`.
 
 ## §1 타입 스케일 (--fs-* 12토큰, tokens.css SOT)
@@ -102,11 +102,12 @@
 ## §8 감사 원칙 (승계 3 + 단일 판독)
 
 1. **숫자가 주인공** — 데이터 수치가 화면의 앵커. 수치는 `t-data`/`t-numeric`, 본문 폰트로 수치 금지.
-2. **정직함은 형태로** — 불확실성(p10-p90·DQSS)·출처·상태(empty/skeleton/error)를 시각 형태로 상시 노출. silent blank 금지.
+2. **정직함은 형태로** — 불확실성(p10-p90·DQSS)·출처·상태(empty/skeleton/error)를 시각 형태로 상시 노출. silent blank 금지. DQSS 정의는 airlens-data [contracts/README.md](https://github.com/AirLens-cloud/airlens-data/blob/main/contracts/README.md#dqss).
 3. **한 화면 한 결정** — 뷰포트 섹션당 사용자 결정 1개. 경고·CTA 중복 노출 금지 (Globe 이중 경고 단일화 사례).
 4. **한 판독** — 주 수치 = 사용자 좌표 최근접 격자 분석값(GEFS 모델 분석, "Model analysis" 라벨). 도시 예보(CAMS)는 2순위 줄에서 차이를 공개한다. 모델값에 "측정" 표기 금지. 판정 SOT = `src/lib/reading/resolvePrimaryReading.ts` — 표면별 재계산 금지.
 
 ## History
 
+- 2026-10-15 — 상위 규범 표기를 일반 명칭으로 바꾸고 §8-2에 DQSS 정의 링크를 달았다(조직 문서 정리).
 - 2026-09-28 — §8 원칙 4 "한 판독" 추가 (UI/UX 감사 F01: 한 화면에 PM2.5 수치 3개). 사용자 결정: 주 수치 = 격자 분석값, 위치 미상 = Seoul 기본("내 위치 아님").
 - 2026-09-05 — 창설. 디자인 캠페인 Wave 0–4: --fs-* 스케일 + 브랜드 스왑(7-bar) + 계기 히어로(Home/Today) + 차트 5문법(Insights) + 배치 감사 수정(V1–V5) + 본 규범 명문화. 시안 게이트 = "B · Instrument Panel" 사용자 확정. 모션 어휘·런원스 표준은 SpaceEdu 스펙 분석에서 기법만 이식.

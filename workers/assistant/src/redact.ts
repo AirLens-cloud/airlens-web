@@ -1,6 +1,6 @@
 /**
  * redact.ts — PII sanitizer that runs at the edge, before a turn is buffered
- * for storage (plan zazzy-herding-nautilus §2-5). Pure function, no bindings,
+ * for storage (see workers/assistant/README.md). Pure function, no bindings,
  * so it is fully testable and cannot be the reason a chat request fails.
  *
  * Two design rules, both load-bearing:

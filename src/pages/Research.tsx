@@ -40,7 +40,7 @@ export default function Research() {
             before it appears.
           </p>
           <p className="rsc-empty__cta t-caption">
-            Publishing requires the <a href="/lab">Lab</a>, which is still in feasibility review.
+            Publishing requires the Lab, which is still in feasibility review.
           </p>
         </section>
 

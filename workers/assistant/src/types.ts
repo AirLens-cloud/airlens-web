@@ -186,7 +186,7 @@ export interface TurnContext {
 }
 
 /** One stored turn — mirrors the SQLite `chat_turn` table the pull job on
- *  airlens-e2 inserts into (plan zazzy-herding-nautilus §2-4). Deliberately
+ *  airlens-e2 inserts into (see workers/assistant/README.md). Deliberately
  *  absent: IP, User-Agent, Turnstile token, the raw session id, and precise
  *  coordinates. */
 export interface ChatTurnRecord {

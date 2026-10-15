@@ -18,8 +18,8 @@ interface SiteChromeProps {
  *   'overlay' → GlobalNav only, transparent-on-dark variant, no footer
  *               (/globe — a 100vh stage; a footer would be destructive, but
  *               shipping with no nav at all leaves no way out)
- *   'bare'    → nothing (/design, /landing, /probe — dev tools and the
- *               immersive landing flight, which owns its own chrome)
+ *   'bare'    → nothing (the legacy-path redirect shims, which bounce
+ *               straight to their target — see `App.tsx`)
  *
  * The wrapper is a plain `<div id="main">`, not a second `<main>`. Every
  * `chrome: 'site'`/`'overlay'` page renders its own `<main>` landmark — this

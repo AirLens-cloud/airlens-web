@@ -5,7 +5,7 @@ import { FAQ_ITEMS } from '../content/faq'
 
 /**
  * Faq — `/faq`. Task-centered by design: value visibility, forecasts,
- * sources, Lab, bundles, AQI scale (page-specs/about-faq-notfound.md §5).
+ * sources, AQI scale (page-specs/about-faq-notfound.md §5).
  * Account/login/payment questions are absent on purpose — AirLens has no
  * accounts and no billing. Faq.test.tsx asserts zero account/payment
  * keywords across the rendered content, so keep new FAQ entries within that
@@ -20,8 +20,7 @@ export default function Faq() {
       <header className="static-page__header fluid-enter" style={{ '--enter-i': 0 } as CSSProperties}>
         <h1 className="h-hero">Frequently asked questions</h1>
         <p className="static-page__thesis t-lede">
-          Answers to what you’re trying to do — check a value, understand a forecast, verify a source, use the
-          Lab, or open a bundle.
+          Answers to what you’re trying to do — check a value, understand a forecast, or verify a source.
         </p>
       </header>
 

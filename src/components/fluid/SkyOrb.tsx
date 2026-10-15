@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
-import type { QualityTier } from '../../landing/shared/perf/types'
+import { useReducedMotion } from '../../motion/useReducedMotion'
+import type { QualityTier } from '../../lib/adaptiveQuality'
 
 export interface SkyOrbProps {
   /** null/NaN -> neutral idle ambient, never a fabricated reading. */
