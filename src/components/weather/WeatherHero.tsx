@@ -7,7 +7,7 @@ import WeatherHeroRail from './WeatherHeroRail'
 import { sectionDataState } from './sectionState'
 import { skyPhaseForWeatherAt } from '../../lib/skyPhase'
 import { weatherCodeToCondition, WEATHER_CONDITION_LABEL } from '../../lib/weatherCondition'
-import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from '../../motion/useReducedMotion'
 import {
   DENIED_NOTICE,
   LOCATING_LABEL,
@@ -79,7 +79,7 @@ const PLACE_SOURCE_LABEL: Record<LocationSource, string> = {
  * current reading and location controls. The site's floating AqiCapsule
  * (its own independent "featured city" data source — see docs/FLUID.md) is
  * no longer embedded here: `/weather` is wrapped in the same `FluidChrome`
- * overlay as `/landing` and `/globe`, so a second, hero-anchored instance
+ * overlay as `/globe`, so a second, hero-anchored instance
  * would double it up. S4 owns the location-specific PM2.5 reading.
  */
 export default function WeatherHero({

@@ -11,8 +11,7 @@
  * `.obs-surface` scope exactly (tokens from obs.css). The
  * `WfTimelineScrubber` continuous drag-track mode (`.track`/`.fill`/`.knob`)
  * is NOT ported — its source CSS is scoped to `.windy-timeline` (Globe.tsx,
- * not part of this port); DesignGallery only demos the discrete
- * step-tablist mode.
+ * not part of this port); only the discrete step-tablist mode is styled here.
  */
 
 /* ---- WfCodeBlock ---- */
@@ -352,7 +351,7 @@
 .chat-send:active:not(:disabled) { transform: scale(0.96); }
 .chat-send:disabled { cursor: not-allowed; }
 
-/* ---- ChatMessageBubble / CitationCard (DesignGallery demo — synthetic data only) ---- */
+/* ---- ChatMessageBubble / CitationCard ---- */
 .msg { margin-bottom: 8px; max-width: 92%; }
 .msg-typing-dots {
   display: inline-block;

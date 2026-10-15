@@ -17,7 +17,7 @@
 export interface NavItem {
   label: string
   href: string
-  /** Renders a small "beta" tag next to the label (e.g. Lab). */
+  /** Renders a small "beta" tag next to the label. */
   beta?: boolean
 }
 
@@ -82,9 +82,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Research', href: '/research' },
       { label: 'Glossary', href: '/glossary' },
-      { label: 'Lab', href: '/lab', beta: true },
     ],
-    match: ['/learn', '/research', '/glossary', '/lab'],
+    match: ['/learn', '/research', '/glossary'],
   },
 ]
 

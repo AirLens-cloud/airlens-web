@@ -1,8 +1,9 @@
 /**
- * pollutionGrid — spatial-grid pollution proximity query, shared by the CPU
- * (WindParticles.tsx) and GPU (pollutionTexture.ts, P3) particle paths.
+ * pollutionGrid — spatial-grid pollution proximity query, used by the CPU
+ * particle path (WindParticles.tsx). The GPU-path bake that also used it
+ * (pollutionTexture.ts, P3) had no runtime importer and was removed.
  *
- * Extracted so both paths compute the exact same "pollution intensity at
+ * Extracted so every consumer computes the exact same "pollution intensity at
  * (lat, lon)" quantity from the same sources — a second, drifted
  * reimplementation would silently disagree on tint at the CPU/GPU fallback
  * boundary.

@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
-import { useReducedMotion } from '../../../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from '../../../motion/useReducedMotion'
 import { useSpring } from '../../../motion/useSpring'
 import LiquidGlass, { type LiquidGlassProps } from '../LiquidGlass'
 import AqiDot from '../../wireframe/AqiDot'
@@ -91,7 +91,7 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 }
 
 export interface AqiCapsuleProps {
-  /** Glass surface variant — night for the landing hero, day for light
+  /** Glass surface variant — night by default, day for light
    * surfaces (Today porting). */
   variant?: LiquidGlassProps['variant']
 }
@@ -104,7 +104,7 @@ export interface AqiCapsuleProps {
  *
  * W1a (`useResolvedLocation`): reads the same store-backed hook Home's hero
  * CTAs write to, so a visitor who opts in on Home sees the same resolved
- * location here on Today/Globe/Insights/Landing, not a second prompt.
+ * location here on Today/Globe/Insights, not a second prompt.
  * Before that opt-in it falls back to the same IP-approximate point Home
  * uses, or a fixed Seoul default if that lookup also fails — the two
  * surfaces never disagree about where the visitor is.

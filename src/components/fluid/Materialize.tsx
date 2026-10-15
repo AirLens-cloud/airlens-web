@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { useReducedMotion } from '../../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from '../../motion/useReducedMotion'
 
 export interface MaterializeProps {
   show: boolean

@@ -5,7 +5,7 @@ import ChatPanel from './ChatPanel'
 /**
  * ChatWidget — owns the open/closed state and docks ChatFAB+ChatPanel bottom-
  * right (Wave 4 Block 3, Δ4). Mounted once in SiteChrome for `chrome: 'site'`
- * routes only — bare/overlay surfaces (e.g. /globe, /design) own their own
+ * routes only — bare/overlay surfaces (e.g. /globe) own their own
  * chrome and are excluded. Also renders the mobile `.chat-dock-reserve`
  * spacer, which is why it mounts after the footer inside the chrome shell.
  */

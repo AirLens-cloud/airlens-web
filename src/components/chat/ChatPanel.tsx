@@ -16,8 +16,7 @@ import type { ChatCitation, ChatMessage } from '../../types/chat'
  * it unset, this renders the disabled "coming back soon" state: rendering a
  * fake conversation here would violate Glass-box (a scripted demo could be
  * mistaken for a live answer). See ChatMessageBubble/CitationCard for that
- * machinery, demonstrated with explicitly-synthetic data in the /design
- * gallery instead.
+ * machinery.
  *
  * Mounts a managed, non-interactive Turnstile widget the moment the panel
  * goes active (`../../lib/turnstile.ts`) — the worker's `/api/session`
@@ -26,11 +25,10 @@ import type { ChatCitation, ChatMessage } from '../../types/chat'
  */
 interface ChatPanelProps {
   onClose: () => void
-  /** Test/demo-only override for ASSISTANT_API_BASE. The /design gallery's
-   *  ChatPanel demo passes '' so it stays visibly offline instead of
-   *  silently inheriting the live baked default and spending a real
-   *  session/budget every time someone opens that page (code review, PR
-   *  #50) — production usage (ChatWidget) never passes this. */
+  /** Test-only override for ASSISTANT_API_BASE. Passing '' keeps the panel
+   *  visibly offline instead of silently inheriting the live baked default
+   *  and spending a real session/budget (code review, PR #50) — production
+   *  usage (ChatWidget) never passes this. */
   apiBaseOverride?: string
 }
 

@@ -5,7 +5,7 @@ import { NAV_GROUPS, navGroupItems } from './nav'
 /**
  * SiteFooter — global site footer (PR-N2). Renders on every `chrome: 'site'`
  * route (SiteChrome.tsx); absent on `'overlay'` (/globe — a 100vh immersive
- * stage with no scroll-to-footer) and `'bare'` (/landing, /design, /probe).
+ * stage with no scroll-to-footer) and `'bare'` (the legacy-path redirect shims).
  *
  * Columns are derived from `NAV_GROUPS` (nav.ts) rather than hand-authored —
  * this is what keeps `NAV_ORPHAN_EXCEPTIONS` honest: `/about`, `/faq`, and

@@ -78,11 +78,11 @@ whoever writes tests against a ported component, see §7.
 
 There is **no** exported spring-preset registry (no `presets.ts`, no named
 export like `SPRING_JELLY`). Each component that uses `useSpring` declares
-its own `SpringConfig` object literal as a local `const`. Five exist today:
+its own `SpringConfig` object literal as a local `const`. Five were declared:
 
 | Const | File | `{ damping, response }` | ζ regime | Used for |
 |---|---|---|---|---|
-| `DEFAULT_CONFIG` | `src/landing/shared/useSmoothedProgress.ts:29` | `{ damping: 1, response: 0.25 }` | critically damped (ζ=1, no overshoot) | scroll-progress smoothing — the code comment explains why: a progress value must stay inside `[0,1]`, so an underdamped config that overshoots is wrong here (`useSmoothedProgress.ts:25-28`) |
+| `DEFAULT_CONFIG` | `src/landing/shared/useSmoothedProgress.ts` | `{ damping: 1, response: 0.25 }` | critically damped (ζ=1, no overshoot) | scroll-progress smoothing — deleted with /landing in 2026-10 |
 | `CAPSULE_SPRING` | `src/components/fluid/capsule/AqiCapsule.tsx:17` | `{ damping: 0.68, response: 0.38 }` | underdamped (ζ<1, overshoots) | the capsule's expand/collapse width+height |
 | `DRAG_SPRING` | `src/components/fluid/capsule/CapsulePanel.tsx:13` | `{ damping: 0.72, response: 0.32 }` | underdamped (ζ<1, overshoots) | the drag-to-page snap `translateX` |
 | `PANEL_SPRING` | `src/components/chat/ChatFAB.tsx:48` | `{ damping: 0.8, response: 0.3 }` | underdamped (ζ<1, overshoots) | the chat panel's open/close `translateY` + drag-to-dismiss — the gesture-table's exact ζ0.8/r0.30 value (§1a below) |
@@ -294,7 +294,7 @@ inline style onto the way a `transform`/`width` animation does. This is the
 one place in the codebase `useSpring` triggers a React re-render per
 animation frame; every other consumer keeps the style-ref pattern above.
 
-### `useSmoothedProgress` (`src/landing/shared/useSmoothedProgress.ts`)
+### `useSmoothedProgress` (`src/landing/shared/useSmoothedProgress.ts`, deleted with /landing in 2026-10)
 
 ```ts
 function useSmoothedProgress(
@@ -391,7 +391,8 @@ and `filter` are forced to `none` via the `--reduced` class
 One optional prop — `variant?: 'day' | 'night'` (default `'night'`),
 forwarded to its `LiquidGlass` shell. Fetches its own data via
 `useCapsuleData()` (below). A porting page on a light surface passes
-`<AqiCapsule variant="day" />`; the landing hero keeps the default.
+`<AqiCapsule variant="day" />`; the landing hero (deleted with /landing in
+2026-10) used the default.
 
 - **Interaction**: hover-to-open (mouse pointer type only, `pointerType !== 'mouse'`
   is ignored — `AqiCapsule.tsx:140-150`), click/keyboard toggle, `Escape` to
@@ -444,11 +445,12 @@ type CapsuleDataState =
 function useCapsuleData(): CapsuleDataState
 ```
 
-Sources from `loadTft()` (`src/landing/shared/data/loaders`, the shared TFT
+Sources from `loadTft()` (`src/lib/tftMirror.ts`, the shared TFT
 forecast mirror) and picks the "featured city" as the one with the highest
 **current-hour** PM2.5 (`pickFeaturedCity`, `useCapsuleData.ts:64-72`) — an
 independent implementation of the "thickest air first" pattern also used by
-a landing chapter's `useDawnBriefingData`, explicitly *not* a shared/promoted
+a landing chapter's `useDawnBriefingData` (deleted with /landing in 2026-10),
+explicitly *not* a shared/promoted
 helper (`useCapsuleData.ts:60-63`). `tierFromPm25` uses cut points
 `15/35/55/75/150` (6-tier AQI, `useCapsuleData.ts:41-48`) — shares the
 `15/35/75` convention with `src/api/gridSnapshot.ts`'s 4-tier
@@ -488,7 +490,7 @@ Matrix and priorities as approved; each row maps to the concrete API in §3.
 |---|---|---|
 | Glass hero | P1 | `<LiquidGlass variant="day">` wrapping the hero surface. Pass an explicit `radius`/`bezel` if the hero's corner treatment differs from the `20`/`34` defaults — both are plain props, not tokens. |
 | Materialize panel | P1 | Wrap the panel's reveal in `<Materialize show={...} origin="...">`. `origin` should point at whatever visually "spawns" the panel (e.g. the element that triggered it) so the scale-in reads as coming from that point. |
-| Forecast band | P1 | `useSmoothedProgress(rawProgressRef)` feeding whatever per-frame reader animates the band — do not read the raw ref directly if the goal is the "descent scrub inertia" feel documented in §1/§3. |
+| Forecast band | P1 | `useSmoothedProgress(rawProgressRef)` (deleted with /landing in 2026-10; §1 keeps its recipe) feeding whatever per-frame reader animates the band — do not read the raw ref directly if the goal is the "descent scrub inertia" feel documented in §1/§3. |
 | Capsule anchor | P2 | `<AqiCapsule />` (defaults to `variant="night"`). If Today's hero is a `day` surface, decide explicitly whether the capsule should visually contrast (default) or match — matching is now a prop toggle: `<AqiCapsule variant="day" />` (§3). |
 | Orb | P2 | `<SkyOrb pm25={...} tier={...} />` — feed the same PM2.5 reading the hero displays, not a separate fetch, so the orb and the numeric readout can't disagree. |
 
@@ -525,7 +527,8 @@ primitives that do exist:
    `AqiCapsule` uses for width/height and `CapsulePanel` uses for drag
    `translateX` (§3).
 5. **Config choice**: use a critically-damped config close to
-   `useSmoothedProgress`'s `{ damping: 1, response: 0.25 }` (§1) rather than
+   `useSmoothedProgress`'s (deleted with /landing in 2026-10)
+   `{ damping: 1, response: 0.25 }` (§1) rather than
    the capsule's underdamped ones — list items overshooting past their
    neighbors during a reorder reads as jittery, not springy, in a dense
    list.
@@ -539,13 +542,13 @@ a new hook (e.g. `useFlipReorder`) when Insights actually needs it.
 |---|---|---|
 | `.fluid-enter` (CSS entry) | `transition: none` — no animation at all, not a shortened one | `motion.css:18-22` |
 | `useSpring` | Every `.set()` call becomes `spring.jump(target)` — instant, zero-velocity | `useSpring.ts:56-62` |
-| `useSmoothedProgress` | Returns the **same** raw `progressRef` object, no spring/rAF loop created at all | `useSmoothedProgress.ts:59-62` |
+| `useSmoothedProgress` | Returns the **same** raw `progressRef` object, no spring/rAF loop created at all | `useSmoothedProgress.ts:59-62` (deleted with /landing in 2026-10) |
 | `Materialize` | `--reduced` class: only `opacity` transitions; `transform`/`filter` forced to `none` | `fluid-materialize.css:18-26` |
 | `SkyOrb` | Skips the rAF particle loop, draws one static frame (`drawStatic()`) instead | `SkyOrb.tsx:171-175` |
 | `LiquidGlass` | Not motion-gated directly — but `prefers-reduced-transparency: reduce` forces the `tint` tier regardless of browser capability (§1) | `glassTier.ts:23-28` |
 
 All of the above read `useReducedMotion()`
-(`src/landing/shared/perf/useReducedMotion.ts`) — a `matchMedia('(prefers-reduced-motion: reduce)')`
+(`src/motion/useReducedMotion.ts`) — a `matchMedia('(prefers-reduced-motion: reduce)')`
 subscription, SSR-safe (defaults `false` when `window`/`matchMedia` are
 unavailable, `useReducedMotion.ts:8-13`).
 
@@ -604,6 +607,9 @@ not assume the fill/border tokens alone guarantee AA.
 
 ## 7. Test conventions
 
+`useSmoothedProgress.test.ts` and the chapter-scene tests cited below were
+deleted with /landing in 2026-10; those citations point into git history.
+
 - **rAF must be stubbed with a deterministic queue, not real timing.**
   `useSmoothedProgress.test.ts` documents why: "Real rAF timing can't be
   driven deterministically by fake timers" (`useSmoothedProgress.test.ts:1-8`).
@@ -642,7 +648,8 @@ not assume the fill/border tokens alone guarantee AA.
 - **Chapter/scene smoke tests wrap in `QualityProvider`** — any component
   that (transitively) reads render-quality tier state is rendered inside
   `<QualityProvider>` in tests (`src/landing/ch1-atmos/Ch1AtmosScene.test.tsx:29-34`
-  and the two sibling chapter test files) with the same rAF-microtask stub
+  and the two sibling chapter test files; deleted with /landing in 2026-10,
+  together with `QualityProvider`) with the same rAF-microtask stub
   as above, so the provider's own FPS probe settles without depending on
   real frame timing.
 - **`afterEach(cleanup)` is explicit everywhere in this repo** — `@testing-library/react`'s

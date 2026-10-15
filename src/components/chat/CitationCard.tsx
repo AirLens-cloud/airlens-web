@@ -36,7 +36,7 @@ const SAFE_HREF_RESOLVE_BASE = 'https://citation-href-resolve.invalid'
  *  unvalidated `javascript:`/`data:` value reaching `href` here would be
  *  stored XSS. The worker validates on the way in (index.ts isValidSourceUrl)
  *  but this component must not assume that invariant holds for every value
- *  it is ever handed (DesignGallery demo data, a future second producer). */
+ *  it is ever handed (a future second producer). */
 function isSafeCitationHref(url: string): boolean {
   const trimmed = url.trim()
   if (trimmed === '') return false

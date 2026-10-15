@@ -1,17 +1,12 @@
 // Route-level check: FluidChrome (and the AQI capsule it mounts) wraps only
-// /globe, /today and /insights, never /design, /landing, or the default
-// DataProbe. Heavy page internals (LandingFlight's chapter scenes,
-// AqiCapsule's own data/motion wiring) are stubbed out here — they have
-// their own dedicated coverage — so this test stays scoped to App.tsx's
-// routing decision.
+// /globe, /today and /insights. Heavy page internals (AqiCapsule's own
+// data/motion wiring) are stubbed out here — they have their own dedicated
+// coverage — so this test stays scoped to App.tsx's routing decision.
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { matchRoute } from './app/router'
 import { LEGACY_REDIRECTS } from './app/redirects'
 
-vi.mock('./pages/DataProbe', () => ({ DataProbe: () => <div data-testid="page-data-probe" /> }))
-vi.mock('./pages/DesignGallery', () => ({ default: () => <div data-testid="page-design" /> }))
-vi.mock('./pages/LandingFlight', () => ({ default: () => <div data-testid="page-landing" /> }))
 vi.mock('./pages/Globe', () => ({ default: () => <div data-testid="page-globe" /> }))
 vi.mock('./pages/Today', () => ({ default: () => <div data-testid="page-today" /> }))
 vi.mock('./pages/Home', () => ({ default: () => <div data-testid="page-home" /> }))
@@ -67,15 +62,6 @@ afterEach(() => {
 })
 
 describe('App — FluidChrome routing', () => {
-  it('does not mount the fluid chrome overlay on /design', () => {
-    // Arrange
-    setPath('/design')
-    // Act
-    const { queryByTestId } = render(<App />)
-    // Assert
-    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
-  })
-
   it('renders Home (not FluidChrome) on the root route', () => {
     // Arrange
     setPath('/')
@@ -85,16 +71,6 @@ describe('App — FluidChrome routing', () => {
     // (which would mount a second, redundant AqiCapsule readout on top of it).
     expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
     expect(queryByTestId('page-home')).not.toBeNull()
-  })
-
-  it('renders DataProbe on /probe (moved off the root route)', () => {
-    // Arrange
-    setPath('/probe')
-    // Act
-    const { queryByTestId } = render(<App />)
-    // Assert
-    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
-    expect(queryByTestId('page-data-probe')).not.toBeNull()
   })
 
   it('renders NotFound for an unmatched path (no more silent fallback to Home)', () => {
@@ -107,18 +83,18 @@ describe('App — FluidChrome routing', () => {
     expect(queryByTestId('page-not-found')).not.toBeNull()
   })
 
-  it('does not mount the fluid chrome overlay (or its live capsule) on /landing', () => {
-    // Arrange — P1 fix (2026-09-05 audit): /landing is a bare cinematic
-    // snapshot world; the live AQI capsule clashed with it and covered the
-    // Chapter 4 hero typography mid-scroll.
-    setPath('/landing')
-    // Act
-    const { queryByTestId } = render(<App />)
-    // Assert
-    expect(queryByTestId('fluid-chrome-overlay')).toBeNull()
-    expect(queryByTestId('mock-capsule')).toBeNull()
-    expect(queryByTestId('page-landing')).not.toBeNull()
-  })
+  it.each(['probe', 'design', 'lab', 'landing'])(
+    'renders NotFound on /%s (retired page — no route and no redirect, so it falls to the catch-all)',
+    (name) => {
+      // Arrange
+      setPath(`/${name}`)
+      // Act
+      const { queryByTestId } = render(<App />)
+      // Assert
+      expect(queryByTestId('page-home')).toBeNull()
+      expect(queryByTestId('page-not-found')).not.toBeNull()
+    },
+  )
 
   it('mounts the fluid chrome overlay on /globe', () => {
     // Arrange
@@ -179,8 +155,7 @@ describe('App — FluidChrome routing', () => {
 
   it('renders the capsule in its day variant on /today and /insights, night (default) on /globe', () => {
     // Arrange / Act — /today and /insights keep the light Paper-Ink day
-    // tint; /globe keeps the default night variant, unchanged. /landing no
-    // longer mounts a capsule at all (covered by the test above).
+    // tint; /globe keeps the default night variant, unchanged.
     // render() queries default to document.body, so each render must be
     // cleaned up before the next to avoid picking up both mock capsules.
     setPath('/today')
@@ -232,32 +207,25 @@ describe('App — SiteChrome routing (PR-N1)', () => {
     expect(container.querySelector('.chrome-footer')).toBeNull()
   })
 
-  it('mounts no chrome at all on /landing (bare — the immersive flight owns its own chrome)', () => {
-    // Arrange
-    setPath('/landing')
-    // Act
-    const { container, queryByTestId } = render(<App />)
-    // Assert
-    expect(container.querySelector('.chrome-nav')).toBeNull()
-    expect(container.querySelector('.chrome-shell')).toBeNull()
-    expect(queryByTestId('page-landing')).not.toBeNull()
-  })
-
-  it('mounts no chrome on /design and /probe (bare dev-only surfaces)', () => {
-    // Arrange / Act
-    setPath('/design')
-    const design = render(<App />)
-    const designChrome = design.container.querySelector('.chrome-nav')
-    cleanup()
-
-    setPath('/probe')
-    const probe = render(<App />)
-    const probeChrome = probe.container.querySelector('.chrome-nav')
-
-    // Assert
-    expect(designChrome).toBeNull()
-    expect(probeChrome).toBeNull()
-  })
+  it.each(LEGACY_REDIRECTS)(
+    'mounts no chrome at all on $from (bare — the redirect shim renders nothing and bounces)',
+    ({ from, to }) => {
+      // Arrange — the legacy-redirect shims are the remaining `chrome: 'bare'`
+      // routes; `location.replace` is stubbed so jsdom does not navigate.
+      setPath(from)
+      const { replaceMock, restore } = stubLocationReplace()
+      try {
+        // Act
+        const { container } = render(<App />)
+        // Assert
+        expect(container.querySelector('.chrome-nav')).toBeNull()
+        expect(container.querySelector('.chrome-shell')).toBeNull()
+        expect(replaceMock).toHaveBeenCalledWith(to)
+      } finally {
+        restore()
+      }
+    },
+  )
 
   it('gives NotFound the site chrome (a recovery surface, not another dead end)', () => {
     // Arrange

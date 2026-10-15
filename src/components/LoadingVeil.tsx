@@ -8,7 +8,7 @@
 // <style> tag, per this repo's convention — see AirLensMark's own comment).
 import { useEffect, useState } from 'react'
 import AirLensMark from './AirLensMark'
-import { useReducedMotion } from '../landing/shared/perf/useReducedMotion'
+import { useReducedMotion } from '../motion/useReducedMotion'
 
 interface Props {
   label?: string

@@ -7,7 +7,7 @@ import { METHODOLOGY_SECTIONS } from '../content/methodologySections'
 
 /**
  * NotFound — catch-all `*`. A recovery surface, not a joke page
- * (page-specs/about-faq-notfound.md §6): search, a Data health link, a
+ * (page-specs/about-faq-notfound.md §6): search, a
  * legacy-route explanation/redirect when the path matches one of 5 retired
  * routes, and — the one place EVIDENCE_CONTRACT's cursor round-trip applies
  * to a 404 — an "Open on Globe" link that carries forward any
@@ -100,16 +100,8 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
         ) : null}
       </section>
 
-      <section className="notfound__section fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="Data health">
-        <h2 className="h-3">Data health</h2>
-        <p className="t-body">
-          Check whether AirLens’s data feeds are currently responding.
-        </p>
-        <a href="/probe">Open Data health (temporary diagnostic page) →</a>
-      </section>
-
       {legacy ? (
-        <section className="notfound__section fluid-enter" style={{ '--enter-i': 3 } as CSSProperties} aria-label="Legacy route">
+        <section className="notfound__section fluid-enter" style={{ '--enter-i': 2 } as CSSProperties} aria-label="Legacy route">
           <h2 className="h-3">About this old link</h2>
           <table className="notfound__legacy-table">
             <thead>
@@ -137,7 +129,7 @@ export default function NotFound({ pathname, search }: NotFoundProps = {}) {
       ) : null}
 
       {cursorHref ? (
-        <section className="notfound__section fluid-enter" style={{ '--enter-i': 4 } as CSSProperties} aria-label="Restore scene">
+        <section className="notfound__section fluid-enter" style={{ '--enter-i': 3 } as CSSProperties} aria-label="Restore scene">
           <h2 className="h-3">Restore your scene</h2>
           <p className="t-body">
             This link included a scene reference. You can open the same scene on the Globe instead.

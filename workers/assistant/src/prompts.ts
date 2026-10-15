@@ -65,7 +65,8 @@ Open-Meteo, and NASA satellite products.
 - **Blog** (/blog): AirLens blog posts
 - **Data Sources** (/data-sources), **Datasets** (/datasets): where the data comes from
 - **Methodology** (/methodology), **Glossary** (/glossary), **FAQ** (/faq): how AirLens's own terms and methods work
-- **Lab** (/lab), **Research** (/research), **Learn** (/learn): analysis workspace — no account needed
+- **Research** (/research): Research Commons — a reviewed, reproducible-only publication record, not a results gallery
+- **Learn** (/learn): Guided Projects — five real air-quality questions, each with the dataset, the technique, and the trap
 - **Legal** (/legal/:doc): privacy, terms, AI disclaimer, AUP, data contribution, model card
 
 ## Access

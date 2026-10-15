@@ -16,7 +16,7 @@ afterEach(cleanup)
 const DATA_VALUE_PATTERN = /\d+(\.\d+)?\s*(µg\/m³|ppm|%)|AQI\s*\d/i
 
 describe('Trust', () => {
-  it('renders the 7-section hub with no data values (concentration/count/AQI number)', () => {
+  it('renders the 6-section hub with no data values (concentration/count/AQI number)', () => {
     const { container } = render(<Trust />)
     expect(container.textContent).not.toMatch(DATA_VALUE_PATTERN)
   })
@@ -30,7 +30,6 @@ describe('Trust', () => {
         '/datasets',
         '/methodology',
         '/legal/model-card',
-        '/probe',
         '/methodology#scholarly-evidence',
       ]),
     )

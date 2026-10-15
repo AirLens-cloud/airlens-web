@@ -9,7 +9,7 @@ import { VIZ_ACCENT_HEX } from './viz';
  * AQI grade hex scale — inlined from the monorepo's `@airlens/design-tokens`
  * (`packages/design-tokens/src/aqi-grades.ts` v0.1.0), which this repo does not
  * depend on. Distinct from `lib/atmosphericBackgroundConfig.ts`' same-named
- * 3-key K4 subset: that one is the landing scene's desaturated palette, this is
+ * 3-key K4 subset: that one is the drift-dot background's desaturated palette, this is
  * the full 8-grade data scale. Keep the two apart — they answer different
  * questions and the keys are not interchangeable.
  */

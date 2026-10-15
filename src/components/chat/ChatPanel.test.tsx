@@ -85,9 +85,9 @@ describe('ChatPanel — active (ASSISTANT_API_BASE configured, the A-4 default)'
   })
 
   it('never mounts (or unmounts) the widget when apiBaseOverride forces the panel offline, regardless of the live default', () => {
-    // Arrange / Act — the /design gallery demo passes apiBaseOverride=''
-    // specifically so it never touches the real worker (code review, PR #50
-    // MEDIUM); ASSISTANT_API_BASE here is still the live default.
+    // Arrange / Act — apiBaseOverride='' exists specifically so a panel
+    // never touches the real worker (code review, PR #50 MEDIUM);
+    // ASSISTANT_API_BASE here is still the live default.
     const { unmount } = render(<ChatPanel onClose={() => {}} apiBaseOverride="" />)
     unmount()
     // Assert

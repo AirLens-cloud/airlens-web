@@ -13,7 +13,7 @@
 // insights/catalog/research/content off their own shells entirely — those
 // shells now declare `padding-block` only, and `PublicPageContainer[data-
 // tier="hub"]` supplies `padding-inline: var(--pad-x)` once, upstream of all
-// of them (see `.ins-shell`/`.cat-shell`/`.lrn-shell,.rsc-shell`/`.lab-page`
+// of them (see `.ins-shell`/`.cat-shell`/`.lrn-shell,.rsc-shell`
 // and content.css's shared shell). The gutter-parity property this file
 // guards therefore now holds structurally for those shells (one source of
 // horizontal padding, not five copies of it) rather than needing a per-shell
@@ -83,7 +83,6 @@ describe('shell gutter parity — every page shell uses var(--pad-x) horizontall
     ['insights.css', String.raw`\.ins-shell`],
     ['catalog.css', String.raw`\.cat-shell`],
     ['research.css', String.raw`\.lrn-shell,\s*\n\.rsc-shell`],
-    ['research.css', String.raw`\.lab-page`],
     [
       'content.css',
       String.raw`\.dispatch-page,\s*\n\.article-page,\s*\n\.blog-page,\s*\n\.blogpost-page`,

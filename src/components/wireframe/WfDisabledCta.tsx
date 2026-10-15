@@ -15,7 +15,7 @@ import { useId } from 'react'
  * caption underneath, connected via `aria-describedby` — used by Home's
  * ACT ON IT block where a two-line dashed box next to a solid pill button
  * looked mismatched. Default `"inline"` keeps the original two-line box
- * (Lab's drawer CTAs, which have no adjacent solid button to match).
+ * (for a CTA that has no adjacent solid button to match).
  *
  * CSS: src/styles/wireframe.css `.wf-disabled-cta`, `.wf-disabled-cta--pill`.
  */

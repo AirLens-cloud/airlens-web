@@ -112,10 +112,6 @@ export default function Home() {
       <div className="fluid-enter" style={{ '--enter-i': 2 } as CSSProperties}>
         <HomeStoriesResearch />
       </div>
-
-      <div className="home-flight-link">
-        <a href="/landing">Take the flight →</a>
-      </div>
     </main>
   )
 }

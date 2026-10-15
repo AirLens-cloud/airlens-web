@@ -1,8 +1,8 @@
 /**
- * faq.ts — the 6 `/faq` items (Faq.tsx).
+ * faq.ts — the 4 `/faq` items (Faq.tsx).
  *
  * Task-centered by design (page-specs/about-faq-notfound.md §5.1): value
- * visibility, forecasts, sources, Lab, bundles, AQI scale. Account, login,
+ * visibility, forecasts, sources, AQI scale. Account, login,
  * and payment questions do not exist in this list on purpose — AirLens has
  * no accounts and no billing (see about-faq-notfound.md §2 "비협상 원칙").
  * Faq.test.tsx asserts zero account/payment keyword matches across this
@@ -48,20 +48,6 @@ export const FAQ_ITEMS: FaqItem[] = [
     answer:
       'AirLens combines four public sources: OpenAQ and Sensor.Community for ground measurements, Open-Meteo for weather, and NASA satellite products for wide-area coverage. Each source carries its own coverage and quality tier.',
     links: [{ label: 'Data Sources', href: '/data-sources' }],
-  },
-  {
-    id: 'what-is-lab',
-    question: 'What is the Lab? Do I need an account?',
-    answer:
-      'The Lab is a workspace for querying and analyzing the same data you see on the map — no account is needed. What you build there is saved in your browser and is not sent to an AirLens server as part of normal use.',
-    links: [{ label: 'Lab', href: '/lab' }],
-  },
-  {
-    id: 'open-bundle',
-    question: 'How do I open an .airlens bundle?',
-    answer:
-      'A bundle is a downloadable analysis package — a manifest plus figures and code — that you can import directly into the Lab to reproduce or continue an analysis.',
-    links: [{ label: 'Lab', href: '/lab' }],
   },
   {
     id: 'aqi-scale',

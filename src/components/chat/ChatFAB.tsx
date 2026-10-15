@@ -13,10 +13,10 @@
  *
  * Wave 5 Δ5 (B3): the panel is a gesture-table surface (sheet/capsule/chat-
  * panel/flick — the one bounce-spring-eligible category in the Δ5 motion
- * contract). `isOpen`/`onToggle`/`children` stay the public API (both call
- * sites — ChatWidget and the DesignGallery demo — pass `<ChatPanel .../>`
- * unconditionally as `children` and rely on this component to gate mounting
- * on `isOpen`), so the spring + drag-dismiss machinery lives here rather
+ * contract). `isOpen`/`onToggle`/`children` stay the public API (the one call
+ * site — ChatWidget — passes `<ChatPanel .../>` unconditionally as
+ * `children` and relies on this component to gate mounting on `isOpen`), so
+ * the spring + drag-dismiss machinery lives here rather
  * than being pushed onto callers. The wrapper stays mounted a little past
  * `isOpen` going false so the close animation/drag-release can finish before
  * it leaves the DOM — see `mounted` below.

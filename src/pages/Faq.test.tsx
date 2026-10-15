@@ -11,9 +11,9 @@ import { FAQ_ITEMS } from '../content/faq'
 
 afterEach(cleanup)
 
-// "account" itself is not on this list: item 4 ("Do I need an account?")
-// exists specifically to say no, and stripping the word would make that
-// answer unreadable. What must never appear is any of the mechanics of an
+// "account" itself is not on this list: an answer may need to say that no
+// account is needed, and stripping the word would make that unreadable.
+// What must never appear is any of the mechanics of an
 // actual account system — signing in, registering, a password, or a
 // billing relationship — because none of those exist on this site.
 const FORBIDDEN = /\b(log ?in|sign ?up|password|subscription|payment|billing|credit card|checkout)\b/i
