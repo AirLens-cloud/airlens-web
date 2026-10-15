@@ -5,23 +5,21 @@ name: Deploy Public API Worker
 # https://api.airlens.cloud/v1/* via a Custom Domain bound in the Cloudflare
 # dashboard — wrangler.toml deliberately carries no `routes`).
 #
-# TRIGGER: workflow_dispatch ONLY, on purpose. The monorepo workflow of the same
-# name still deploys this Worker on push to its main. A push trigger here would
-# double-deploy. At cutover (see the cutover checklist in the PR that added this
-# file), (1) add the secret below, (2) uncomment the push trigger, (3) disable
-# the monorepo workflow.
+# TRIGGER: push to main (paths below) + workflow_dispatch. This repo is the
+# only deployer of this Worker. The former monorepo workflow of the same name
+# must stay disabled; re-enabling it would double-deploy.
 #
 # Required repo secrets (names only):
-#   CLOUDFLARE_WORKERS_TOKEN — Workers-Scripts-edit scoped token
+#   CLOUDFLARE_WORKERS_TOKEN — same dedicated token as deploy-api.yml; this
+#                              Worker declares no routes, so it only uses the
+#                              Workers Scripts Edit part
 #   CLOUDFLARE_ACCOUNT_ID    — account that owns the Worker
-#
-# on:
-#   push:
-#     branches: [main]
-#     paths:
-#       - 'workers/public-api/**'
-#       - '.github/workflows/deploy-public-api.yml'
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/public-api/**'
+      - '.github/workflows/deploy-public-api.yml'
   workflow_dispatch:
 
 permissions:

@@ -3,31 +3,29 @@ name: Deploy API Worker
 # Ported from the AirLens monorepo (.github/workflows/deploy-api.yml).
 # Deploys workers/api (Worker `airlens-api`, route airlens.cloud/api/*).
 #
-# TRIGGER: workflow_dispatch ONLY, on purpose. The monorepo workflow of the same
-# name still deploys this Worker. A push trigger here would double-deploy. At
-# cutover (see the cutover checklist in the PR that added this file), (1) add
-# the secret below, (2) uncomment the push trigger, (3) disable the monorepo
-# workflow.
+# TRIGGER: push to main (paths below) + workflow_dispatch. This repo is the
+# only deployer of this Worker. The former monorepo workflow of the same name
+# must stay disabled; re-enabling it would double-deploy.
 #
 # Required repo secrets (names only):
-#   CLOUDFLARE_WORKERS_TOKEN — Workers-Scripts-edit token. This Worker binds D1
-#                              (`airlens-db`) and KV, and `wrangler deploy`
-#                              validates bindings, so the token may also need
-#                              D1 read (or mint a dedicated Workers+D1 token).
+#   CLOUDFLARE_WORKERS_TOKEN — token dedicated to this repo: Account Workers
+#                              Scripts Edit + Zone (airlens.cloud) Workers
+#                              Routes Edit, because wrangler.toml declares the
+#                              route. The D1/KV bindings need no extra
+#                              permission to deploy (Cloudflare docs,
+#                              "Workers authorization").
 #   CLOUDFLARE_ACCOUNT_ID    — account that owns the Worker
 # Optional repo variables (names only; unset = /api/admin/* stays 503):
 #   ACCESS_TEAM_DOMAIN, ACCESS_AUD, ACCESS_ALLOWED_EMAILS
 #
 # Worker runtime secrets (TURNSTILE_SECRET_KEY, SUBMITTER_HASH_SECRET,
 # Google_AQ_API) live in the deployed Worker and are NOT touched by a deploy.
-#
-# on:
-#   push:
-#     branches: [main]
-#     paths:
-#       - 'workers/api/**'
-#       - '.github/workflows/deploy-api.yml'
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/api/**'
+      - '.github/workflows/deploy-api.yml'
   workflow_dispatch:
 
 permissions:
