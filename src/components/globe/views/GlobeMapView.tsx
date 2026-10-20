@@ -81,7 +81,7 @@ export default function GlobeMapView() {
       <svg
         className="gmv-svg"
         viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
-        role="img"
+        role="group"
         aria-label="2D equirectangular map of published PM2.5 grid cells"
       >
         <rect x={0} y={0} width={MAP_VIEW_W} height={MAP_VIEW_H} className="gmv-ocean" />

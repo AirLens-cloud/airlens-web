@@ -63,6 +63,7 @@ export default function Legal({ doc }: LegalProps) {
           </div>
 
           {current.id === 'model-card' ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the table scrolls sideways (overflow-x: auto), so keyboard users need a Tab stop to scroll it
             <div className="legal-model-table-wrap" role="region" aria-label="Deployed models table" tabIndex={0}>
             <table className="legal-model-table">
               <caption>Models actually deployed on airlens-web — no research-only or planned models.</caption>

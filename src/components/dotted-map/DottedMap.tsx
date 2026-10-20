@@ -687,6 +687,7 @@ export const DottedMap = forwardRef<DottedMapRef, DottedMapProps>(function Dotte
   useImperativeHandle(ref, () => ({ zoomIn, zoomOut, getZoom }), [zoomIn, zoomOut, getZoom]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keyboard-operable map widget (role="application", keys in handleKeyDown; see aria-keyshortcuts)
     <div
       ref={containerRef}
       className={className}

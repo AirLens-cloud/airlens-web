@@ -42,9 +42,10 @@ export default function CitySearch({ onSelect }: CitySearchProps) {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search city or country code…"
         aria-label="Search city"
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- mounts only after the user opens search (Materialize show={searchOpen}), so focus lands where they asked
         autoFocus
       />
-      <div className="wx-search-list" role="listbox" aria-label="City results">
+      <div className="wx-search-list" role="group" aria-label="City results">
         {catalog.status === 'loading' && <p className="wx-search-empty t-caption">Loading city list…</p>}
         {catalog.status === 'error' && (
           <p className="wx-search-empty t-caption">City list unavailable — try again in a moment.</p>
@@ -57,7 +58,6 @@ export default function CitySearch({ onSelect }: CitySearchProps) {
             <button
               key={`${city.name}-${city.countryCode}`}
               type="button"
-              role="option"
               className="wx-search-item"
               onClick={() => onSelect(city)}
             >
