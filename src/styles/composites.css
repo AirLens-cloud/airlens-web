@@ -12,6 +12,8 @@
  * `WfTimelineScrubber` continuous drag-track mode (`.track`/`.fill`/`.knob`)
  * is NOT ported — its source CSS is scoped to `.windy-timeline` (Globe.tsx,
  * not part of this port); only the discrete step-tablist mode is styled here.
+ * When porting it, give `.knob:focus-visible` a visible ring: the knob is a
+ * keyboard Tab stop (role="slider"; arrows/Home/End step through snap points).
  */
 
 /* ---- WfCodeBlock ---- */
