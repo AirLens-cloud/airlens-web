@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 export interface WfTimelineScrubberStep {
   key: string
@@ -21,11 +21,11 @@ export interface WfTimelineScrubberTrackConfig {
   offset: number
   /** Real, currently-available snap points. Must be non-empty for the track to be interactive. */
   snapPoints: number[]
-  /** Fired with the nearest snap point whenever the user drags (mouse/touch move + initial down). */
+  /** Fired with the nearest snap point whenever the user drags (mouse/touch move + initial down) or steps with the keyboard on the slider knob. */
   onScrub: (offsetHours: number) => void
-  /** Fired once when a drag gesture starts, before the first onScrub of that gesture. */
+  /** Fired once when a drag gesture or a keyboard step starts, before the first onScrub of that gesture. */
   onScrubStart?: () => void
-  /** Fired once when a drag gesture ends (pointer up/touch end). */
+  /** Fired once when a drag gesture ends (pointer up/touch end) or right after a keyboard step. */
   onScrubEnd?: () => void
   minLabel?: string
   maxLabel?: string
@@ -186,6 +186,27 @@ function TrackScrubber({ track, playback, ariaLabel, testId }: TrackScrubberProp
   const knobPct = span > 0 ? ((offset - min) / span) * 100 : 0
   const sliderAriaLabel = ariaLabel ?? 'Timeline offset'
 
+  // Keyboard path for the slider knob: steps through the real snap points
+  // only (same frame-honesty rule as dragging). Each step behaves like a
+  // click on the track (onScrubStart, onScrub, onScrubEnd), so a consumer
+  // that pauses playback while scrubbing treats keyboard users the same.
+  // Modifier chords (e.g. Alt+← for history back) stay with the browser.
+  const onKnobKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (snapPoints.length === 0 || e.altKey || e.ctrlKey || e.metaKey) return
+    const sorted = [...snapPoints].sort((a, b) => a - b)
+    let next: number | undefined
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = sorted.find((p) => p > offset)
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = [...sorted].reverse().find((p) => p < offset)
+    else if (e.key === 'Home') next = sorted[0]
+    else if (e.key === 'End') next = sorted[sorted.length - 1]
+    else return
+    e.preventDefault()
+    if (next === undefined || next === offset) return
+    onScrubStart?.()
+    onScrub(next)
+    onScrubEnd?.()
+  }
+
   return (
     <>
       {playback && (
@@ -217,6 +238,7 @@ function TrackScrubber({ track, playback, ariaLabel, testId }: TrackScrubberProp
           {disabledLabel && <span className="timeline-notice">{disabledLabel}</span>}
         </div>
       ) : (
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer drag surface; keyboard users operate the role="slider" knob below
         <div
           ref={trackRef}
           data-testid={testId}
@@ -246,6 +268,10 @@ function TrackScrubber({ track, playback, ariaLabel, testId }: TrackScrubberProp
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={offset}
+            tabIndex={snapPoints.length > 0 ? 0 : -1}
+            aria-disabled={snapPoints.length === 0 || undefined}
+            aria-valuetext={valueLabel}
+            onKeyDown={onKnobKeyDown}
           />
         </div>
       )}

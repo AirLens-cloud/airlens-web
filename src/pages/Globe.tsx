@@ -473,6 +473,7 @@ export default function Globe() {
           ) : (
             <>
               {webgl ? (
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keyboard-operable globe (role="application"; arrows/zoom/mode keys in handleStageKeyDown)
                 <div
                   className="globe-3d-shell"
                   tabIndex={0}
@@ -515,6 +516,7 @@ export default function Globe() {
               immediately), which is the honest state — nothing left to show
               evidence for. */}
           {showEvidencePanel && (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape bubbles up from the close button / panel content to close the card (handleEvidencePanelKeyDown)
             <div
               className="globe-evidence-panel"
               role="region"

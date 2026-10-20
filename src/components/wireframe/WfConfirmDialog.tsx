@@ -85,7 +85,9 @@ export default function WfConfirmDialog({
   if (className) classes.push(className)
 
   return (
-    <div className={classes.join(' ')} onKeyDown={onKeyDown}>
+    // role="presentation": this wrapper only catches Escape / focus-trap Tab
+    // bubbling up from the alertdialog panel; it is not itself a control.
+    <div className={classes.join(' ')} role="presentation" onKeyDown={onKeyDown}>
       <div className="wf-confirm__backdrop" onClick={dismiss} aria-hidden="true" />
       <div
         ref={panelRef}

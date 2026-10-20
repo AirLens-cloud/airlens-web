@@ -233,6 +233,7 @@ function NavGroupDisclosure({
   const allItems = navGroupItems(group)
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape bubbles here from the trigger and dropdown links (handleGroupKeyDown); the <li> never takes focus
     <li className="chrome-nav__group" onKeyDown={onKeyDown}>
       <button
         type="button"
