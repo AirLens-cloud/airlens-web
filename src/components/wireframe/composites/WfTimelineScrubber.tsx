@@ -23,9 +23,9 @@ export interface WfTimelineScrubberTrackConfig {
   snapPoints: number[]
   /** Fired with the nearest snap point whenever the user drags (mouse/touch move + initial down) or steps with the keyboard on the slider knob. */
   onScrub: (offsetHours: number) => void
-  /** Fired once when a drag gesture starts, before the first onScrub of that gesture. */
+  /** Fired once when a drag gesture or a keyboard step starts, before the first onScrub of that gesture. */
   onScrubStart?: () => void
-  /** Fired once when a drag gesture ends (pointer up/touch end). */
+  /** Fired once when a drag gesture ends (pointer up/touch end) or right after a keyboard step. */
   onScrubEnd?: () => void
   minLabel?: string
   maxLabel?: string
@@ -187,8 +187,9 @@ function TrackScrubber({ track, playback, ariaLabel, testId }: TrackScrubberProp
   const sliderAriaLabel = ariaLabel ?? 'Timeline offset'
 
   // Keyboard path for the slider knob: steps through the real snap points
-  // only (same frame-honesty rule as dragging). Keyboard steps fire onScrub
-  // alone — they are discrete, not a drag gesture, so no onScrubStart/End.
+  // only (same frame-honesty rule as dragging). Each step behaves like a
+  // click on the track (onScrubStart, onScrub, onScrubEnd), so a consumer
+  // that pauses playback while scrubbing treats keyboard users the same.
   // Modifier chords (e.g. Alt+← for history back) stay with the browser.
   const onKnobKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (snapPoints.length === 0 || e.altKey || e.ctrlKey || e.metaKey) return
@@ -200,7 +201,10 @@ function TrackScrubber({ track, playback, ariaLabel, testId }: TrackScrubberProp
     else if (e.key === 'End') next = sorted[sorted.length - 1]
     else return
     e.preventDefault()
-    if (next !== undefined && next !== offset) onScrub(next)
+    if (next === undefined || next === offset) return
+    onScrubStart?.()
+    onScrub(next)
+    onScrubEnd?.()
   }
 
   return (

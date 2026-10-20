@@ -116,6 +116,46 @@ describe('WfTimelineScrubber track-mode slider knob', () => {
     expect(onScrub).not.toHaveBeenCalled()
   })
 
+  it('wraps a keyboard step in onScrubStart / onScrubEnd like a click on the track', () => {
+    // Arrange
+    const calls: string[] = []
+    render(
+      <WfTimelineScrubber
+        track={{
+          min: -24,
+          max: 24,
+          offset: 0,
+          snapPoints: [-12, 24, 0, -24, 12],
+          onScrub: (v) => calls.push(`scrub:${v}`),
+          onScrubStart: () => calls.push('start'),
+          onScrubEnd: () => calls.push('end'),
+        }}
+      />,
+    )
+    const slider = screen.getByRole('slider')
+    // Act
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    fireEvent.keyDown(slider, { key: 'Tab' })
+    // Assert
+    expect(calls).toEqual(['start', 'scrub:12', 'end'])
+  })
+
+  it('fires no scrub callbacks for a step that cannot move', () => {
+    // Arrange
+    const onScrubStart = vi.fn()
+    const onScrubEnd = vi.fn()
+    render(
+      <WfTimelineScrubber
+        track={{ min: -24, max: 24, offset: 24, snapPoints: [0, 24], onScrub: vi.fn(), onScrubStart, onScrubEnd }}
+      />,
+    )
+    // Act
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' })
+    // Assert
+    expect(onScrubStart).not.toHaveBeenCalled()
+    expect(onScrubEnd).not.toHaveBeenCalled()
+  })
+
   it('exposes valueLabel as aria-valuetext', () => {
     // Arrange / Act
     render(<WfTimelineScrubber track={{ min: -24, max: 24, offset: 0, snapPoints: [0], onScrub: vi.fn(), valueLabel: 'Forecast - valid 14:00' }} />)
