@@ -54,15 +54,19 @@ export default function CitySearch({ onSelect, onClose }: CitySearchProps) {
   const active: WeatherCity | undefined = results[activeIndex]
   const optionId = (index: number) => `${listId}-option-${index}`
 
-  // Keep the highlighted row inside the list's scroll area.
+  // Keep the highlighted row inside the list's scroll area. `query` is a
+  // dependency too: typing resets the highlight to the first row even when it
+  // already was the first row, and the list may have been wheel-scrolled since.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex])
+  }, [activeIndex, query])
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     // Keys that drive an IME composition (picking a candidate, Enter to commit
-    // it) belong to the IME — Enter there must not also pick a city.
-    if (e.nativeEvent.isComposing) return
+    // it) belong to the IME — Enter there must not also pick a city. Safari
+    // fires `compositionend` before that committing keydown, so `isComposing`
+    // is already false there; the event still reports keyCode 229.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (!hasOptions) return
       e.preventDefault()

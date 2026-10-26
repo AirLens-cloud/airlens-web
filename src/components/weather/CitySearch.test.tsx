@@ -182,6 +182,18 @@ describe('CitySearch — arrow-key navigation', () => {
     expect(scrollIntoView.mock.contexts.at(-1)).toBe(options[1])
   })
 
+  it('scrolls again when typing leaves the highlight on the first row', async () => {
+    // Arrange — "kr" highlights Seoul, so the highlight index is already 0.
+    const { input } = await renderLoaded()
+    fireEvent.change(input, { target: { value: 'kr' } })
+    scrollIntoView.mockClear()
+    // Act — the highlight stays 0 → 0, but the query (and so the list) changed.
+    fireEvent.change(input, { target: { value: 'kr ' } })
+    // Assert
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(screen.getAllByRole('option')[0])
+  })
+
   it('leaves the arrow keys to the input method during an IME composition', async () => {
     // Arrange
     const { input } = await renderLoaded()
@@ -262,6 +274,18 @@ describe('CitySearch — choosing a city', () => {
     fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
     // Assert
     expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('also ignores the committing Enter Safari reports as keyCode 229 with isComposing already false', async () => {
+    // Arrange — Safari fires compositionend before this keydown, so the
+    // composition flag is already off; only the legacy keyCode 229 gives it away.
+    const { input, onSelect } = await renderLoaded()
+    fireEvent.change(input, { target: { value: 'tok' } })
+    // Act
+    const cancelled = !fireEvent.keyDown(input, { key: 'Enter', keyCode: 229, isComposing: false })
+    // Assert
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(cancelled).toBe(false)
   })
 
   it('still picks a city on click', async () => {
