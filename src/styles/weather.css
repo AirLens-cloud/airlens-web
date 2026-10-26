@@ -386,6 +386,7 @@
   font-size: 13px;
   text-align: left;
 }
+.wx-search-item.is-active,
 .wx-search-item:hover {
   background: var(--glass-fill-lift);
 }

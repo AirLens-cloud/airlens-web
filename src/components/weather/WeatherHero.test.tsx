@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import WeatherHero from './WeatherHero'
 import { GRID_REFRESH_MS } from '../../lib/config/readingCadence'
 import type { ResolvedLocation } from '../../lib/location/resolveLocation'
@@ -174,5 +174,23 @@ describe('WeatherHero — the rail\'s PM2.5 tile shows the shared primary readin
     )
     // Assert
     expect(pm25Tile(container)).toBeNull()
+  })
+})
+
+describe('WeatherHero — city search', () => {
+  it('closes on Escape and hands focus back to the button that opened it', async () => {
+    // Arrange — open the panel; the search input takes focus.
+    const { getByRole, queryByRole } = render(<WeatherHero location={null} {...baseProps()} />)
+    const toggle = getByRole('button', { name: 'Search city' })
+    fireEvent.click(toggle)
+    const input = getByRole('combobox', { name: 'Search city' })
+    expect(document.activeElement).toBe(input)
+    // Act
+    fireEvent.keyDown(input, { key: 'Escape' })
+    // Assert — focus moves at once, not after the panel has faded out.
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(toggle)
+    // Materialize unmounts the panel once its close transition has run.
+    await waitFor(() => expect(queryByRole('search')).toBeNull())
   })
 })

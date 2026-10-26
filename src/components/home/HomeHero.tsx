@@ -88,6 +88,7 @@ export default function HomeHero({
   const [displayedValue, setDisplayedValue] = useState(targetValue)
   const hasSyncedRef = useRef(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const searchToggleRef = useRef<HTMLButtonElement>(null)
   const reducedMotion = useReducedMotion()
 
   // The `.set()`/`.jump()` calls are side effects, not state updates — same
@@ -231,6 +232,7 @@ export default function HomeHero({
                 {requestingLocation ? 'Locating…' : 'See air quality near me'}
               </button>
               <button
+                ref={searchToggleRef}
                 type="button"
                 className="home-hero__cta home-hero__cta--secondary t-caption"
                 onClick={() => setSearchOpen((v) => !v)}
@@ -241,6 +243,7 @@ export default function HomeHero({
             </>
           ) : (
             <button
+              ref={searchToggleRef}
               type="button"
               className="home-hero__cta home-hero__cta--secondary t-caption"
               onClick={() => setSearchOpen((v) => !v)}
@@ -260,6 +263,12 @@ export default function HomeHero({
             onSelect={(city) => {
               onSelectCity(city)
               setSearchOpen(false)
+            }}
+            // Escape: the input about to unmount holds focus, so hand it back to
+            // the button that opened the panel rather than dropping it on <body>.
+            onClose={() => {
+              setSearchOpen(false)
+              searchToggleRef.current?.focus()
             }}
           />
         </Materialize>

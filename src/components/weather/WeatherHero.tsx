@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Materialize from '../fluid/Materialize'
 import WfSkeleton from '../wireframe/WfSkeleton'
 import WfDataState from '../wireframe/WfDataState'
@@ -95,6 +95,7 @@ export default function WeatherHero({
   onRetry,
 }: WeatherHeroProps) {
   const [searchOpen, setSearchOpen] = useState(false)
+  const searchToggleRef = useRef<HTMLButtonElement>(null)
   const reducedMotion = useReducedMotion()
 
   const weatherCode = weather?.weather_code?.[0] ?? null
@@ -128,6 +129,7 @@ export default function WeatherHero({
               {requestingLocation ? 'Locating…' : 'Use my location'}
             </button>
             <button
+              ref={searchToggleRef}
               type="button"
               className="wx-hero__action-btn"
               onClick={() => setSearchOpen((v) => !v)}
@@ -149,6 +151,12 @@ export default function WeatherHero({
             onSelect={(city) => {
               onSelectCity(city)
               setSearchOpen(false)
+            }}
+            // Escape: the input about to unmount holds focus, so hand it back to
+            // the button that opened the panel rather than dropping it on <body>.
+            onClose={() => {
+              setSearchOpen(false)
+              searchToggleRef.current?.focus()
             }}
           />
         </Materialize>
