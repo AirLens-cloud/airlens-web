@@ -133,6 +133,21 @@ function makeEnv(over: Partial<Env> = {}): Env {
   };
 }
 
+/** Stand-in for the native Rate Limiting binding (wrangler.toml [[ratelimits]]):
+ *  `limit({ key })` → `{ success }` and nothing else. Allows `budget` calls per
+ *  key, then denies. */
+function budgetLimiter(budget: number) {
+  const calls = new Map<string, number>();
+  return {
+    limit: vi.fn(async ({ key }: { key: string }) => {
+      const n = (calls.get(key) ?? 0) + 1;
+      calls.set(key, n);
+      return { success: n <= budget };
+    }),
+  };
+}
+const asBinding = (limiter: ReturnType<typeof budgetLimiter>) => limiter as unknown as RateLimit;
+
 const get = (path: string, init?: RequestInit) =>
   worker.fetch(new Request(`https://api.airlens.cloud${path}`, init), makeEnv());
 
@@ -352,28 +367,127 @@ describe('CORS + rate limit', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
-  it('KV counter returns 429 past the budget', async () => {
-    const store = new Map<string, string>();
-    const kv = {
-      get: (k: string) => Promise.resolve(store.get(k) ?? null),
-      put: (k: string, v: string) => {
-        store.set(k, v);
-        return Promise.resolve();
-      },
-    } as unknown as KVNamespace;
-    const env = makeEnv({ RATE_LIMIT_MAX: '2', RL_KV: kv });
-    stubFetch();
-    const call = () =>
-      worker.fetch(
+  it('OPTIONS preflight is answered before the limiter', async () => {
+    const limiter = budgetLimiter(0);
+    const res = await worker.fetch(
+      new Request('https://api.airlens.cloud/v1/health', {
+        method: 'OPTIONS',
+        headers: { 'CF-Connecting-IP': '9.9.9.9' },
+      }),
+      makeEnv({ IP_RATE_LIMIT: asBinding(limiter) }),
+    );
+    expect(res.status).toBe(204);
+    expect(limiter.limit).not.toHaveBeenCalled();
+  });
+
+  describe('per-IP limit (native Rate Limiting binding)', () => {
+    const fromIp = (ip: string) =>
+      new Request('https://api.airlens.cloud/v1/health', { headers: { 'CF-Connecting-IP': ip } });
+
+    it('returns 429 past the budget, counted per IP', async () => {
+      const env = makeEnv({ IP_RATE_LIMIT: asBinding(budgetLimiter(2)) });
+      stubFetch();
+      expect((await worker.fetch(fromIp('9.9.9.9'), env)).status).toBe(200);
+      expect((await worker.fetch(fromIp('9.9.9.9'), env)).status).toBe(200);
+      expect((await worker.fetch(fromIp('9.9.9.9'), env)).status).toBe(429);
+      // Another IP has its own budget.
+      expect((await worker.fetch(fromIp('8.8.8.8'), env)).status).toBe(200);
+    });
+
+    it('429 keeps its shape: body, no-store, CORS, RateLimit-* and Retry-After', async () => {
+      const res = await worker.fetch(
+        fromIp('9.9.9.9'),
+        makeEnv({ IP_RATE_LIMIT: asBinding(budgetLimiter(0)) }),
+      );
+      expect(res.status).toBe(429);
+      expect(await readBody(res)).toEqual({
+        error: 'rate_limited',
+        message: 'Too many requests. Try again shortly.',
+      });
+      expect(res.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(res.headers.get('RateLimit-Limit')).toBe('120');
+      expect(res.headers.get('RateLimit-Remaining')).toBe('0');
+      // The binding reports no reset time, so the client is told the whole window.
+      expect(res.headers.get('Retry-After')).toBe('60');
+    });
+
+    it('reports the configured budget and window in the headers', async () => {
+      const res = await worker.fetch(
+        fromIp('9.9.9.9'),
+        makeEnv({
+          RATE_LIMIT_MAX: '30',
+          RATE_LIMIT_WINDOW_SECONDS: '10',
+          IP_RATE_LIMIT: asBinding(budgetLimiter(0)),
+        }),
+      );
+      expect(res.status).toBe(429);
+      expect(res.headers.get('RateLimit-Limit')).toBe('30');
+      expect(res.headers.get('Retry-After')).toBe('10');
+    });
+
+    it('allowed responses carry RateLimit-Limit but no RateLimit-Remaining (the binding cannot say)', async () => {
+      stubFetch();
+      const res = await worker.fetch(
+        fromIp('9.9.9.9'),
+        makeEnv({ IP_RATE_LIMIT: asBinding(budgetLimiter(5)) }),
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get('RateLimit-Limit')).toBe('120');
+      expect(res.headers.has('RateLimit-Remaining')).toBe(false);
+      expect(res.headers.has('Retry-After')).toBe(false);
+    });
+
+    it('keys the limiter on CF-Connecting-IP, else the first X-Forwarded-For hop', async () => {
+      const limiter = budgetLimiter(5);
+      const env = makeEnv({ IP_RATE_LIMIT: asBinding(limiter) });
+      stubFetch();
+      await worker.fetch(fromIp('9.9.9.9'), env);
+      await worker.fetch(
         new Request('https://api.airlens.cloud/v1/health', {
-          headers: { 'CF-Connecting-IP': '9.9.9.9' },
+          headers: { 'X-Forwarded-For': '7.7.7.7, 10.0.0.1' },
         }),
         env,
       );
-    expect((await call()).status).toBe(200);
-    expect((await call()).status).toBe(200);
-    const third = await call();
-    expect(third.status).toBe(429);
-    expect(third.headers.get('Retry-After')).toBeTruthy();
+      expect(limiter.limit.mock.calls.map(([opts]) => opts.key)).toEqual(['9.9.9.9', '7.7.7.7']);
+    });
+
+    it('also gates /mcp', async () => {
+      const res = await worker.fetch(
+        new Request('https://api.airlens.cloud/mcp', {
+          method: 'POST',
+          headers: { 'CF-Connecting-IP': '9.9.9.9', 'Content-Type': 'application/json' },
+          body: '{}',
+        }),
+        makeEnv({ IP_RATE_LIMIT: asBinding(budgetLimiter(0)) }),
+      );
+      expect(res.status).toBe(429);
+    });
+
+    it('serves normally, with RateLimit-Limit, when the binding is absent', async () => {
+      stubFetch();
+      const res = await get('/v1/health');
+      expect(res.status).toBe(200);
+      expect(res.headers.get('RateLimit-Limit')).toBe('120');
+    });
+
+    it('fails open — and still serves — when the limiter throws', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const limiter = {
+        limit: vi.fn(async () => {
+          throw new Error('limiter down');
+        }),
+      };
+      stubFetch();
+      const res = await worker.fetch(
+        fromIp('9.9.9.9'),
+        makeEnv({ IP_RATE_LIMIT: limiter as unknown as RateLimit }),
+      );
+      expect(res.status).toBe(200);
+      expect(limiter.limit).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockRestore();
+    });
   });
 });

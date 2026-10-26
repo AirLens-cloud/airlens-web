@@ -21,7 +21,9 @@ compatibility_date = "2026-04-01"
 # database, so there are no secrets in this worker — nothing here is server-only
 # (contrast: the chatbot worker's SUPABASE_* secrets).
 DATA_ORIGIN = "https://huggingface.co/datasets/Robeedau/airlens-live/resolve/main"
-# Per-IP budget for the KV counter. Matches ratelimit.ts's built-in fallback
+# Per-IP budget as reported to clients (RateLimit-Limit, Retry-After). It does
+# not enforce anything — the [[ratelimits]] binding at the end of this file does
+# — so keep the two pairs equal. Matches ratelimit.ts's built-in fallback
 # (120 req / 60s) — declared explicitly so the effective limit is visible here
 # rather than only in code.
 RATE_LIMIT_MAX = "120"
@@ -31,22 +33,39 @@ RATE_LIMIT_WINDOW_SECONDS = "60"
 # aq-data/**. Restricting CORS would not protect anything, only break that use.
 ALLOWED_ORIGINS = "*"
 
-# ── Rate-limit counter store (ratelimit.ts, layer 2 of 3) ────────────────────
+# ── Per-IP rate limit (ratelimit.ts, layer 2 of 3) ───────────────────────────
 #
-# Bound 2026-09-04. The namespace was empty at bind time, and `ratelimit.ts`
-# writes only short-TTL per-IP counters — nothing to migrate, nothing lost if it
-# is ever recreated.
+# Cloudflare's native Rate Limiting binding — the same mechanism as
+# workers/assistant/wrangler.toml's SESSION_RATE_LIMIT (docs:
+# developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). It
+# replaces the KV counter (`RL_KV`) this layer used before: a KV counter is a
+# non-atomic read-then-write, and KV allows only one write per second to the
+# same key (developers.cloudflare.com/kv/platform/limits/), so under a burst from
+# one IP the counter's own writes can be rejected — which the old code treated
+# as "allow".
 #
-# `RL_KV` stays optional in `Env` and `ratelimit.ts` still fails **open** when
-# the binding is absent, which is what keeps `wrangler dev` and any unbound
-# environment working. This block only means production no longer runs one layer
-# short.
+# `limit` / `period` are what is ENFORCED: `limit` requests per `period` seconds
+# per key (the client IP), counted separately in each Cloudflare location and
+# approximate — a burst can overshoot. `period` must be 10 or 60. The
+# RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_SECONDS vars above only feed the
+# RateLimit-Limit and Retry-After headers; keep both pairs equal.
+#
+# `namespace_id` must be unique within the Cloudflare account — the assistant
+# Worker already uses "1001". Reusing a number would make two Workers share one
+# counter per key.
+#
+# `IP_RATE_LIMIT` stays optional in `Env` and `ratelimit.ts` fails **open** when
+# the binding is absent (and when `limit()` throws), which is what keeps
+# `wrangler dev` and any unbound environment working. The flip side: a deploy
+# that loses this binding switches the limit off without an error, so after
+# touching this block confirm that a burst from one IP really gets a 429.
 #
 # Kept last on purpose: in TOML every key after a table header belongs to that
 # table, so a top-level key added below this point (`routes = …`, say) would be
-# silently swallowed into `kv_namespaces` instead of erroring. Add new top-level
+# silently swallowed into `ratelimits` instead of erroring. Add new top-level
 # keys ABOVE the first table header.
 
-[[kv_namespaces]]
-binding = "RL_KV"
-id = "03cf5a45eaf74c3191f07811a96be562"
+[[ratelimits]]
+name = "IP_RATE_LIMIT"
+namespace_id = "2001"
+simple = { limit = 120, period = 60 }
