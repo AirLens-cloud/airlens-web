@@ -129,31 +129,41 @@ describe('getClientIp', () => {
 // binding that is dropped or renamed fails open without an error. Nothing but
 // these tests ties the file to the code, so read the file.
 describe('wrangler.toml', () => {
-  const block = wranglerToml.slice(wranglerToml.indexOf('[[ratelimits]]'));
   const numberIn = (text: string, pattern: RegExp) => Number(pattern.exec(text)?.[1]);
   const namespaceIds = (toml: string) => [...toml.matchAll(/^namespace_id\s*=\s*"(\d+)"/gm)].map((m) => m[1]);
 
+  // The real table, not the comments that mention `[[ratelimits]]`: its header
+  // must start a line, and the table ends at the next table header.
+  const headerAt = wranglerToml.search(/^\[\[ratelimits\]\]/m);
+  const afterHeader = headerAt >= 0 ? wranglerToml.slice(headerAt + '[[ratelimits]]'.length) : '';
+  const nextHeaderAt = afterHeader.search(/^\[/m);
+  const block = nextHeaderAt >= 0 ? afterHeader.slice(0, nextHeaderAt) : afterHeader;
+  // What the binding enforces sits on the `simple = { … }` line, nowhere else.
+  const simple = /^simple\s*=.*$/m.exec(block)?.[0] ?? '';
+  const enforcedLimit = numberIn(simple, /\blimit\s*=\s*(\d+)/);
+  const enforcedPeriod = numberIn(simple, /\bperiod\s*=\s*(\d+)/);
+
   it('declares the binding under the name ratelimit.ts reads', () => {
-    expect(block.startsWith('[[ratelimits]]')).toBe(true);
+    expect(headerAt).toBeGreaterThanOrEqual(0);
     expect(block).toMatch(/^name\s*=\s*"IP_RATE_LIMIT"/m);
   });
 
   it('keeps the numbers in the headers equal to what the binding enforces', () => {
-    const limit = numberIn(block, /limit\s*=\s*(\d+)/);
-    const period = numberIn(block, /period\s*=\s*(\d+)/);
-    expect(numberIn(wranglerToml, /^RATE_LIMIT_MAX\s*=\s*"(\d+)"/m)).toBe(limit);
-    expect(numberIn(wranglerToml, /^RATE_LIMIT_WINDOW_SECONDS\s*=\s*"(\d+)"/m)).toBe(period);
+    expect(numberIn(wranglerToml, /^RATE_LIMIT_MAX\s*=\s*"(\d+)"/m)).toBe(enforcedLimit);
+    expect(numberIn(wranglerToml, /^RATE_LIMIT_WINDOW_SECONDS\s*=\s*"(\d+)"/m)).toBe(enforcedPeriod);
   });
 
   it('uses a period Cloudflare accepts (10 or 60 seconds)', () => {
-    expect([10, 60]).toContain(numberIn(block, /period\s*=\s*(\d+)/));
+    expect([10, 60]).toContain(enforcedPeriod);
   });
 
   it('does not share its namespace_id with the assistant Worker — they would share counters', () => {
     const mine = namespaceIds(wranglerToml);
     const theirs = namespaceIds(assistantWranglerToml);
+    // Only the overlap is asserted on the assistant's side: its file is outside
+    // this Worker's deploy path filter, so a change over there must not start
+    // failing this test at the next public-api deploy.
     expect(mine).toHaveLength(1);
-    expect(theirs.length).toBeGreaterThan(0);
     expect(mine.filter((id) => theirs.includes(id))).toEqual([]);
   });
 });
