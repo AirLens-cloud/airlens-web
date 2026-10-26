@@ -55,10 +55,11 @@ ALLOWED_ORIGINS = "*"
 # counter per key.
 #
 # `IP_RATE_LIMIT` stays optional in `Env` and `ratelimit.ts` fails **open** when
-# the binding is absent (and when `limit()` throws), which is what keeps
-# `wrangler dev` and any unbound environment working. The flip side: a deploy
-# that loses this binding switches the limit off without an error, so after
-# touching this block confirm that a burst from one IP really gets a 429.
+# the binding is absent (and when `limit()` throws), which keeps unit tests and
+# any unbound environment working. The flip side: a deploy that loses this
+# binding switches the limit off — all that is left is one warning per isolate in
+# the Worker's logs — so after touching this block confirm that a burst from one
+# IP really gets a 429. (A test pins the binding's name and numbers to the code.)
 #
 # Kept last on purpose: in TOML every key after a table header belongs to that
 # table, so a top-level key added below this point (`routes = …`, say) would be

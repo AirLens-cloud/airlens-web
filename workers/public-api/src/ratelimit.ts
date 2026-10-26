@@ -19,10 +19,16 @@
  * Fail-open: if the binding is unbound (dev/test), the request has no client
  * IP, or `limit()` throws, the request is allowed rather than blocking all
  * traffic — the edge cache and the CF rule still stand. A thrown call is
- * logged so a limiter outage shows up in the Worker's logs.
+ * logged so a limiter outage shows up in the Worker's logs, and a missing
+ * binding is logged once per isolate (see below).
  */
 
 import type { Env } from './types';
+
+// An unbound limiter is normal in unit tests, but on a deployed Worker it means
+// the per-IP limit is silently off (a dropped or renamed `[[ratelimits]]`
+// block) — so say so, once per isolate rather than once per request.
+let warnedUnbound = false;
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -38,9 +44,17 @@ export async function checkRateLimit(env: Env, ip: string): Promise<RateLimitRes
   const windowSeconds = Math.max(1, Number(env.RATE_LIMIT_WINDOW_SECONDS) || 60);
   const allow: RateLimitResult = { allowed: true, limit, retryAfterSeconds: windowSeconds };
 
-  // Fail open when there is nothing to count with. An empty IP is skipped too:
-  // as a key it would put every client without an IP into one shared bucket.
-  if (!env.IP_RATE_LIMIT || !ip) return allow;
+  // Fail open when there is nothing to count with.
+  if (!env.IP_RATE_LIMIT) {
+    if (!warnedUnbound) {
+      warnedUnbound = true;
+      console.warn('[public-api] IP_RATE_LIMIT binding is missing — the per-IP rate limit is off');
+    }
+    return allow;
+  }
+  // An empty IP is skipped too: as a key it would put every client without an
+  // IP into one shared bucket.
+  if (!ip) return allow;
 
   try {
     const { success } = await env.IP_RATE_LIMIT.limit({ key: ip });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from './index';
 import type { Env } from './types';
 
@@ -151,7 +151,15 @@ const asBinding = (limiter: ReturnType<typeof budgetLimiter>) => limiter as unkn
 const get = (path: string, init?: RequestInit) =>
   worker.fetch(new Request(`https://api.airlens.cloud${path}`, init), makeEnv());
 
-afterEach(() => vi.unstubAllGlobals());
+// An unbound limiter warns once per module instance (ratelimit.ts), and most
+// tests here run without the binding — keep that out of the output.
+beforeEach(() => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('REST routing', () => {
   it('GET /v1/health → ok + dataset index', async () => {
