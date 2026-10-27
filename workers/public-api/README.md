@@ -33,29 +33,32 @@ Provenance is declared per dataset in `catalog.ts` and never conflated:
 
 ## Rate limiting (3 layers)
 1. **Edge cache** — every GET sets `Cache-Control: s-maxage`, so most traffic never runs the worker.
-2. **KV per-IP counter** (`ratelimit.ts`) — fixed window, `429` past `RATE_LIMIT_MAX`. Fails **open** if `RL_KV` is unbound.
+2. **Per-IP limit** (`ratelimit.ts`) — Cloudflare's native [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) (`IP_RATE_LIMIT`, declared as `[[ratelimits]]` in `wrangler.toml`): 120 requests per 60 s per client IP, `429` past that. Fails **open** (the request is allowed) when the binding is missing (unit tests, or a deployment that lost it — logged once per isolate as `IP_RATE_LIMIT binding is missing`), when there is no client IP, or when the limiter call throws (logged as `rate limiter unavailable, failing open`).
 3. **Cloudflare Rate Limiting Rule** (dashboard, 1 rule) — outer volumetric wall (~600 req/min/IP recommended).
 
+The per-IP limit is approximate: Cloudflare counts per location and syncs in the background, so a burst can overshoot and a client spread across locations gets a budget in each. The binding answers allow/deny only, so `RateLimit-Limit` is sent on every response but `RateLimit-Remaining` only on the `429` (as `0`), and `Retry-After` is the whole window. The numbers appear twice in `wrangler.toml` — the binding's `limit`/`period` enforce them, `RATE_LIMIT_MAX`/`RATE_LIMIT_WINDOW_SECONDS` only feed those headers — so change them together (`src/ratelimit.test.ts` fails if they drift).
+
 ## Deploy (operator, gated)
-Deploy is `workflow_dispatch`-only until infra is provisioned.
+The **Deploy Public API Worker** workflow runs on every push to `main` that touches
+`workers/public-api/**` and on manual dispatch — merging a change here deploys it
+(type-check and tests first, then `wrangler deploy`).
 
-`wrangler.toml` now exists and `wrangler deploy --dry-run` passes, so **step 4 works
-today** — the worker lands on its `workers.dev` URL with the edge-cache and
-dashboard rate-limit layers active and the KV per-IP layer failing open. Steps 1–3
-harden it; none of them blocks a first deploy.
+`wrangler.toml` carries the per-IP limiter binding (`[[ratelimits]]`), so there is
+nothing to provision for layer 2. (It replaced a KV namespace, `RL_KV`, that needed
+`wrangler kv namespace create`; the deploy no longer binds it.)
 
-1. `npx wrangler kv namespace create RL_KV` → paste the printed id into
-   `wrangler.toml` and uncomment the `[[kv_namespaces]]` block (layer 2).
-2. Bind a route / custom domain (e.g. `api.airlens.cloud/*`) in the Cloudflare
+1. Bind a route / custom domain (e.g. `api.airlens.cloud/*`) in the Cloudflare
    dashboard. Deliberately not in `wrangler.toml`: a `routes` entry for a hostname
    with no DNS record fails the deploy outright.
-3. (optional) Add one Cloudflare Rate Limiting Rule (layer 3).
-4. Run the **Deploy Public API Worker** workflow, then verify `GET /v1/health`
-   returns 200 live.
+2. (optional) Add one Cloudflare Rate Limiting Rule (layer 3).
+3. After a deploy, verify `GET /v1/health` returns 200 live. After changing the
+   limiter also check that a burst from one IP gets a `429` — the binding is not
+   shown in the dashboard, and a missing binding fails open with nothing but a
+   one-time log line.
 
 No secrets: this worker only reshapes the already-public `aq-data/**` snapshots, so
 `wrangler secret put` is not part of setup (contrast the chatbot worker).
 
-Local: `npm run type-check && npm test` (40 tests) · `npm run dev`.
+Local: `npm run type-check && npm test` · `npm run dev`.
 
 License: AGPL-3.0-or-later.

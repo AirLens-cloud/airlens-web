@@ -5,8 +5,9 @@
  * Request flow:
  *   CORS preflight → rate limit (edge cache is the real first line) → route.
  * Every successful GET sets `Cache-Control: public, s-maxage=<ttl>` so the
- * Cloudflare edge absorbs repeat traffic; the KV per-IP counter (ratelimit.ts)
- * and a Cloudflare Rate Limiting Rule are layers 2 and 3.
+ * Cloudflare edge absorbs repeat traffic; the per-IP limit (ratelimit.ts, the
+ * native Rate Limiting binding) and a Cloudflare Rate Limiting Rule are layers
+ * 2 and 3.
  */
 
 import type { Env } from './types';
@@ -76,16 +77,14 @@ export default {
 
     // ── Rate limit (layer 2) ──
     const rl = await checkRateLimit(env, getClientIp(req));
-    const rlHeaders = {
-      ...cors,
-      'RateLimit-Limit': String(rl.limit),
-      'RateLimit-Remaining': String(rl.remaining),
-    };
+    // The limiter says allow/deny only — it has no remaining count — so
+    // RateLimit-Remaining is sent on the 429 (where it is 0) and omitted otherwise.
+    const rlHeaders = { ...cors, 'RateLimit-Limit': String(rl.limit) };
     if (!rl.allowed) {
       return json(
         { error: 'rate_limited', message: 'Too many requests. Try again shortly.' },
         429,
-        { ...rlHeaders, 'Retry-After': String(rl.resetSeconds) },
+        { ...rlHeaders, 'RateLimit-Remaining': '0', 'Retry-After': String(rl.retryAfterSeconds) },
       );
     }
 
