@@ -14,7 +14,7 @@
  * `isStale` comment for why the cadence comparison was rejected.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import HomeHero from './HomeHero'
 import { CAMS_REFRESH_MS, GRID_REFRESH_MS } from '../../lib/config/readingCadence'
 import type { PrimaryReadingReady } from '../../lib/reading/resolvePrimaryReading'
@@ -256,4 +256,41 @@ describe('HomeHero — reading source disclosure (readingCopy.ts)', () => {
     expect(container.querySelector('.home-hero--stale')).toBeNull()
     expect(container.querySelectorAll('.home-hero__source')[0].textContent).not.toMatch(/stale/)
   })
+})
+
+describe('HomeHero — city search', () => {
+  // The hero has two search toggles — which one renders depends on whether the
+  // visitor already shared their location. Escape must work from either.
+  it.each([
+    ['default', 'Search a location'],
+    ['geolocation', 'Not you? Search again'],
+  ] as const)(
+    'closes on Escape and hands focus back to the toggle (locationSource %s)',
+    async (locationSource, toggleLabel) => {
+      // Arrange — open the panel; the search input takes focus.
+      const { getByRole, queryByRole } = render(
+        <HomeHero
+          reading={readyReading(60 * 60 * 1000, false)}
+          data={RAIL_DATA}
+          requestingLocation={false}
+          locationDenied={false}
+          placeLabel="Seoul, KR"
+          locationSource={locationSource}
+          onRequestLocation={() => {}}
+          onSelectCity={() => {}}
+        />,
+      )
+      const toggle = getByRole('button', { name: toggleLabel })
+      fireEvent.click(toggle)
+      const input = getByRole('combobox', { name: 'Search city' })
+      expect(document.activeElement).toBe(input)
+      // Act
+      fireEvent.keyDown(input, { key: 'Escape' })
+      // Assert — focus moves at once, not after the panel has faded out.
+      expect(toggle.getAttribute('aria-expanded')).toBe('false')
+      expect(document.activeElement).toBe(toggle)
+      // Materialize unmounts the panel once its close transition has run.
+      await waitFor(() => expect(queryByRole('search')).toBeNull())
+    },
+  )
 })
